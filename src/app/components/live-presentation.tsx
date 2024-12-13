@@ -3,8 +3,10 @@
 import { api, type RouterOutputs } from "~/trpc/react";
 import { WinnerAnimation } from "./winner-animation";
 import { LiveVoting } from "./live-voting";
-
-
+import { toast } from "sonner";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { useEffect } from "react";
 
 type Session = RouterOutputs["award"]["getSessionBySlug"];
 
@@ -14,19 +16,47 @@ interface LivePresentationProps {
 }
 
 export function LivePresentation({ initialSession, slug }: LivePresentationProps) {
-  const { data: session } = api.award.getSessionBySlug.useQuery(
+  const { data: session, error: sessionError, isError: isSessionError } = api.award.getSessionBySlug.useQuery(
     { slug, activeOnly: true },
     {
       refetchInterval: 5000,
       initialData: initialSession,
+      retry: 3,
     }
   );
+
+  useEffect(() => {
+    if (isSessionError) {
+      toast.error("Failed to fetch presentation updates");
+    }
+  }, [isSessionError]);
+
+  if (isSessionError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {sessionError?.message || "Failed to load presentation"}
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-2 underline hover:no-underline"
+            >
+              Refresh page
+            </button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (session.categories.length === 0) {
     return (
       <div className="container mx-auto px-4 text-center">
         <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
         <p className="text-2xl">Waiting for the next award.</p>
+        <p className="mt-4 text-muted-foreground">The host will activate categories when ready.</p>
       </div>
     );
   }

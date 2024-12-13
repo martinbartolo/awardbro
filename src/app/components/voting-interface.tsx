@@ -25,7 +25,6 @@ export function VotingInterface({
   const vote = api.award.vote.useMutation({
     onSuccess: () => {
       router.refresh();
-      toast.success("Vote cast successfully!");
     },
     onError: (error) => {
       if (error.message === "Already voted in this category") {
@@ -72,7 +71,7 @@ export function VotingInterface({
           >
             <div className="font-semibold">{nomination.name}</div>
             {nomination.description && (
-              <div className="text-sm text-gray-400">{nomination.description}</div>
+              <div className="text-sm text-muted-foreground">{nomination.description}</div>
             )}
           </button>
         ))}

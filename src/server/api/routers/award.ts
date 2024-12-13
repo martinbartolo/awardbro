@@ -1,24 +1,54 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import { Prisma } from "@prisma/client";
 
 const DEVICE_ID_COOKIE = "device_id";
 
+// Input validation schemas
+const sessionInput = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  slug: z.string().min(1, "Slug is required").max(100, "Slug is too long")
+    .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
+});
+
+const categoryInput = z.object({
+  sessionId: z.string().min(1, "Session ID is required"),
+  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  description: z.string().max(500, "Description is too long").optional(),
+});
+
+const nominationInput = z.object({
+  categoryId: z.string().min(1, "Category ID is required"),
+  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  description: z.string().max(500, "Description is too long").optional(),
+});
+
 export const awardRouter = createTRPCRouter({
   createSession: publicProcedure
-    .input(
-      z.object({
-        name: z.string(),
-        slug: z.string(),
-      }),
-    )
+    .input(sessionInput)
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.session.create({
-        data: {
-          name: input.name,
-          slug: input.slug,
-        },
-      });
+      try {
+        return await ctx.db.session.create({
+          data: {
+            name: input.name,
+            slug: input.slug,
+          },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          if (error.code === 'P2002') {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "That URL is already in use. Please try another one",
+            });
+          }
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create session",
+        });
+      }
     }),
 
   getSession: publicProcedure
@@ -86,21 +116,35 @@ export const awardRouter = createTRPCRouter({
     }),
 
   addCategory: publicProcedure
-    .input(
-      z.object({
-        sessionId: z.string(),
-        name: z.string(),
-        description: z.string().optional(),
-      }),
-    )
+    .input(categoryInput)
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.category.create({
-        data: {
-          sessionId: input.sessionId,
-          name: input.name,
-          description: input.description,
-        },
-      });
+      try {
+        // First verify the session exists
+        const session = await ctx.db.session.findUnique({
+          where: { id: input.sessionId },
+        });
+
+        if (!session) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Session not found",
+          });
+        }
+
+        return await ctx.db.category.create({
+          data: {
+            sessionId: input.sessionId,
+            name: input.name,
+            description: input.description,
+          },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create category",
+        });
+      }
     }),
 
   getCategory: publicProcedure
@@ -130,21 +174,35 @@ export const awardRouter = createTRPCRouter({
     }),
 
   addNomination: publicProcedure
-    .input(
-      z.object({
-        categoryId: z.string(),
-        name: z.string(),
-        description: z.string().optional(),
-      }),
-    )
+    .input(nominationInput)
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.nomination.create({
-        data: {
-          categoryId: input.categoryId,
-          name: input.name,
-          description: input.description,
-        },
-      });
+      try {
+        // First verify the category exists
+        const category = await ctx.db.category.findUnique({
+          where: { id: input.categoryId },
+        });
+
+        if (!category) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Category not found",
+          });
+        }
+
+        return await ctx.db.nomination.create({
+          data: {
+            categoryId: input.categoryId,
+            name: input.name,
+            description: input.description,
+          },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create nomination",
+        });
+      }
     }),
 
   setActiveCategory: publicProcedure
@@ -176,61 +234,75 @@ export const awardRouter = createTRPCRouter({
     }),
 
   vote: publicProcedure
-    .input(z.object({ nominationId: z.string() }))
+    .input(z.object({ nominationId: z.string().min(1, "Nomination ID is required") }))
     .mutation(async ({ ctx, input }) => {
-      const deviceId = ctx.headers.get("cookie")?.split(";")
-        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
-        ?.split("=")[1];
+      try {
+        const deviceId = ctx.headers.get("cookie")?.split(";")
+          .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+          ?.split("=")[1];
 
-      if (!deviceId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "No device ID found",
-        });
-      }
+        if (!deviceId) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "No device ID found - please enable cookies",
+          });
+        }
 
-      const nomination = await ctx.db.nomination.findUnique({
-        where: { id: input.nominationId },
-        include: { category: true },
-      });
-
-      if (!nomination) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Nomination not found",
-        });
-      }
-
-      if (!nomination.category.isActive) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Category is not active",
-        });
-      }
-
-      // Check if user has already voted for this nomination's category
-      const existingVote = await ctx.db.vote.findFirst({
-        where: {
-          deviceId: deviceId,
-          nomination: {
-            categoryId: nomination.categoryId,
+        const nomination = await ctx.db.nomination.findUnique({
+          where: { id: input.nominationId },
+          include: { 
+            category: {
+              include: {
+                session: true
+              }
+            }
           },
-        },
-      });
+        });
 
-      if (existingVote) {
+        if (!nomination) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Nomination not found",
+          });
+        }
+
+        if (!nomination.category.isActive) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Voting is not currently active for this category",
+          });
+        }
+
+        // Check if user has already voted for this nomination's category
+        const existingVote = await ctx.db.vote.findFirst({
+          where: {
+            deviceId: deviceId,
+            nomination: {
+              categoryId: nomination.categoryId,
+            },
+          },
+        });
+
+        if (existingVote) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "You have already voted in this category",
+          });
+        }
+
+        return await ctx.db.vote.create({
+          data: {
+            deviceId: deviceId,
+            nominationId: input.nominationId,
+          },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Already voted in this category",
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to cast vote",
         });
       }
-
-      return ctx.db.vote.create({
-        data: {
-          deviceId: deviceId,
-          nominationId: input.nominationId,
-        },
-      });
     }),
 
   hasVoted: publicProcedure

@@ -7,6 +7,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { TRPCClientError } from "@trpc/client";
 
 export function AddNominationForm({ categoryId }: { categoryId: string }) {
   const router = useRouter();
@@ -18,6 +20,13 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
       setName("");
       setDescription("");
       router.refresh();
+    },
+    onError: (error) => {
+      if (error instanceof TRPCClientError) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to add nomination. Please try again.");
+      }
     },
   });
 

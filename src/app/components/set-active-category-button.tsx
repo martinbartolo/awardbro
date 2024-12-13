@@ -19,7 +19,6 @@ export function SetActiveCategoryButton({
   const setActive = api.award.setActiveCategory.useMutation({
     onSuccess: () => {
       router.refresh();
-      toast.success(isActive ? "Category deactivated" : "Category activated");
     },
     onError: () => {
       toast.error("Error updating category status");
