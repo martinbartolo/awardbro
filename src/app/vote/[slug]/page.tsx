@@ -1,7 +1,6 @@
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { VotingInterface } from "~/app/components/voting-interface";
+import { LiveVotingSession } from "~/app/components/live-voting-session";
 
 export default async function VotePage({
   params,
@@ -32,30 +31,11 @@ export default async function VotePage({
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold">{session.name}</h1>
-          <p className="mt-2 text-gray-400">Cast your vote</p>
-          {hasVoted && (
-            <p className="mt-2 text-yellow-400">You have already voted in this category</p>
-          )}
-        </div>
-
-        <Card className="mx-auto max-w-2xl bg-white/5">
-          <CardHeader>
-            <CardTitle>{activeCategory.name}</CardTitle>
-            {activeCategory.description && (
-              <p className="text-sm text-gray-400">{activeCategory.description}</p>
-            )}
-          </CardHeader>
-          <CardContent>
-            <VotingInterface
-              nominations={activeCategory.nominations}
-              hasVoted={hasVoted}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <LiveVotingSession
+        initialSession={session}
+        slug={slug}
+        initialHasVoted={hasVoted}
+      />
     </main>
   );
 } 
