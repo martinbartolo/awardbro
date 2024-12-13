@@ -181,12 +181,12 @@ export function WinnerAnimation({
           animate="visible"
           variants={variants}
           className={`rounded-xl p-6 border-2 backdrop-blur-sm ${
-            medalColors[index as keyof typeof medalColors] ?? "bg-gradient-to-br from-purple-400 to-purple-600 border-purple-500 shadow-lg shadow-purple-500/50"
+            medalColors[index as keyof typeof medalColors] ?? "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30"
           }`}
         >
           <div className="flex items-center justify-between">
             <motion.h3 
-              className="text-2xl font-extrabold text-white [text-shadow:_0_1px_3px_rgb(0_0_0_/_40%)]"
+              className="text-2xl font-extrabold text-background"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: (index * 0.3) + 0.3 }}
@@ -198,7 +198,7 @@ export function WinnerAnimation({
               className="flex items-center gap-2"
             >
               <motion.span
-                className="text-2xl font-black text-white [text-shadow:_0_1px_3px_rgb(0_0_0_/_40%)]"
+                className="text-2xl font-black text-background"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ 
                   duration: 0.5,
@@ -208,13 +208,13 @@ export function WinnerAnimation({
               >
                 {nomination._count.votes}
               </motion.span>
-              <span className="text-white font-semibold [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)]">votes</span>
+              <span className="text-background font-semibold">votes</span>
             </motion.div>
           </div>
           {nomination.description && (
             <motion.p
               variants={descriptionVariants}
-              className="mt-3 text-white font-medium [text-shadow:_0_1px_2px_rgb(0_0_0_/_30%)]"
+              className="mt-2 text-sm text-background/80"
             >
               {nomination.description}
             </motion.p>

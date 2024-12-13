@@ -51,7 +51,7 @@ export function LiveVotingSession({ initialSession, slug, initialHasVoted }: Liv
         )}
       </div>
 
-      <Card className="mx-auto max-w-2xl bg-white/5">
+      <Card className="mx-auto max-w-2xl">
         <CardHeader>
           <CardTitle>{activeCategory.name}</CardTitle>
           {activeCategory.description && (

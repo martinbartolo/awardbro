@@ -7,6 +7,8 @@ import { SetActiveCategoryButton } from "~/app/components/set-active-category-bu
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import Link from "next/link";
+import { ArrowRight } from 'lucide-react';
+
 
 export default async function ManagePage(props: {
   params: { slug: string };
@@ -22,38 +24,49 @@ export default async function ManagePage(props: {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold">{session.name}</h1>
-            <p className="text-gray-400">Manage your award show</p>
-          </div>
-          <div className="space-x-4">
-            <Button variant="outline" asChild>
-              <Link href={`/vote/${slug}`} target="_blank">
-                Voting Page
-              </Link    >
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/present/${slug}`} target="_blank">
-                Presentation
-              </Link>
-            </Button>
+        {/* Header Section */}
+        <div className="mb-8 rounded-lg bg-card p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground">{session.name}</h1>
+              <p className="mt-2 text-muted-foreground">Manage your award show</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild className="w-full sm:w-auto">
+                <Link href={`/vote/${slug}`} target="_blank">
+                  Voting Page
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+              <Button asChild className="w-full sm:w-auto">
+                <Link href={`/present/${slug}`} target="_blank">
+                  Presentation
+                                    <ArrowRight className="w-4 h-4" />
+
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2">
-          <div>
+        {/* Main Content */}
+        <div className="space-y-8">
+          {/* Add Category Section */}
+          <section className="rounded-lg bg-card p-6">
+            <h2 className="mb-4 text-2xl font-semibold text-foreground">Add New Category</h2>
             <AddCategoryForm sessionId={session.id} />
-          </div>
+          </section>
 
-          <div className="space-y-6">
+          {/* Categories List */}
+          <section className="space-y-6">
+            <h2 className="text-2xl font-semibold text-foreground">Categories</h2>
             {session.categories.map((category) => (
-              <Card key={category.id} className="bg-white/5">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>{category.name}</span>
+              <Card key={category.id} className="border-border">
+                <CardHeader className="border-b border-border">
+                  <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-xl">{category.name}</span>
                     <div className="flex gap-2">
                       <SetActiveCategoryButton
                         categoryId={category.id}
@@ -66,26 +79,28 @@ export default async function ManagePage(props: {
                     </div>
                   </CardTitle>
                   {category.description && (
-                    <p className="text-sm text-gray-400">{category.description}</p>
+                    <p className="text-sm text-muted-foreground">{category.description}</p>
                   )}
                 </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
+                <CardContent className="mt-4">
+                  <div className="mb-6">
+                    <h3 className="mb-3 text-lg font-medium text-foreground">Add Nomination</h3>
                     <AddNominationForm categoryId={category.id} />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium text-foreground">Nominations</h3>
                     {category.nominations.map((nomination) => (
                       <div
                         key={nomination.id}
-                        className="rounded-lg bg-white/10 p-4"
+                        className="rounded-lg bg-secondary p-4 transition-colors hover:bg-secondary/80"
                       >
-                        <div className="font-semibold">{nomination.name}</div>
+                        <div className="font-semibold text-secondary-foreground">{nomination.name}</div>
                         {nomination.description && (
-                          <div className="text-sm text-gray-400">
+                          <div className="mt-1 text-sm text-muted-foreground">
                             {nomination.description}
                           </div>
                         )}
-                        <div className="mt-2 text-sm">
+                        <div className="mt-2 text-sm text-accent">
                           {nomination._count.votes} votes
                         </div>
                       </div>
@@ -94,7 +109,7 @@ export default async function ManagePage(props: {
                 </CardContent>
               </Card>
             ))}
-          </div>
+          </section>
         </div>
       </div>
     </main>

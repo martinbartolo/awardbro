@@ -18,7 +18,7 @@ export default async function VotePage({
 
   if (!activeCategory) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
         <div className="container mx-auto px-4 text-center">
           <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
           <p className="text-2xl">Voting is currently closed.</p>
@@ -30,7 +30,7 @@ export default async function VotePage({
   const hasVoted = await api.award.hasVoted({ categoryId: activeCategory.id });
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <LiveVotingSession
         initialSession={session}
         slug={slug}

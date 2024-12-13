@@ -33,21 +33,21 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
 
   return (
     <div className="container mx-auto px-4">
-      <h1 className="mb-12 text-center text-6xl font-bold">{session.name}</h1>
+      <h1 className="mb-12 text-center text-6xl font-bold text-foreground">{session.name}</h1>
 
       <div className="space-y-8">
         {session.categories.map((category) => (
           <div
             key={category.id}
-            className={`rounded-lg bg-white/5 p-8 transition-all duration-500 ${
+            className={`rounded-lg bg-card p-8 transition-all duration-500 ${
               !category.revealed && "opacity-50"
             }`}
           >
-            <h2 className="mb-6 text-center text-4xl font-semibold">
+            <h2 className="mb-6 text-center text-4xl font-semibold text-foreground">
               {category.name}
             </h2>
             {category.description && (
-              <p className="mb-8 text-center text-xl text-gray-400">
+              <p className="mb-8 text-center text-xl text-muted-foreground">
                 {category.description}
               </p>
             )}

@@ -34,7 +34,7 @@ export function CreateSessionForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create New Award Show</CardTitle>
+        <CardTitle>Create a New Award Show</CardTitle>
         <CardDescription>
           Start a new award show session that you can share with your friends
         </CardDescription>
@@ -52,7 +52,7 @@ export function CreateSessionForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slug">URL Slug</Label>
+            <Label htmlFor="slug">URL</Label>
             <Input
               id="slug"
               value={slug}
@@ -61,7 +61,7 @@ export function CreateSessionForm() {
               required
               pattern="[a-z0-9-]+"
             />
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               This will be used in the URL: /vote/<span className="font-mono">{slug}</span>
             </p>
           </div>
