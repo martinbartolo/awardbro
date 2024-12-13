@@ -7,10 +7,21 @@ export default async function PresentPage({
   params: { slug: string };
 }) {
   const { slug } = params;
-  const session = await api.award.getSessionBySlug({ slug });
+  const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
 
   if (!session) {
     notFound();
+  }
+
+  if (session.categories.length === 0) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
+          <p className="text-2xl">Waiting for the next award.</p>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -72,7 +83,7 @@ export default async function PresentPage({
                 </div>
               ) : (
                 <div className="text-center text-2xl">
-                  Waiting for category to be revealed...
+                  Waiting for votes to be tallied...
                 </div>
               )}
             </div>

@@ -36,10 +36,10 @@ export function SetActiveCategoryButton({
         setActive.mutate({ categoryId });
       }}
       disabled={isUpdating}
-      variant={isActive ? "default" : "outline"}
+      variant={isActive ? "destructive" : "outline"}
       size="sm"
     >
-      {isActive ? "Active" : "Set Active"}
+      {isUpdating ? "Updating..." : isActive ? "Deactivate" : "Set Active"}
     </Button>
   );
 } 

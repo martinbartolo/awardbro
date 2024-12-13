@@ -54,12 +54,16 @@ export const awardRouter = createTRPCRouter({
     }),
 
   getSessionBySlug: publicProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(z.object({ 
+      slug: z.string(),
+      activeOnly: z.boolean().optional()
+    }))
     .query(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
         where: { slug: input.slug },
         include: {
           categories: {
+            where: input.activeOnly ? { isActive: true } : undefined,
             include: {
               nominations: {
                 include: {
