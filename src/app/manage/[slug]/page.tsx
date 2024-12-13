@@ -4,11 +4,8 @@ import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
 import { RevealCategoryButton } from "~/app/components/reveal-category-button";
 import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
-import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import Link from "next/link";
-import { ArrowRight } from 'lucide-react';
-
+import { SessionActions } from "~/app/components/session-actions";
 
 export default async function ManagePage(props: {
   params: { slug: string };
@@ -33,21 +30,7 @@ export default async function ManagePage(props: {
               <h1 className="text-4xl font-bold text-foreground">{session.name}</h1>
               <p className="mt-2 text-muted-foreground">Manage your award show</p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild className="w-full sm:w-auto">
-                <Link href={`/vote/${slug}`} target="_blank">
-                  Voting Page
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Button>
-              <Button asChild className="w-full sm:w-auto">
-                <Link href={`/present/${slug}`} target="_blank">
-                  Presentation
-                                    <ArrowRight className="w-4 h-4" />
-
-                </Link>
-              </Button>
-            </div>
+            <SessionActions slug={slug} />
           </div>
         </div>
 
