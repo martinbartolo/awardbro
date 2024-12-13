@@ -1,7 +1,7 @@
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
-import { VoteButton } from "~/app/_components/vote-button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { VotingInterface } from "~/app/components/voting-interface";
 
 export default async function VotePage({
   params,
@@ -49,27 +49,10 @@ export default async function VotePage({
             )}
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {activeCategory.nominations.map((nomination) => (
-                <div
-                  key={nomination.id}
-                  className="flex items-center justify-between rounded-lg bg-white/10 p-4"
-                >
-                  <div>
-                    <div className="font-semibold">{nomination.name}</div>
-                    {nomination.description && (
-                      <div className="text-sm text-gray-400">
-                        {nomination.description}
-                      </div>
-                    )}
-                  </div>
-                  <VoteButton
-                    nominationId={nomination.id}
-                    hasVoted={hasVoted}
-                  />
-                </div>
-              ))}
-            </div>
+            <VotingInterface
+              nominations={activeCategory.nominations}
+              hasVoted={hasVoted}
+            />
           </CardContent>
         </Card>
       </div>

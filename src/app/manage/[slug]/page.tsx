@@ -1,9 +1,9 @@
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
-import { AddCategoryForm } from "~/app/_components/add-category-form";
-import { AddNominationForm } from "~/app/_components/add-nomination-form";
-import { RevealCategoryButton } from "~/app/_components/reveal-category-button";
-import { SetActiveCategoryButton } from "~/app/_components/set-active-category-button";
+import { AddCategoryForm } from "~/app/components/add-category-form";
+import { AddNominationForm } from "~/app/components/add-nomination-form";
+import { RevealCategoryButton } from "~/app/components/reveal-category-button";
+import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import Link from "next/link";

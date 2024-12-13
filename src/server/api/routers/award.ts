@@ -111,7 +111,13 @@ export const awardRouter = createTRPCRouter({
       return ctx.db.category.findUnique({
         where: { id: input.id },
         include: {
-          nominations: true,
+          nominations: {
+            include: {
+              _count: {
+                select: { votes: true }
+              }
+            }
+          }
         },
       });
     }),
