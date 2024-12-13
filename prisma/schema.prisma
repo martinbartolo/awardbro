@@ -10,11 +10,39 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+model Session {
+    id         String     @id @default(cuid())
+    name       String
+    slug       String     @unique
+    createdAt  DateTime   @default(now())
+    categories Category[]
+}
 
-    @@index([name])
+model Category {
+    id          String       @id @default(cuid())
+    name        String
+    description String?
+    order       Int          @default(0)
+    revealed    Boolean      @default(false)
+    sessionId   String
+    session     Session      @relation(fields: [sessionId], references: [id])
+    nominations Nomination[]
+    createdAt   DateTime     @default(now())
+}
+
+model Nomination {
+    id          String   @id @default(cuid())
+    name        String
+    description String?
+    categoryId  String
+    category    Category @relation(fields: [categoryId], references: [id])
+    votes       Vote[]
+    createdAt   DateTime @default(now())
+}
+
+model Vote {
+    id           String     @id @default(cuid())
+    nominationId String
+    nomination   Nomination @relation(fields: [nominationId], references: [id])
+    createdAt    DateTime   @default(now())
 }
