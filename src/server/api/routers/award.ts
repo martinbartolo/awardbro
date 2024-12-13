@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { cookies } from "next/headers";
-import { v4 as uuidv4 } from "uuid";
 
 const DEVICE_ID_COOKIE = "device_id";
 
