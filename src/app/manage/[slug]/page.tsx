@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AddCategoryForm } from "~/app/_components/add-category-form";
 import { AddNominationForm } from "~/app/_components/add-nomination-form";
 import { RevealCategoryButton } from "~/app/_components/reveal-category-button";
+import { SetActiveCategoryButton } from "~/app/_components/set-active-category-button";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import Link from "next/link";
@@ -53,10 +54,16 @@ export default async function ManagePage(props: {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>{category.name}</span>
-                    <RevealCategoryButton
-                      categoryId={category.id}
-                      revealed={category.revealed}
-                    />
+                    <div className="flex gap-2">
+                      <SetActiveCategoryButton
+                        categoryId={category.id}
+                        isActive={category.isActive}
+                      />
+                      <RevealCategoryButton
+                        categoryId={category.id}
+                        revealed={category.revealed}
+                      />
+                    </div>
                   </CardTitle>
                   {category.description && (
                     <p className="text-sm text-gray-400">{category.description}</p>

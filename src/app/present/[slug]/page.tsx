@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 export default async function PresentPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 }) {
-  const { slug } = await params;
+  const { slug } = params;
   const session = await api.award.getSessionBySlug({ slug });
 
   if (!session) {

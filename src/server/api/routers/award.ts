@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import { cookies } from "next/headers";
+import { v4 as uuidv4 } from "uuid";
+
+const DEVICE_ID_COOKIE = "device_id";
 
 export const awardRouter = createTRPCRouter({
   createSession: publicProcedure
@@ -85,7 +89,6 @@ export const awardRouter = createTRPCRouter({
         sessionId: z.string(),
         name: z.string(),
         description: z.string().optional(),
-        order: z.number().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -94,7 +97,6 @@ export const awardRouter = createTRPCRouter({
           sessionId: input.sessionId,
           name: input.name,
           description: input.description,
-          order: input.order,
         },
       });
     }),
@@ -137,13 +139,112 @@ export const awardRouter = createTRPCRouter({
       });
     }),
 
-  addVote: publicProcedure
+  setActiveCategory: publicProcedure
+    .input(z.object({ categoryId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // First, deactivate all categories in the session
+      const category = await ctx.db.category.findUnique({
+        where: { id: input.categoryId },
+        include: { session: { include: { categories: true } } },
+      });
+
+      if (!category) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Category not found",
+        });
+      }
+
+      await ctx.db.category.updateMany({
+        where: { sessionId: category.session.id },
+        data: { isActive: false },
+      });
+
+      // Then activate the selected category
+      return ctx.db.category.update({
+        where: { id: input.categoryId },
+        data: { isActive: true },
+      });
+    }),
+
+  vote: publicProcedure
     .input(z.object({ nominationId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const deviceId = ctx.headers.get("cookie")?.split(";")
+        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        ?.split("=")[1];
+
+      if (!deviceId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "No device ID found",
+        });
+      }
+
+      const nomination = await ctx.db.nomination.findUnique({
+        where: { id: input.nominationId },
+        include: { category: true },
+      });
+
+      if (!nomination) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Nomination not found",
+        });
+      }
+
+      if (!nomination.category.isActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Category is not active",
+        });
+      }
+
+      // Check if user has already voted for this nomination's category
+      const existingVote = await ctx.db.vote.findFirst({
+        where: {
+          deviceId: deviceId,
+          nomination: {
+            categoryId: nomination.categoryId,
+          },
+        },
+      });
+
+      if (existingVote) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Already voted in this category",
+        });
+      }
+
       return ctx.db.vote.create({
         data: {
+          deviceId: deviceId,
           nominationId: input.nominationId,
         },
       });
+    }),
+
+  hasVoted: publicProcedure
+    .input(z.object({ categoryId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const deviceId = ctx.headers.get("cookie")?.split(";")
+        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        ?.split("=")[1];
+
+      if (!deviceId) {
+        return false;
+      }
+
+      const vote = await ctx.db.vote.findFirst({
+        where: {
+          deviceId: deviceId,
+          nomination: {
+            categoryId: input.categoryId,
+          },
+        },
+      });
+
+      return !!vote;
     }),
 }); 

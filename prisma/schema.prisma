@@ -22,12 +22,15 @@ model Category {
     id          String       @id @default(cuid())
     name        String
     description String?
-    order       Int          @default(0)
     revealed    Boolean      @default(false)
+    isActive    Boolean      @default(false)
     sessionId   String
-    session     Session      @relation(fields: [sessionId], references: [id])
+    session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
     nominations Nomination[]
     createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+
+    @@index([sessionId])
 }
 
 model Nomination {
@@ -35,14 +38,21 @@ model Nomination {
     name        String
     description String?
     categoryId  String
-    category    Category @relation(fields: [categoryId], references: [id])
+    category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
     votes       Vote[]
     createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@index([categoryId])
 }
 
 model Vote {
     id           String     @id @default(cuid())
+    deviceId     String
     nominationId String
-    nomination   Nomination @relation(fields: [nominationId], references: [id])
+    nomination   Nomination @relation(fields: [nominationId], references: [id], onDelete: Cascade)
     createdAt    DateTime   @default(now())
+
+    @@unique([deviceId, nominationId])
+    @@index([nominationId])
 }
