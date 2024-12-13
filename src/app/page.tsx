@@ -9,7 +9,7 @@ export default async function Home() {
             Let&apos;s Get This Party Started! 🎉
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl">
-            Create your own award show, nominate candidates, and vote for your favorites
+            Create your own award show, nominate candidates, and let people vote for their favorites
           </p>
         </div>
         <div className="w-full max-w-md">
