@@ -1,5 +1,6 @@
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
+import { WinnerAnimation } from "~/app/_components/winner-animation";
 
 export default async function PresentPage({
   params,
@@ -53,32 +54,11 @@ export default async function PresentPage({
                       (a, b) => b._count.votes - a._count.votes,
                     )
                     .map((nomination, index) => (
-                      <div
+                      <WinnerAnimation
                         key={nomination.id}
-                        className={`rounded-lg p-6 ${
-                          index === 0
-                            ? "bg-yellow-500/20"
-                            : index === 1
-                            ? "bg-gray-400/20"
-                            : index === 2
-                            ? "bg-orange-700/20"
-                            : "bg-white/10"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-2xl font-semibold">
-                            {nomination.name}
-                          </h3>
-                          <span className="text-xl font-bold">
-                            {nomination._count.votes} votes
-                          </span>
-                        </div>
-                        {nomination.description && (
-                          <p className="mt-2 text-gray-400">
-                            {nomination.description}
-                          </p>
-                        )}
-                      </div>
+                        nomination={nomination}
+                        index={index}
+                      />
                     ))}
                 </div>
               ) : (
