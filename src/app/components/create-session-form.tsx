@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 export function CreateSessionForm() {
   const router = useRouter();
@@ -35,8 +36,8 @@ export function CreateSessionForm() {
     <Card>
       <CardHeader>
         <CardTitle>Create a New Award Show</CardTitle>
-        <CardDescription>
-          Start a new award show session that you can share with your friends
+        <CardDescription className="space-y-2">
+          <p>Start a new award show session that you can share with your friends</p>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -64,6 +65,12 @@ export function CreateSessionForm() {
             <p className="text-sm text-muted-foreground">
               This will be used in the URL: /vote/<span className="font-mono">{slug}</span>
             </p>
+            <div className="flex items-start gap-2 rounded-md bg-muted p-3">
+            <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">
+              Make sure to bookmark or save your management URL after creation. This will be your only way to access and manage your award show!
+            </p>
+          </div>
           </div>
           <Button
             type="submit"
