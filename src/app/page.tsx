@@ -1,4 +1,4 @@
-import { CreateSessionForm } from "./_components/create-session-form";
+import { CreateSessionForm } from "./components/create-session-form";
 
 export default async function Home() {
   return (
