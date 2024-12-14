@@ -15,6 +15,7 @@ model Session {
     name       String
     slug       String     @unique
     createdAt  DateTime   @default(now())
+    updatedAt  DateTime   @updatedAt
     categories Category[]
 }
 

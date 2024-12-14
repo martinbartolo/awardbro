@@ -80,12 +80,7 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
         </Link>
       </Button>
 
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={copyVotingUrl}
-        tooltip="Share Voting URL"
-      >
+      <Button variant="outline" size="icon" onClick={copyVotingUrl} tooltip="Share Voting URL">
         <Share2Icon className="size-4" />
       </Button>
 
@@ -99,8 +94,7 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset all votes?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all votes from all categories. This action cannot
-              be undone.
+              This will remove all votes from all categories. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -125,8 +119,8 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete award show?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete your award show and all its data.
-              This action cannot be undone.
+              This will permanently delete your award show and all its data. This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

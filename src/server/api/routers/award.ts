@@ -12,10 +12,7 @@ const sessionInput = z.object({
     .string()
     .min(1, "Slug is required")
     .max(100, "Slug is too long")
-    .regex(
-      /^[a-z0-9-]+$/,
-      "Slug can only contain lowercase letters, numbers, and hyphens",
-    ),
+    .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
 });
 
 const categoryInput = z.object({
@@ -31,68 +28,64 @@ const nominationInput = z.object({
 });
 
 export const awardRouter = createTRPCRouter({
-  createSession: publicProcedure
-    .input(sessionInput)
-    .mutation(async ({ ctx, input }) => {
-      try {
-        return await ctx.db.session.create({
-          data: {
-            name: input.name,
-            slug: input.slug,
-          },
-        });
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          if (error.code === "P2002") {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "That URL is already in use. Please try another one",
-            });
-          }
+  createSession: publicProcedure.input(sessionInput).mutation(async ({ ctx, input }) => {
+    try {
+      return await ctx.db.session.create({
+        data: {
+          name: input.name,
+          slug: input.slug,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2002") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "That URL is already in use. Please try another one",
+          });
         }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create session",
-        });
       }
-    }),
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create session",
+      });
+    }
+  }),
 
-  getSession: publicProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const session = await ctx.db.session.findUnique({
-        where: { id: input.id },
-        include: {
-          categories: {
-            include: {
-              nominations: {
-                include: {
-                  _count: {
-                    select: { votes: true },
-                  },
+  getSession: publicProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const session = await ctx.db.session.findUnique({
+      where: { id: input.id },
+      include: {
+        categories: {
+          include: {
+            nominations: {
+              include: {
+                _count: {
+                  select: { votes: true },
                 },
               },
             },
           },
         },
+      },
+    });
+
+    if (!session) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Session not found",
       });
+    }
 
-      if (!session) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Session not found",
-        });
-      }
-
-      return session;
-    }),
+    return session;
+  }),
 
   getSessionBySlug: publicProcedure
     .input(
       z.object({
         slug: z.string(),
         activeOnly: z.boolean().optional(),
-      }),
+      })
     )
     .query(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
@@ -123,54 +116,50 @@ export const awardRouter = createTRPCRouter({
       return session;
     }),
 
-  addCategory: publicProcedure
-    .input(categoryInput)
-    .mutation(async ({ ctx, input }) => {
-      try {
-        // First verify the session exists
-        const session = await ctx.db.session.findUnique({
-          where: { id: input.sessionId },
-        });
+  addCategory: publicProcedure.input(categoryInput).mutation(async ({ ctx, input }) => {
+    try {
+      // First verify the session exists
+      const session = await ctx.db.session.findUnique({
+        where: { id: input.sessionId },
+      });
 
-        if (!session) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Session not found",
-          });
-        }
-
-        return await ctx.db.category.create({
-          data: {
-            sessionId: input.sessionId,
-            name: input.name,
-            description: input.description,
-          },
-        });
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
+      if (!session) {
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create category",
+          code: "NOT_FOUND",
+          message: "Session not found",
         });
       }
-    }),
 
-  getCategory: publicProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      return ctx.db.category.findUnique({
-        where: { id: input.id },
-        include: {
-          nominations: {
-            include: {
-              _count: {
-                select: { votes: true },
-              },
+      return await ctx.db.category.create({
+        data: {
+          sessionId: input.sessionId,
+          name: input.name,
+          description: input.description,
+        },
+      });
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create category",
+      });
+    }
+  }),
+
+  getCategory: publicProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    return ctx.db.category.findUnique({
+      where: { id: input.id },
+      include: {
+        nominations: {
+          include: {
+            _count: {
+              select: { votes: true },
             },
           },
         },
-      });
-    }),
+      },
+    });
+  }),
 
   revealCategory: publicProcedure
     .input(z.object({ id: z.string() }))
@@ -181,37 +170,35 @@ export const awardRouter = createTRPCRouter({
       });
     }),
 
-  addNomination: publicProcedure
-    .input(nominationInput)
-    .mutation(async ({ ctx, input }) => {
-      try {
-        // First verify the category exists
-        const category = await ctx.db.category.findUnique({
-          where: { id: input.categoryId },
-        });
+  addNomination: publicProcedure.input(nominationInput).mutation(async ({ ctx, input }) => {
+    try {
+      // First verify the category exists
+      const category = await ctx.db.category.findUnique({
+        where: { id: input.categoryId },
+      });
 
-        if (!category) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Category not found",
-          });
-        }
-
-        return await ctx.db.nomination.create({
-          data: {
-            categoryId: input.categoryId,
-            name: input.name,
-            description: input.description,
-          },
-        });
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
+      if (!category) {
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create nomination",
+          code: "NOT_FOUND",
+          message: "Category not found",
         });
       }
-    }),
+
+      return await ctx.db.nomination.create({
+        data: {
+          categoryId: input.categoryId,
+          name: input.name,
+          description: input.description,
+        },
+      });
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create nomination",
+      });
+    }
+  }),
 
   setActiveCategory: publicProcedure
     .input(z.object({ categoryId: z.string() }))
@@ -245,7 +232,7 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         nominationId: z.string().min(1, "Nomination ID is required"),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -467,4 +454,16 @@ export const awardRouter = createTRPCRouter({
         });
       }
     }),
+
+  getPublicSessions: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.session.findMany({
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+  }),
 });
