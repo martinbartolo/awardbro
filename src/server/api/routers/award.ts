@@ -456,14 +456,22 @@ export const awardRouter = createTRPCRouter({
     }),
 
   getPublicSessions: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.session.findMany({
-      select: {
-        slug: true,
-        updatedAt: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
+    try {
+      return await ctx.db.session.findMany({
+        select: {
+          slug: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to fetch public sessions",
+        cause: error,
+      });
+    }
   }),
 });

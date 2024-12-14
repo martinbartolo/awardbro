@@ -3,6 +3,7 @@
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function RevealCategoryButton({
   categoryId,
@@ -15,6 +16,9 @@ export function RevealCategoryButton({
   const revealCategory = api.award.revealCategory.useMutation({
     onSuccess: () => {
       router.refresh();
+    },
+    onError: () => {
+      toast.error("Failed to reveal winners");
     },
   });
 

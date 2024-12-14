@@ -2,16 +2,7 @@
 
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Copy,
-  Trash2,
-  RotateCcw,
-  ShareIcon,
-  Share2Icon,
-  CopyCheckIcon,
-  CopyIcon,
-} from "lucide-react";
+import { ArrowRight, Trash2, RotateCcw, Share2Icon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
