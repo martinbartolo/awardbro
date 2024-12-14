@@ -71,13 +71,24 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
         </Link>
       </Button>
 
-      <Button variant="outline" size="icon" onClick={copyVotingUrl} tooltip="Share Voting URL">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={copyVotingUrl}
+        tooltip="Share Voting URL"
+        aria-label="Share Voting URL"
+      >
         <Share2Icon className="size-4" />
       </Button>
 
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="outline" size="icon" tooltip="Reset All Votes">
+          <Button
+            variant="outline"
+            size="icon"
+            tooltip="Reset All Votes"
+            aria-label="Reset All Votes"
+          >
             <RotateCcw className="size-4" />
           </Button>
         </AlertDialogTrigger>
@@ -102,7 +113,12 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
 
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="destructive" size="icon" tooltip="Delete Award Show">
+          <Button
+            variant="destructive"
+            size="icon"
+            tooltip="Delete Award Show"
+            aria-label="Delete Award Show"
+          >
             <Trash2 className="size-4" />
           </Button>
         </AlertDialogTrigger>

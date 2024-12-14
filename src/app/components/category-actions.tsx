@@ -47,7 +47,12 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
     <div className="flex gap-1">
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="ghost" size="iconSm" tooltip="Reset category votes">
+          <Button
+            variant="ghost"
+            size="iconSm"
+            tooltip="Reset category votes"
+            aria-label="Reset category votes"
+          >
             <RotateCcw className="size-4" />
           </Button>
         </AlertDialogTrigger>
@@ -72,7 +77,12 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
 
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="ghost" size="iconSm" tooltip="Delete category">
+          <Button
+            variant="ghost"
+            size="iconSm"
+            tooltip="Delete category"
+            aria-label="Delete category"
+          >
             <Trash2 className="size-4" />
           </Button>
         </AlertDialogTrigger>

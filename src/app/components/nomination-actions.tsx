@@ -37,7 +37,13 @@ export function NominationActions({ nominationId, nominationName }: NominationAc
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" tooltip="Delete nomination" className="h-8 w-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          tooltip="Delete nomination"
+          className="h-8 w-8"
+          aria-label="Delete nomination"
+        >
           <XIcon className="size-4" />
         </Button>
       </AlertDialogTrigger>
