@@ -1,3 +1,4 @@
+import ogImage from "./opengraph-image.png";
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
 import { LivePresentation } from "~/app/components/live-presentation";
@@ -19,6 +20,7 @@ export async function generateMetadata({
   }
 
   return {
+    metadataBase: new URL("https://awardbro.com"),
     title: `${session.name} - Live Presentation`,
     description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
     openGraph: {
@@ -28,9 +30,9 @@ export async function generateMetadata({
       url: `/present/${slug}`,
       images: [
         {
-          url: "/opengraph-image.png",
-          width: 1200,
-          height: 630,
+          url: ogImage.src,
+          width: ogImage.width,
+          height: ogImage.height,
         },
       ],
     },
@@ -40,9 +42,9 @@ export async function generateMetadata({
       description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
       images: [
         {
-          url: "/opengraph-image.png",
-          width: 1200,
-          height: 630,
+          url: ogImage.src,
+          width: ogImage.width,
+          height: ogImage.height,
         },
       ],
     },

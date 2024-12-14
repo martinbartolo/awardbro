@@ -2,6 +2,7 @@ import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
 import { LiveVotingSession } from "~/app/components/live-voting-session";
 import { type Metadata } from "next";
+import ogImage from "./opengraph-image.png";
 
 export async function generateMetadata({
   params,
@@ -19,6 +20,7 @@ export async function generateMetadata({
   }
 
   return {
+    metadataBase: new URL("https://awardbro.com"),
     title: `Vote Now: ${session.name}`,
     description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
     openGraph: {
@@ -28,9 +30,9 @@ export async function generateMetadata({
       url: `/vote/${slug}`,
       images: [
         {
-          url: "/opengraph-image.png",
-          width: 1200,
-          height: 630,
+          url: ogImage.src,
+          width: ogImage.width,
+          height: ogImage.height,
         },
       ],
     },
@@ -40,9 +42,9 @@ export async function generateMetadata({
       description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
       images: [
         {
-          url: "/opengraph-image.png",
-          width: 1200,
-          height: 630,
+          url: ogImage.src,
+          width: ogImage.width,
+          height: ogImage.height,
         },
       ],
     },

@@ -6,6 +6,7 @@ import { type Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
+import ogImage from "~/opengraph-image.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://awardbro.com"),
@@ -45,9 +46,9 @@ export const metadata: Metadata = {
       "Create interactive award shows with live voting and real-time results. Perfect for friends, team events, and more!",
     images: [
       {
-        url: "/opengraph-image.png",
-        width: 1200,
-        height: 630,
+        url: ogImage.src,
+        width: ogImage.width,
+        height: ogImage.height,
       },
     ],
   },
@@ -58,9 +59,9 @@ export const metadata: Metadata = {
       "Create interactive award shows with live voting and real-time results. Perfect for friends, team events, and more!",
     images: [
       {
-        url: "/opengraph-image.png",
-        width: 1200,
-        height: 630,
+        url: ogImage.src,
+        width: ogImage.width,
+        height: ogImage.height,
       },
     ],
   },
