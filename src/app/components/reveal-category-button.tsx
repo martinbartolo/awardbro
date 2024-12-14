@@ -18,7 +18,7 @@ export function RevealCategoryButton({
       router.refresh();
     },
     onError: () => {
-      toast.error("Failed to reveal winners");
+      toast.error("Failed to reveal winner");
     },
   });
 
@@ -36,7 +36,7 @@ export function RevealCategoryButton({
       onClick={() => revealCategory.mutate({ id: categoryId })}
       disabled={revealCategory.isPending}
     >
-      {revealCategory.isPending ? "Revealing..." : "Reveal Winners"}
+      {revealCategory.isPending ? "Revealing..." : "Reveal Winner"}
     </Button>
   );
 }
