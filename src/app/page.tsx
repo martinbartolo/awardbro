@@ -182,6 +182,46 @@ export default function Page() {
           </motion.div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="w-full border-t bg-muted/50">
+        <div className="mx-auto max-w-7xl px-4 py-16">
+          <div className="flex flex-col items-center justify-center text-center">
+            <h3 className="text-xl font-semibold">AwardBro</h3>
+            <p className="mt-4 max-w-md text-muted-foreground">
+              Create interactive award shows with live voting and real-time results. Perfect for
+              team events, celebrations, and social gatherings.
+            </p>
+            <div className="mt-8 flex gap-6">
+              <Link
+                href="#get-started"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Create Show
+              </Link>
+              <Link
+                href="#get-started"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Access Show
+              </Link>
+            </div>
+            <div className="mt-8 pt-8 border-t w-full text-center">
+              <p className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} AwardBro Created by{" "}
+                <a
+                  href="https://martinbartolo.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Martin Bartolo
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
