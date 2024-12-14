@@ -45,7 +45,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
             {sessionError?.message || "Failed to load presentation"}
             <button
               onClick={() => window.location.reload()}
-              className="ml-2 underline hover:no-underline"
+              className="underline hover:no-underline"
             >
               Refresh page
             </button>

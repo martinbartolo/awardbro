@@ -55,10 +55,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
           {error?.message || "Failed to load voting data"}
-          <button
-            onClick={() => window.location.reload()}
-            className="ml-2 underline hover:no-underline"
-          >
+          <button onClick={() => window.location.reload()} className="underline hover:no-underline">
             Refresh page
           </button>
         </AlertDescription>
