@@ -37,6 +37,7 @@ export function ExistingSessions() {
               value={slug}
               onChange={(e) => setSlug(e.target.value.trim())}
               placeholder="your-award-show"
+              autoCapitalize="off"
             />
             <p className="text-xs text-muted-foreground">
               Enter just the show name for voting, or add manage/ prefix for management

@@ -71,6 +71,7 @@ export function CreateSessionForm() {
               placeholder="movie-awards-2024"
               required
               pattern="[a-z0-9-]+"
+              autoCapitalize="off"
             />
             <p className="text-xs text-muted-foreground">
               Your award show will be available at: /vote/
@@ -89,6 +90,7 @@ export function CreateSessionForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password for management access"
+              autoCapitalize="off"
             />
           </div>
 
