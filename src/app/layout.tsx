@@ -6,7 +6,7 @@ import { type Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
-import ogImage from "~/opengraph-image.png";
+import ogImage from "./opengraph-image.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://awardbro.com"),
