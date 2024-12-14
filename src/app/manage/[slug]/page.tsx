@@ -1,5 +1,6 @@
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
+import { type Metadata } from "next";
 import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
 import { RevealCategoryButton } from "~/app/components/reveal-category-button";
@@ -8,6 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { SessionActions } from "~/app/components/session-actions";
 import { CategoryActions } from "~/app/components/category-actions";
 import { NominationActions } from "~/app/components/nomination-actions";
+
+export const metadata: Metadata = {
+  title: "Manage Award Show",
+  description: "Manage your award show settings and categories",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
+};
 
 export default async function ManagePage(props: { params: { slug: string } }) {
   const slug = props.params.slug;

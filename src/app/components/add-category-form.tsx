@@ -8,6 +8,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -19,6 +20,9 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       setName("");
       setDescription("");
       router.refresh();
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 

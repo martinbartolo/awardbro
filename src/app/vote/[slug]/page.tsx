@@ -1,6 +1,38 @@
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
 import { LiveVotingSession } from "~/app/components/live-voting-session";
+import { type Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const session = await api.award.getSessionBySlug({ slug: params.slug });
+
+  if (!session) {
+    return {
+      title: "Award Show Not Found",
+      description: "This award show voting session does not exist.",
+    };
+  }
+
+  return {
+    title: `Vote Now: ${session.name}`,
+    description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
+    openGraph: {
+      title: `Vote Now: ${session.name}`,
+      description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
+      type: "website",
+      url: `/vote/${params.slug}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Vote Now: ${session.name}`,
+      description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
+    },
+  };
+}
 
 export default async function VotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
