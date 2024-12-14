@@ -154,7 +154,10 @@ export function LiveVotingSession({
                 )}
               </CardHeader>
               <CardContent>
-                <VotingInterface nominations={activeCategory.nominations} hasVoted={hasVoted} />
+                <VotingInterface
+                  nominations={activeCategory.nominations}
+                  categoryId={activeCategory.id}
+                />
               </CardContent>
             </Card>
           </motion.div>

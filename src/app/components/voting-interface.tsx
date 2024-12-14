@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
@@ -9,30 +9,41 @@ import { cn } from "~/lib/utils";
 
 export function VotingInterface({
   nominations,
-  hasVoted,
+  categoryId,
 }: {
   nominations: {
     id: string;
     name: string;
     description?: string | null;
   }[];
-  hasVoted: boolean;
+  categoryId: string;
 }) {
   const [selectedNominationId, setSelectedNominationId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const router = useRouter();
 
+  // Get the current vote
+  const { data: currentVote } = api.award.getCurrentVote.useQuery(
+    { categoryId },
+    {
+      refetchInterval: 5000,
+    }
+  );
+
+  // Set the selected nomination to the current vote when it loads
+  useEffect(() => {
+    if (currentVote) {
+      setSelectedNominationId(currentVote.nominationId);
+    }
+  }, [currentVote]);
+
   const vote = api.award.vote.useMutation({
     onSuccess: () => {
       router.refresh();
+      toast.success("Vote cast successfully!");
     },
     onError: (error) => {
-      if (error.message === "Already voted in this category") {
-        toast.error("You have already voted in this category");
-        router.refresh(); // Refresh to update UI state
-      } else {
-        toast.error("Error casting vote. Please try again.");
-      }
+      toast.error(error.message || "Error casting vote. Please try again.");
     },
     onSettled: () => {
       setIsVoting(false);
@@ -42,10 +53,6 @@ export function VotingInterface({
   const handleVote = () => {
     if (!selectedNominationId) {
       toast.error("Please select a nomination first");
-      return;
-    }
-    if (hasVoted) {
-      toast.error("You have already voted in this category");
       return;
     }
     setIsVoting(true);
@@ -58,18 +65,23 @@ export function VotingInterface({
         {nominations.map((nomination) => (
           <button
             key={nomination.id}
-            onClick={() => !hasVoted && setSelectedNominationId(nomination.id)}
+            onClick={() => setSelectedNominationId(nomination.id)}
             className={cn(
               "w-full text-left transition-colors",
               "rounded-lg p-4",
               selectedNominationId === nomination.id
                 ? "bg-primary/20 ring-2 ring-primary"
                 : "bg-white/10 hover:bg-white/20",
-              hasVoted && "cursor-not-allowed opacity-50"
+              isVoting && "cursor-not-allowed opacity-50"
             )}
-            disabled={hasVoted}
+            disabled={isVoting}
           >
-            <div className="font-semibold">{nomination.name}</div>
+            <div className="font-semibold">
+              {nomination.name}
+              {currentVote?.nominationId === nomination.id && (
+                <span className="ml-2 text-sm text-primary">(Current Vote)</span>
+              )}
+            </div>
             {nomination.description && (
               <div className="text-sm text-muted-foreground">{nomination.description}</div>
             )}
@@ -81,12 +93,12 @@ export function VotingInterface({
         className="w-full"
         size="lg"
         onClick={handleVote}
-        disabled={isVoting || hasVoted || !selectedNominationId}
+        disabled={isVoting || !selectedNominationId}
       >
-        {hasVoted
-          ? "Already Voted"
-          : isVoting
-            ? "Casting Vote..."
+        {isVoting
+          ? "Casting Vote..."
+          : currentVote
+            ? "Change Vote"
             : selectedNominationId
               ? "Cast Vote"
               : "Select a Nomination"}
