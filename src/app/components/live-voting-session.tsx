@@ -27,7 +27,7 @@ export function LiveVotingSession({
     error: sessionError,
     isError: isSessionError,
   } = api.award.getSessionBySlug.useQuery(
-    { slug },
+    { slug, activeOnly: true },
     {
       refetchInterval: 5000,
       initialData: initialSession,
@@ -35,7 +35,7 @@ export function LiveVotingSession({
     }
   );
 
-  const activeCategory = session.categories.find((category) => category.isActive);
+  const activeCategory = session.categories[0];
 
   const {
     data: hasVoted = initialHasVoted,
@@ -81,10 +81,8 @@ export function LiveVotingSession({
     return (
       <div className="container mx-auto px-4 text-center">
         <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
-        <p className="text-2xl">Voting is currently closed.</p>
-        <p className="mt-4 text-muted-foreground">
-          Please wait for the host to activate a category.
-        </p>
+        <p className="text-2xl">Waiting for the next award.</p>
+        <p className="mt-4 text-muted-foreground">The host will present the next category soon.</p>
       </div>
     );
   }

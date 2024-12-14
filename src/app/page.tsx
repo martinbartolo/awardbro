@@ -41,8 +41,8 @@ export default function Page() {
             className="mt-4 px-4 text-lg text-muted-foreground sm:text-xl"
             variants={fadeIn}
           >
-            Create a fun award show for your team or friends. Add categories, collect votes, and
-            present winners live!
+            Create a real-time interactive award show for your team or friends. Add categories,
+            collect votes, and present winners live!
           </motion.p>
           <motion.div
             className="mt-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-center"

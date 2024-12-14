@@ -82,38 +82,6 @@ const nominationInput = z.object({
   description: z.string().max(500, "Description is too long").optional(),
 });
 
-const verifySessionPassword = async (db: PrismaClient, sessionId: string, password: string) => {
-  // Rate limit by sessionId
-  checkRateLimit(sessionId);
-
-  const session = await db.session.findUnique({
-    where: { id: sessionId },
-    select: { password: true },
-  });
-
-  if (!session) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Session not found",
-    });
-  }
-
-  // If no password is set, allow access
-  if (!session.password) {
-    return;
-  }
-
-  const isValid = await bcrypt.compare(password, session.password);
-  recordLoginAttempt(sessionId, isValid);
-
-  if (!isValid) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "Invalid password",
-    });
-  }
-};
-
 export const awardRouter = createTRPCRouter({
   createSession: publicProcedure.input(sessionInput).mutation(async ({ ctx, input }) => {
     try {
@@ -181,8 +149,10 @@ export const awardRouter = createTRPCRouter({
         include: {
           categories: {
             where: input.activeOnly ? { isActive: true } : undefined,
+            orderBy: { createdAt: "asc" },
             include: {
               nominations: {
+                orderBy: { createdAt: "asc" },
                 include: {
                   _count: {
                     select: { votes: true },
@@ -208,11 +178,9 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         ...categoryInput.shape,
-        password: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await verifySessionPassword(ctx.db, input.sessionId, input.password);
       try {
         return await ctx.db.category.create({
           data: {
@@ -287,7 +255,7 @@ export const awardRouter = createTRPCRouter({
   setActiveCategory: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // First, deactivate all categories in the session
+      // First, get the current category and its active state
       const category = await ctx.db.category.findUnique({
         where: { id: input.categoryId },
         include: { session: { include: { categories: true } } },
@@ -300,12 +268,20 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
+      // If the category is currently active, just deactivate it
+      if (category.isActive) {
+        return ctx.db.category.update({
+          where: { id: input.categoryId },
+          data: { isActive: false },
+        });
+      }
+
+      // Otherwise, deactivate all categories in the session and activate this one
       await ctx.db.category.updateMany({
         where: { sessionId: category.session.id },
         data: { isActive: false },
       });
 
-      // Then activate the selected category
       return ctx.db.category.update({
         where: { id: input.categoryId },
         data: { isActive: true },
@@ -465,11 +441,9 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        password: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await verifySessionPassword(ctx.db, input.id, input.password);
       try {
         // Delete all votes
         await ctx.db.vote.deleteMany({
