@@ -26,11 +26,25 @@ export async function generateMetadata({
       description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
       type: "website",
       url: `/present/${slug}`,
+      images: [
+        {
+          url: "/opengraph-image.png",
+          width: 1200,
+          height: 630,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: `${session.name} - Live Presentation`,
       description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
+      images: [
+        {
+          url: "/opengraph-image.png",
+          width: 1200,
+          height: 630,
+        },
+      ],
     },
   };
 }
