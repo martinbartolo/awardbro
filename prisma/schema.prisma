@@ -14,6 +14,7 @@ model Session {
     id         String     @id @default(cuid())
     name       String
     slug       String     @unique
+    password   String? // Optional password for managing the session
     createdAt  DateTime   @default(now())
     updatedAt  DateTime   @updatedAt
     categories Category[]

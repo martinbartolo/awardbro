@@ -12,7 +12,7 @@ const config = {
     "plugin:prettier/recommended",
   ],
   rules: {
-    "prettier/prettier": "error",
+    "prettier/prettier": ["error", { endOfLine: "auto" }],
     "@typescript-eslint/array-type": "off",
     "@typescript-eslint/consistent-type-definitions": "off",
     "@typescript-eslint/consistent-type-imports": [

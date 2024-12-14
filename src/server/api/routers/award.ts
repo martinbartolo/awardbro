@@ -1,9 +1,59 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const DEVICE_ID_COOKIE = "device_id";
+const SALT_ROUNDS = 10;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+// Store failed attempts in memory (in production, use Redis or similar)
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+
+const checkRateLimit = (identifier: string) => {
+  const now = Date.now();
+  const attempts = loginAttempts.get(identifier);
+
+  if (attempts) {
+    // Reset if lockout time has passed
+    if (now - attempts.lastAttempt > LOCKOUT_TIME) {
+      loginAttempts.delete(identifier);
+      return;
+    }
+
+    if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+      const timeLeft = Math.ceil((LOCKOUT_TIME - (now - attempts.lastAttempt)) / 1000 / 60);
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `Too many attempts. Please try again in ${timeLeft} minutes`,
+      });
+    }
+  }
+};
+
+const recordLoginAttempt = (identifier: string, success: boolean) => {
+  const now = Date.now();
+  const attempts = loginAttempts.get(identifier);
+
+  if (success) {
+    loginAttempts.delete(identifier);
+    return;
+  }
+
+  if (attempts) {
+    loginAttempts.set(identifier, {
+      count: attempts.count + 1,
+      lastAttempt: now,
+    });
+  } else {
+    loginAttempts.set(identifier, {
+      count: 1,
+      lastAttempt: now,
+    });
+  }
+};
 
 // Input validation schemas
 const sessionInput = z.object({
@@ -13,6 +63,11 @@ const sessionInput = z.object({
     .min(1, "Slug is required")
     .max(100, "Slug is too long")
     .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
+  password: z
+    .string()
+    .min(4, "Password must be at least 4 characters")
+    .max(100, "Password is too long")
+    .optional(),
 });
 
 const categoryInput = z.object({
@@ -27,6 +82,38 @@ const nominationInput = z.object({
   description: z.string().max(500, "Description is too long").optional(),
 });
 
+const verifySessionPassword = async (db: PrismaClient, sessionId: string, password: string) => {
+  // Rate limit by sessionId
+  checkRateLimit(sessionId);
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    select: { password: true },
+  });
+
+  if (!session) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Session not found",
+    });
+  }
+
+  // If no password is set, allow access
+  if (!session.password) {
+    return;
+  }
+
+  const isValid = await bcrypt.compare(password, session.password);
+  recordLoginAttempt(sessionId, isValid);
+
+  if (!isValid) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Invalid password",
+    });
+  }
+};
+
 export const awardRouter = createTRPCRouter({
   createSession: publicProcedure.input(sessionInput).mutation(async ({ ctx, input }) => {
     try {
@@ -34,6 +121,7 @@ export const awardRouter = createTRPCRouter({
         data: {
           name: input.name,
           slug: input.slug,
+          password: input.password ? await bcrypt.hash(input.password, SALT_ROUNDS) : null,
         },
       });
     } catch (error) {
@@ -116,35 +204,31 @@ export const awardRouter = createTRPCRouter({
       return session;
     }),
 
-  addCategory: publicProcedure.input(categoryInput).mutation(async ({ ctx, input }) => {
-    try {
-      // First verify the session exists
-      const session = await ctx.db.session.findUnique({
-        where: { id: input.sessionId },
-      });
-
-      if (!session) {
+  addCategory: publicProcedure
+    .input(
+      z.object({
+        ...categoryInput.shape,
+        password: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await verifySessionPassword(ctx.db, input.sessionId, input.password);
+      try {
+        return await ctx.db.category.create({
+          data: {
+            sessionId: input.sessionId,
+            name: input.name,
+            description: input.description,
+          },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Session not found",
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create category",
         });
       }
-
-      return await ctx.db.category.create({
-        data: {
-          sessionId: input.sessionId,
-          name: input.name,
-          description: input.description,
-        },
-      });
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create category",
-      });
-    }
-  }),
+    }),
 
   getCategory: publicProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     return ctx.db.category.findUnique({
@@ -378,8 +462,14 @@ export const awardRouter = createTRPCRouter({
     }),
 
   deleteSession: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(
+      z.object({
+        id: z.string(),
+        password: z.string(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
+      await verifySessionPassword(ctx.db, input.id, input.password);
       try {
         // Delete all votes
         await ctx.db.vote.deleteMany({
@@ -474,4 +564,40 @@ export const awardRouter = createTRPCRouter({
       });
     }
   }),
+
+  verifyManageAccess: publicProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        password: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const session = await ctx.db.session.findUnique({
+        where: { slug: input.slug },
+        select: { id: true, password: true },
+      });
+
+      if (!session) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Session not found",
+        });
+      }
+
+      // If no password is set, allow access
+      if (!session.password) {
+        return { success: true };
+      }
+
+      const isValid = await bcrypt.compare(input.password, session.password);
+      if (!isValid) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid password",
+        });
+      }
+
+      return { success: true };
+    }),
 });
