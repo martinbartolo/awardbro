@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Presentation } from "lucide-react";
 
 export function SetActiveCategoryButton({
   categoryId,
@@ -37,8 +38,12 @@ export function SetActiveCategoryButton({
       disabled={isUpdating}
       variant={isActive ? "destructive" : "outline"}
       size="sm"
+      className="group"
     >
-      {isUpdating ? "Updating..." : isActive ? "Deactivate" : "Set Active"}
+      {isUpdating ? "Updating..." : isActive ? "Stop Presenting" : "Present"}
+      {!isActive && (
+        <Presentation className="size-4 transition-transform duration-200 group-hover:scale-110" />
+      )}
     </Button>
   );
-} 
+}

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -86,10 +86,10 @@ export function VotingInterface({
         {hasVoted
           ? "Already Voted"
           : isVoting
-          ? "Casting Vote..."
-          : selectedNominationId
-          ? "Cast Vote"
-          : "Select a Nomination"}
+            ? "Casting Vote..."
+            : selectedNominationId
+              ? "Cast Vote"
+              : "Select a Nomination"}
       </Button>
     </div>
   );

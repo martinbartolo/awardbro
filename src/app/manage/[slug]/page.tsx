@@ -6,10 +6,10 @@ import { RevealCategoryButton } from "~/app/components/reveal-category-button";
 import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { SessionActions } from "~/app/components/session-actions";
+import { CategoryActions } from "~/app/components/category-actions";
+import { NominationActions } from "~/app/components/nomination-actions";
 
-export default async function ManagePage(props: {
-  params: { slug: string };
-}) {
+export default async function ManagePage(props: { params: { slug: string } }) {
   const slug = props.params.slug;
 
   const session = await api.award.getSessionBySlug({
@@ -30,7 +30,7 @@ export default async function ManagePage(props: {
               <h1 className="text-4xl font-bold text-foreground">{session.name}</h1>
               <p className="mt-2 text-muted-foreground">Manage your award show</p>
             </div>
-            <SessionActions slug={slug} />
+            <SessionActions slug={slug} sessionId={session.id} />
           </div>
         </div>
 
@@ -50,15 +50,13 @@ export default async function ManagePage(props: {
                 <CardHeader className="border-b border-border">
                   <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-xl">{category.name}</span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <CategoryActions categoryId={category.id} />
                       <SetActiveCategoryButton
                         categoryId={category.id}
                         isActive={category.isActive}
                       />
-                      <RevealCategoryButton
-                        categoryId={category.id}
-                        revealed={category.revealed}
-                      />
+                      <RevealCategoryButton categoryId={category.id} revealed={category.revealed} />
                     </div>
                   </CardTitle>
                   {category.description && (
@@ -75,17 +73,25 @@ export default async function ManagePage(props: {
                     {category.nominations.map((nomination) => (
                       <div
                         key={nomination.id}
-                        className="rounded-lg bg-secondary p-4 transition-colors hover:bg-secondary/80"
+                        className="flex items-center justify-between rounded-lg bg-secondary p-4 transition-colors hover:bg-secondary/80"
                       >
-                        <div className="font-semibold text-secondary-foreground">{nomination.name}</div>
-                        {nomination.description && (
-                          <div className="mt-1 text-sm text-muted-foreground">
-                            {nomination.description}
+                        <div className="flex-1">
+                          <div className="font-semibold text-secondary-foreground">
+                            {nomination.name}
                           </div>
-                        )}
-                        <div className="mt-2 text-sm text-accent">
-                          {nomination._count.votes} votes
+                          {nomination.description && (
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              {nomination.description}
+                            </div>
+                          )}
+                          <div className="mt-2 text-sm text-accent">
+                            {nomination._count.votes} votes
+                          </div>
                         </div>
+                        <NominationActions
+                          nominationId={nomination.id}
+                          nominationName={nomination.name}
+                        />
                       </div>
                     ))}
                   </div>
@@ -97,4 +103,4 @@ export default async function ManagePage(props: {
       </div>
     </main>
   );
-} 
+}

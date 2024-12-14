@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
@@ -28,15 +28,15 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
   );
 
   useEffect(() => {
-  if (isError) {
-    setErrorCount((prev) => prev + 1);
-    if (errorCount < 3) {
-      toast.error("Failed to fetch vote updates, retrying...");
-    } else {
-      toast.error("Failed to fetch vote updates. Please refresh the page.");
+    if (isError) {
+      setErrorCount((prev) => prev + 1);
+      if (errorCount < 3) {
+        toast.error("Failed to fetch vote updates, retrying...");
+      } else {
+        toast.error("Failed to fetch vote updates. Please refresh the page.");
+      }
     }
-  }
-}, [isError, errorCount]);
+  }, [isError, errorCount]);
 
   useEffect(() => {
     if (data) {
@@ -68,10 +68,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
 
   return (
     <div className="text-center">
-      <motion.div 
-        className="relative mb-4"
-        initial={false}
-      >
+      <motion.div className="relative mb-4" initial={false}>
         <motion.div
           key={totalVotes}
           initial={{ scale: 1.5, y: -20, opacity: 0 }}
@@ -81,8 +78,8 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         >
           {totalVotes.toLocaleString()}
         </motion.div>
-        
-        <motion.div 
+
+        <motion.div
           className="text-xl text-muted-foreground mt-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -106,12 +103,12 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         </AnimatePresence>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         className="flex justify-center space-x-2"
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 1.5, repeat: Infinity }}
       >
-        {[0,1,2].map((_, i) => (
+        {[0, 1, 2].map((_, i) => (
           <motion.div
             key={i}
             className="h-3 w-3 rounded-full bg-white"

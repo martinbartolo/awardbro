@@ -35,4 +35,4 @@ export function RevealCategoryButton({
       {revealCategory.isPending ? "Revealing..." : "Reveal"}
     </Button>
   );
-} 
+}

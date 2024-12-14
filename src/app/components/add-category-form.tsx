@@ -58,15 +58,11 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
               rows={3}
             />
           </div>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={addCategory.isPending}
-          >
+          <Button type="submit" className="w-full" disabled={addCategory.isPending}>
             {addCategory.isPending ? "Adding..." : "Add Category"}
           </Button>
         </form>
       </CardContent>
     </Card>
   );
-} 
+}

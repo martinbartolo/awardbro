@@ -75,21 +75,18 @@ export function CreateSessionForm() {
               This will be used in the URL: /vote/<span className="font-mono">{slug}</span>
             </p>
             <div className="flex items-start gap-2 rounded-md bg-muted p-3">
-            <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-sm text-muted-foreground">
-              Make sure to bookmark or save your management URL after creation. This will be your only way to access and manage your award show!
-            </p>
+              <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground">
+                Make sure to bookmark or save your management URL after creation. This will be your
+                only way to access and manage your award show!
+              </p>
+            </div>
           </div>
-          </div>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={createSession.isPending}
-          >
+          <Button type="submit" className="w-full" disabled={createSession.isPending}>
             {createSession.isPending ? "Creating..." : "Create Award Show"}
           </Button>
         </form>
       </CardContent>
     </Card>
   );
-} 
+}

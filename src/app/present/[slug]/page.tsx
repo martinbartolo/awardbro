@@ -2,11 +2,7 @@ import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
 import { LivePresentation } from "~/app/components/live-presentation";
 
-export default async function PresentPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function PresentPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
   const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
 
@@ -19,4 +15,4 @@ export default async function PresentPage({
       <LivePresentation initialSession={session} slug={slug} />
     </main>
   );
-} 
+}

@@ -1,28 +1,22 @@
-'use client';
+"use client";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import confetti from 'canvas-confetti';
+import confetti from "canvas-confetti";
 
 type Nomination = {
-    _count: {
-        votes: number;
-    };
-    description: string | null;
-    name: string;
-    id: string;
-    categoryId: string;
-    createdAt: Date;
-    updatedAt: Date;
+  _count: {
+    votes: number;
+  };
+  description: string | null;
+  name: string;
+  id: string;
+  categoryId: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
-export function WinnerAnimation({
-  nomination,
-  index,
-}: {
-  nomination: Nomination;
-  index: number;
-}) {
+export function WinnerAnimation({ nomination, index }: { nomination: Nomination; index: number }) {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
@@ -31,43 +25,43 @@ export function WinnerAnimation({
       // Initial burst
       const count = 200;
       const defaults = {
-        origin: { y: 0.7 }
+        origin: { y: 0.7 },
       };
 
       function fire(particleRatio: number, opts: confetti.Options) {
         void confetti({
           ...defaults,
           ...opts,
-          particleCount: Math.floor(count * particleRatio)
+          particleCount: Math.floor(count * particleRatio),
         });
       }
 
       fire(0.25, {
         spread: 26,
         startVelocity: 55,
-        colors: ['#FFD700', '#FDB931']
+        colors: ["#FFD700", "#FDB931"],
       });
       fire(0.2, {
         spread: 60,
-        colors: ['#ff0000', '#00ff00', '#0000ff']
+        colors: ["#ff0000", "#00ff00", "#0000ff"],
       });
       fire(0.35, {
         spread: 100,
         decay: 0.91,
         scalar: 0.8,
-        colors: ['#ffffff', '#FFD700']
+        colors: ["#ffffff", "#FFD700"],
       });
       fire(0.1, {
         spread: 120,
         startVelocity: 25,
         decay: 0.92,
         scalar: 1.2,
-        colors: ['#ff0000', '#00ff00', '#0000ff']
+        colors: ["#ff0000", "#00ff00", "#0000ff"],
       });
       fire(0.1, {
         spread: 120,
         startVelocity: 45,
-        colors: ['#FFD700', '#FDB931']
+        colors: ["#FFD700", "#FDB931"],
       });
 
       // Continuous side shots
@@ -80,20 +74,20 @@ export function WinnerAnimation({
           angle: 60,
           spread: 55,
           origin: { x: 0 },
-          colors: ['#FFD700', '#FDB931', '#ff0000', '#00ff00'],
+          colors: ["#FFD700", "#FDB931", "#ff0000", "#00ff00"],
         });
         void confetti({
           particleCount: 2,
           angle: 120,
           spread: 55,
           origin: { x: 1 },
-          colors: ['#FFD700', '#FDB931', '#0000ff', '#ff00ff'],
+          colors: ["#FFD700", "#FDB931", "#0000ff", "#ff00ff"],
         });
 
         if (Date.now() < end) {
           requestAnimationFrame(frame);
         }
-      }());
+      })();
 
       // Random bursts during the duration
       const burstEnd = Date.now() + duration;
@@ -108,7 +102,7 @@ export function WinnerAnimation({
           angle: 90,
           spread: 70,
           origin: { y: 0.7, x: Math.random() },
-          colors: ['#FFD700', '#FDB931', '#ff0000', '#00ff00', '#0000ff', '#ff00ff'],
+          colors: ["#FFD700", "#FDB931", "#ff0000", "#00ff00", "#0000ff", "#ff00ff"],
           startVelocity: 30,
           gravity: 1.2,
           drift: Math.random() - 0.5,
@@ -121,11 +115,11 @@ export function WinnerAnimation({
   }, [index]);
 
   const variants = {
-    hidden: { 
+    hidden: {
       opacity: 0,
       scale: 0.5,
       y: 100,
-      rotate: -10
+      rotate: -10,
     },
     visible: {
       opacity: 1,
@@ -137,14 +131,14 @@ export function WinnerAnimation({
         stiffness: 200,
         damping: 15,
         delay: index * 0.3,
-      }
-    }
+      },
+    },
   };
 
   const medalColors = {
     0: "bg-gradient-to-br from-yellow-300 to-yellow-500 border-yellow-400 shadow-lg shadow-yellow-500/50 text-shadow-medal",
     1: "bg-gradient-to-br from-gray-200 to-gray-400 border-gray-300 shadow-lg shadow-gray-400/50 text-shadow-medal",
-    2: "bg-gradient-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal"
+    2: "bg-gradient-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal",
   };
 
   const votesVariants = {
@@ -156,9 +150,9 @@ export function WinnerAnimation({
         type: "spring",
         stiffness: 260,
         damping: 20,
-        delay: (index * 0.3) + 0.5,
-      }
-    }
+        delay: index * 0.3 + 0.5,
+      },
+    },
   };
 
   const descriptionVariants = {
@@ -168,9 +162,9 @@ export function WinnerAnimation({
       x: 0,
       transition: {
         duration: 0.5,
-        delay: (index * 0.3) + 0.7,
-      }
-    }
+        delay: index * 0.3 + 0.7,
+      },
+    },
   };
 
   return (
@@ -181,29 +175,27 @@ export function WinnerAnimation({
           animate="visible"
           variants={variants}
           className={`rounded-xl p-6 border-2 backdrop-blur-sm ${
-            medalColors[index as keyof typeof medalColors] ?? "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30"
+            medalColors[index as keyof typeof medalColors] ??
+            "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30"
           }`}
         >
           <div className="flex items-center justify-between">
-            <motion.h3 
+            <motion.h3
               className="text-2xl font-extrabold text-background"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: (index * 0.3) + 0.3 }}
+              transition={{ delay: index * 0.3 + 0.3 }}
             >
               {nomination.name}
             </motion.h3>
-            <motion.div
-              variants={votesVariants}
-              className="flex items-center gap-2"
-            >
+            <motion.div variants={votesVariants} className="flex items-center gap-2">
               <motion.span
                 className="text-2xl font-black text-background"
                 animate={{ scale: [1, 1.2, 1] }}
-                transition={{ 
+                transition={{
                   duration: 0.5,
                   repeat: Infinity,
-                  repeatDelay: 2
+                  repeatDelay: 2,
                 }}
               >
                 {nomination._count.votes}
@@ -212,10 +204,7 @@ export function WinnerAnimation({
             </motion.div>
           </div>
           {nomination.description && (
-            <motion.p
-              variants={descriptionVariants}
-              className="mt-2 text-sm text-background/80"
-            >
+            <motion.p variants={descriptionVariants} className="mt-2 text-sm text-background/80">
               {nomination.description}
             </motion.p>
           )}
@@ -223,4 +212,4 @@ export function WinnerAnimation({
       )}
     </AnimatePresence>
   );
-} 
+}

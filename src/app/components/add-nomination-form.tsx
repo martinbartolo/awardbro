@@ -71,4 +71,4 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
       </Button>
     </form>
   );
-} 
+}

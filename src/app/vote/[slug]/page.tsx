@@ -2,11 +2,7 @@ import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
 import { LiveVotingSession } from "~/app/components/live-voting-session";
 
-export default async function VotePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function VotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const session = await api.award.getSessionBySlug({ slug });
 
@@ -31,11 +27,7 @@ export default async function VotePage({
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <LiveVotingSession
-        initialSession={session}
-        slug={slug}
-        initialHasVoted={hasVoted}
-      />
+      <LiveVotingSession initialSession={session} slug={slug} initialHasVoted={hasVoted} />
     </main>
   );
-} 
+}

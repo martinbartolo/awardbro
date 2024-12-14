@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { WinnerAnimation } from "./winner-animation";
@@ -16,7 +16,11 @@ interface LivePresentationProps {
 }
 
 export function LivePresentation({ initialSession, slug }: LivePresentationProps) {
-  const { data: session, error: sessionError, isError: isSessionError } = api.award.getSessionBySlug.useQuery(
+  const {
+    data: session,
+    error: sessionError,
+    isError: isSessionError,
+  } = api.award.getSessionBySlug.useQuery(
     { slug, activeOnly: true },
     {
       refetchInterval: 5000,
@@ -87,11 +91,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
                 {category.nominations
                   .sort((a, b) => b._count.votes - a._count.votes)
                   .map((nomination, index) => (
-                    <WinnerAnimation
-                      key={nomination.id}
-                      nomination={nomination}
-                      index={index}
-                    />
+                    <WinnerAnimation key={nomination.id} nomination={nomination} index={index} />
                   ))}
               </div>
             ) : (
@@ -108,4 +108,4 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
       </div>
     </div>
   );
-} 
+}

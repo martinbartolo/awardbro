@@ -8,8 +8,14 @@ const DEVICE_ID_COOKIE = "device_id";
 // Input validation schemas
 const sessionInput = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  slug: z.string().min(1, "Slug is required").max(100, "Slug is too long")
-    .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .max(100, "Slug is too long")
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Slug can only contain lowercase letters, numbers, and hyphens",
+    ),
 });
 
 const categoryInput = z.object({
@@ -37,7 +43,7 @@ export const awardRouter = createTRPCRouter({
         });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          if (error.code === 'P2002') {
+          if (error.code === "P2002") {
             throw new TRPCError({
               code: "CONFLICT",
               message: "That URL is already in use. Please try another one",
@@ -82,10 +88,12 @@ export const awardRouter = createTRPCRouter({
     }),
 
   getSessionBySlug: publicProcedure
-    .input(z.object({ 
-      slug: z.string(),
-      activeOnly: z.boolean().optional()
-    }))
+    .input(
+      z.object({
+        slug: z.string(),
+        activeOnly: z.boolean().optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
         where: { slug: input.slug },
@@ -156,10 +164,10 @@ export const awardRouter = createTRPCRouter({
           nominations: {
             include: {
               _count: {
-                select: { votes: true }
-              }
-            }
-          }
+                select: { votes: true },
+              },
+            },
+          },
         },
       });
     }),
@@ -234,11 +242,17 @@ export const awardRouter = createTRPCRouter({
     }),
 
   vote: publicProcedure
-    .input(z.object({ nominationId: z.string().min(1, "Nomination ID is required") }))
+    .input(
+      z.object({
+        nominationId: z.string().min(1, "Nomination ID is required"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
-        const deviceId = ctx.headers.get("cookie")?.split(";")
-          .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        const deviceId = ctx.headers
+          .get("cookie")
+          ?.split(";")
+          .find((c) => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
           ?.split("=")[1];
 
         if (!deviceId) {
@@ -250,12 +264,12 @@ export const awardRouter = createTRPCRouter({
 
         const nomination = await ctx.db.nomination.findUnique({
           where: { id: input.nominationId },
-          include: { 
+          include: {
             category: {
               include: {
-                session: true
-              }
-            }
+                session: true,
+              },
+            },
           },
         });
 
@@ -308,8 +322,10 @@ export const awardRouter = createTRPCRouter({
   hasVoted: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const deviceId = ctx.headers.get("cookie")?.split(";")
-        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+      const deviceId = ctx.headers
+        .get("cookie")
+        ?.split(";")
+        .find((c) => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
         ?.split("=")[1];
 
       if (!deviceId) {
@@ -327,4 +343,128 @@ export const awardRouter = createTRPCRouter({
 
       return !!vote;
     }),
-}); 
+
+  deleteNomination: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await ctx.db.vote.deleteMany({
+          where: { nominationId: input.id },
+        });
+        return await ctx.db.nomination.delete({
+          where: { id: input.id },
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to delete nomination",
+        });
+      }
+    }),
+
+  deleteCategory: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        // Delete all votes for nominations in this category
+        await ctx.db.vote.deleteMany({
+          where: {
+            nomination: {
+              categoryId: input.id,
+            },
+          },
+        });
+        // Delete all nominations in this category
+        await ctx.db.nomination.deleteMany({
+          where: { categoryId: input.id },
+        });
+        // Delete the category
+        return await ctx.db.category.delete({
+          where: { id: input.id },
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to delete category",
+        });
+      }
+    }),
+
+  deleteSession: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        // Delete all votes
+        await ctx.db.vote.deleteMany({
+          where: {
+            nomination: {
+              category: {
+                sessionId: input.id,
+              },
+            },
+          },
+        });
+        // Delete all nominations
+        await ctx.db.nomination.deleteMany({
+          where: {
+            category: {
+              sessionId: input.id,
+            },
+          },
+        });
+        // Delete all categories
+        await ctx.db.category.deleteMany({
+          where: { sessionId: input.id },
+        });
+        // Delete the session
+        return await ctx.db.session.delete({
+          where: { id: input.id },
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to delete session",
+        });
+      }
+    }),
+
+  resetCategoryVotes: publicProcedure
+    .input(z.object({ categoryId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.db.vote.deleteMany({
+          where: {
+            nomination: {
+              categoryId: input.categoryId,
+            },
+          },
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to reset category votes",
+        });
+      }
+    }),
+
+  resetAllVotes: publicProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.db.vote.deleteMany({
+          where: {
+            nomination: {
+              category: {
+                sessionId: input.sessionId,
+              },
+            },
+          },
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to reset all votes",
+        });
+      }
+    }),
+});

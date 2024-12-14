@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -17,8 +17,16 @@ interface LiveVotingSessionProps {
   initialHasVoted: boolean;
 }
 
-export function LiveVotingSession({ initialSession, slug, initialHasVoted }: LiveVotingSessionProps) {
-  const { data: session, error: sessionError, isError: isSessionError } = api.award.getSessionBySlug.useQuery(
+export function LiveVotingSession({
+  initialSession,
+  slug,
+  initialHasVoted,
+}: LiveVotingSessionProps) {
+  const {
+    data: session,
+    error: sessionError,
+    isError: isSessionError,
+  } = api.award.getSessionBySlug.useQuery(
     { slug },
     {
       refetchInterval: 5000,
@@ -29,7 +37,11 @@ export function LiveVotingSession({ initialSession, slug, initialHasVoted }: Liv
 
   const activeCategory = session.categories.find((category) => category.isActive);
 
-  const { data: hasVoted = initialHasVoted, error: voteError, isError: isVoteError } = api.award.hasVoted.useQuery(
+  const {
+    data: hasVoted = initialHasVoted,
+    error: voteError,
+    isError: isVoteError,
+  } = api.award.hasVoted.useQuery(
     { categoryId: activeCategory?.id ?? "" },
     {
       refetchInterval: 5000,
@@ -70,7 +82,9 @@ export function LiveVotingSession({ initialSession, slug, initialHasVoted }: Liv
       <div className="container mx-auto px-4 text-center">
         <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
         <p className="text-2xl">Voting is currently closed.</p>
-        <p className="mt-4 text-muted-foreground">Please wait for the host to activate a category.</p>
+        <p className="mt-4 text-muted-foreground">
+          Please wait for the host to activate a category.
+        </p>
       </div>
     );
   }
@@ -80,9 +94,7 @@ export function LiveVotingSession({ initialSession, slug, initialHasVoted }: Liv
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold">{session.name}</h1>
         <p className="mt-2 text-muted-foreground">Cast your vote</p>
-        {hasVoted && (
-          <p className="mt-2 text-chart-2">You have already voted in this category</p>
-        )}
+        {hasVoted && <p className="mt-2 text-chart-2">You have already voted in this category</p>}
         {voteError && (
           <Alert variant="destructive" className="mt-4">
             <AlertCircle className="h-4 w-4" />
@@ -102,12 +114,9 @@ export function LiveVotingSession({ initialSession, slug, initialHasVoted }: Liv
           )}
         </CardHeader>
         <CardContent>
-          <VotingInterface
-            nominations={activeCategory.nominations}
-            hasVoted={hasVoted}
-          />
+          <VotingInterface nominations={activeCategory.nominations} hasVoted={hasVoted} />
         </CardContent>
       </Card>
     </div>
   );
-} 
+}
