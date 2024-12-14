@@ -430,7 +430,7 @@ export const awardRouter = createTRPCRouter({
         return await ctx.db.nomination.delete({
           where: { id: input.id },
         });
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete nomination",
@@ -458,7 +458,7 @@ export const awardRouter = createTRPCRouter({
         return await ctx.db.category.delete({
           where: { id: input.id },
         });
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete category",
@@ -500,7 +500,7 @@ export const awardRouter = createTRPCRouter({
         return await ctx.db.session.delete({
           where: { id: input.id },
         });
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete session",
@@ -519,7 +519,7 @@ export const awardRouter = createTRPCRouter({
             },
           },
         });
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to reset category votes",
@@ -540,7 +540,7 @@ export const awardRouter = createTRPCRouter({
             },
           },
         });
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to reset all votes",
