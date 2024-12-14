@@ -6,9 +6,10 @@ import { type Metadata } from "next";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const session = await api.award.getSessionBySlug({ slug: params.slug, activeOnly: true });
+  const { slug } = await params;
+  const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
 
   if (!session) {
     return {
@@ -24,7 +25,7 @@ export async function generateMetadata({
       title: `${session.name} - Live Presentation`,
       description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
       type: "website",
-      url: `/present/${params.slug}`,
+      url: `/present/${slug}`,
     },
     twitter: {
       card: "summary_large_image",
@@ -34,8 +35,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function PresentPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default async function PresentPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
 
   if (!session) {

@@ -6,9 +6,10 @@ import { type Metadata } from "next";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const session = await api.award.getSessionBySlug({ slug: params.slug });
+  const { slug } = await params;
+  const session = await api.award.getSessionBySlug({ slug });
 
   if (!session) {
     return {
@@ -24,7 +25,7 @@ export async function generateMetadata({
       title: `Vote Now: ${session.name}`,
       description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
       type: "website",
-      url: `/vote/${params.slug}`,
+      url: `/vote/${slug}`,
     },
     twitter: {
       card: "summary_large_image",

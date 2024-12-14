@@ -25,8 +25,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ManagePage(props: { params: { slug: string } }) {
-  const slug = props.params.slug;
+export default async function ManagePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
 
   const session = await api.award.getSessionBySlug({
     slug,
