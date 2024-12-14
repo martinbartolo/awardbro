@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const DEVICE_ID_COOKIE = "device_id";
@@ -576,12 +576,16 @@ export const awardRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check rate limit before proceeding
+      checkRateLimit(input.slug);
+
       const session = await ctx.db.session.findUnique({
         where: { slug: input.slug },
         select: { id: true, password: true },
       });
 
       if (!session) {
+        recordLoginAttempt(input.slug, false);
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Session not found",
@@ -590,10 +594,13 @@ export const awardRouter = createTRPCRouter({
 
       // If no password is set, allow access
       if (!session.password) {
+        recordLoginAttempt(input.slug, true);
         return { success: true };
       }
 
       const isValid = await bcrypt.compare(input.password, session.password);
+      recordLoginAttempt(input.slug, isValid);
+
       if (!isValid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
