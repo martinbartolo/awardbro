@@ -12,17 +12,35 @@ interface LiveVotingProps {
   initialVoteCount: number;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.5,
+      type: "spring",
+      stiffness: 200,
+      damping: 20,
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.8,
+    transition: { duration: 0.3 },
+  },
+};
+
 export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
   const [totalVotes, setTotalVotes] = useState(initialVoteCount);
   const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const [errorCount, setErrorCount] = useState(0);
 
-  // Use useQuery with refetchInterval instead of manual polling
   const { data, error, isError } = api.award.getCategory.useQuery(
     { id: categoryId },
     {
       refetchInterval: 500,
-      staleTime: 0, // Disable stale time for this query
+      staleTime: 0,
       retry: 3,
     }
   );
@@ -50,27 +68,43 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
 
   if (isError && errorCount >= 3) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>
-          {error?.message || "Failed to load voting data"}
-          <button onClick={() => window.location.reload()} className="underline hover:no-underline">
-            Refresh page
-          </button>
-        </AlertDescription>
-      </Alert>
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" exit="exit">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {error?.message || "Failed to load voting data"}
+            <button
+              onClick={() => window.location.reload()}
+              className="underline hover:no-underline"
+            >
+              Refresh page
+            </button>
+          </AlertDescription>
+        </Alert>
+      </motion.div>
     );
   }
 
   return (
-    <div className="text-center">
+    <motion.div
+      className="text-center"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
       <motion.div className="relative mb-4" initial={false}>
         <motion.div
           key={totalVotes}
           initial={{ scale: 1.5, y: -20, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
-          transition={{ type: "spring", duration: 0.5 }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 20,
+            duration: 0.5,
+          }}
           className="text-5xl font-bold text-white"
         >
           {totalVotes.toLocaleString()}
@@ -88,10 +122,15 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         <AnimatePresence>
           {totalVotes > prevVotes && (
             <motion.div
-              initial={{ opacity: 1, scale: 1 }}
-              animate={{ opacity: 0, scale: 2, y: -20 }}
+              initial={{ opacity: 1, scale: 1, y: 0 }}
+              animate={{ opacity: 0, scale: 2, y: -30 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{
+                duration: 0.7,
+                type: "spring",
+                stiffness: 100,
+                damping: 10,
+              }}
               className="absolute top-0 left-1/2 transform -translate-x-1/2 text-green-400 font-bold"
             >
               +{(totalVotes - prevVotes).toLocaleString()}
@@ -114,10 +153,13 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
               duration: 1,
               repeat: Infinity,
               delay: i * 0.2,
+              type: "spring",
+              stiffness: 300,
+              damping: 10,
             }}
           />
         ))}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

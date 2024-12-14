@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Session = RouterOutputs["award"]["getSessionBySlug"];
 
@@ -14,6 +15,34 @@ interface LivePresentationProps {
   initialSession: Session;
   slug: string;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5 },
+  },
+  exit: {
+    opacity: 0,
+    y: -20,
+    transition: { duration: 0.3 },
+  },
+};
+
+const categoryVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.5 },
+  },
+  exit: {
+    opacity: 0,
+    x: 20,
+    transition: { duration: 0.3 },
+  },
+};
 
 export function LivePresentation({ initialSession, slug }: LivePresentationProps) {
   const {
@@ -37,7 +66,13 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
 
   if (isSessionError) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <motion.div
+        className="container mx-auto px-4 py-8"
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        variants={containerVariants}
+      >
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
@@ -51,61 +86,92 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
             </button>
           </AlertDescription>
         </Alert>
-      </div>
-    );
-  }
-
-  if (session.categories.length === 0) {
-    return (
-      <div className="container mx-auto px-4 text-center">
-        <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
-        <p className="text-2xl">Waiting for the next award.</p>
-        <p className="mt-4 text-muted-foreground">The host will activate categories when ready.</p>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4">
-      <h1 className="mb-12 text-center text-6xl font-bold text-foreground">{session.name}</h1>
+    <AnimatePresence mode="wait">
+      {session.categories.length === 0 ? (
+        <motion.div
+          key="waiting"
+          className="container mx-auto px-4 text-center"
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          variants={containerVariants}
+        >
+          <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
+          <p className="text-2xl">Waiting for the next award.</p>
+          <p className="mt-4 text-muted-foreground">
+            The host will activate categories when ready.
+          </p>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="active"
+          className="container mx-auto px-4"
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          variants={containerVariants}
+        >
+          <h1 className="mb-12 text-center text-6xl font-bold text-foreground">{session.name}</h1>
 
-      <div className="space-y-8">
-        {session.categories.map((category) => (
-          <div
-            key={category.id}
-            className={`rounded-lg bg-card p-8 transition-all duration-500 ${
-              !category.revealed && "opacity-50"
-            }`}
-          >
-            <h2 className="mb-6 text-center text-4xl font-semibold text-foreground">
-              {category.name}
-            </h2>
-            {category.description && (
-              <p className="mb-8 text-center text-xl text-muted-foreground">
-                {category.description}
-              </p>
-            )}
+          <div className="space-y-8">
+            <AnimatePresence mode="wait">
+              {session.categories.map((category) => (
+                <motion.div
+                  key={category.id}
+                  className={`rounded-lg bg-card p-8 transition-all duration-500 ${
+                    !category.revealed && "opacity-50"
+                  }`}
+                  variants={categoryVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <h2 className="mb-6 text-center text-4xl font-semibold text-foreground">
+                    {category.name}
+                  </h2>
+                  {category.description && (
+                    <p className="mb-8 text-center text-xl text-muted-foreground">
+                      {category.description}
+                    </p>
+                  )}
 
-            {category.revealed ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {category.nominations
-                  .sort((a, b) => b._count.votes - a._count.votes)
-                  .map((nomination, index) => (
-                    <WinnerAnimation key={nomination.id} nomination={nomination} index={index} />
-                  ))}
-              </div>
-            ) : (
-              <LiveVoting
-                categoryId={category.id}
-                initialVoteCount={category.nominations.reduce(
-                  (sum, nom) => sum + nom._count.votes,
-                  0
-                )}
-              />
-            )}
+                  {category.revealed ? (
+                    <motion.div
+                      className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      {category.nominations
+                        .sort((a, b) => b._count.votes - a._count.votes)
+                        .map((nomination, index) => (
+                          <WinnerAnimation
+                            key={nomination.id}
+                            nomination={nomination}
+                            index={index}
+                          />
+                        ))}
+                    </motion.div>
+                  ) : (
+                    <LiveVoting
+                      categoryId={category.id}
+                      initialVoteCount={category.nominations.reduce(
+                        (sum, nom) => sum + nom._count.votes,
+                        0
+                      )}
+                    />
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
-        ))}
-      </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

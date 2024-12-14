@@ -344,13 +344,14 @@ export const awardRouter = createTRPCRouter({
           },
         });
 
+        // If there's an existing vote, delete it first
         if (existingVote) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "You have already voted in this category",
+          await ctx.db.vote.delete({
+            where: { id: existingVote.id },
           });
         }
 
+        // Create the new vote
         return await ctx.db.vote.create({
           data: {
             deviceId: deviceId,
@@ -364,6 +365,34 @@ export const awardRouter = createTRPCRouter({
           message: "Failed to cast vote",
         });
       }
+    }),
+
+  getCurrentVote: publicProcedure
+    .input(z.object({ categoryId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const deviceId = ctx.headers
+        .get("cookie")
+        ?.split(";")
+        .find((c) => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        ?.split("=")[1];
+
+      if (!deviceId) {
+        return null;
+      }
+
+      const vote = await ctx.db.vote.findFirst({
+        where: {
+          deviceId: deviceId,
+          nomination: {
+            categoryId: input.categoryId,
+          },
+        },
+        include: {
+          nomination: true,
+        },
+      });
+
+      return vote;
     }),
 
   hasVoted: publicProcedure
