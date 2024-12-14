@@ -88,15 +88,15 @@ export function CreateSessionForm() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Set a password to protect management access"
+              placeholder="Password for management access"
             />
           </div>
 
           <div className="flex items-start gap-2 rounded-md bg-muted p-3">
             <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-sm text-muted-foreground">
-              Make sure to save your management URL and password. You&apos;ll need both to manage
-              your award show!
+              Make sure to save your management URL and password. You&apos;ll need both to access
+              your award show management later!
             </p>
           </div>
 
