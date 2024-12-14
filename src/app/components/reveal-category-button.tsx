@@ -21,7 +21,7 @@ export function RevealCategoryButton({
   if (revealed) {
     return (
       <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-500 flex items-center gap-2">
-        Revealed
+        Winners Revealed
       </span>
     );
   }
@@ -32,7 +32,7 @@ export function RevealCategoryButton({
       onClick={() => revealCategory.mutate({ id: categoryId })}
       disabled={revealCategory.isPending}
     >
-      {revealCategory.isPending ? "Revealing..." : "Reveal"}
+      {revealCategory.isPending ? "Revealing..." : "Reveal Winners"}
     </Button>
   );
 }

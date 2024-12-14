@@ -47,7 +47,7 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
     <div className="flex gap-1">
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="ghost" size="iconSm" tooltip="Reset votes">
+          <Button variant="ghost" size="iconSm" tooltip="Reset category votes">
             <RotateCcw className="size-4" />
           </Button>
         </AlertDialogTrigger>
@@ -55,7 +55,8 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset category votes?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all votes from this category. This action cannot be undone.
+              This will remove all votes from this category. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -80,8 +81,8 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete category?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this category and all its nominations. This action cannot
-              be undone.
+              This will permanently delete this category and all its
+              nominations. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
