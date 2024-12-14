@@ -26,27 +26,11 @@ export async function generateMetadata({
       description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
       type: "website",
       url: `/vote/${slug}`,
-      images: [
-        {
-          url: `/og/vote-og.png`,
-          width: 1200,
-          height: 630,
-          alt: "AwardBro - Create Interactive Award Shows",
-        },
-      ],
     },
     twitter: {
       card: "summary_large_image",
       title: `Vote Now: ${session.name}`,
       description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
-      images: [
-        {
-          url: `/og/vote-og.png`,
-          width: 1200,
-          height: 630,
-          alt: "AwardBro - Create Interactive Award Shows",
-        },
-      ],
     },
   };
 }

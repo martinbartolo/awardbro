@@ -36,7 +36,6 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   category: "technology",
   openGraph: {
     type: "website",
@@ -44,28 +43,12 @@ export const metadata: Metadata = {
     title: "AwardBro - Create Interactive Award Shows",
     description:
       "Create interactive award shows with live voting and real-time results. Perfect for friends, team events, and more!",
-    images: [
-      {
-        url: "/og/home-og.png",
-        width: 1200,
-        height: 630,
-        alt: "AwardBro - Create Interactive Award Shows",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "AwardBro - Create Interactive Award Shows",
     description:
       "Create interactive award shows with live voting and real-time results. Perfect for friends, team events, and more!",
-    images: [
-      {
-        url: "/og/home-og.png",
-        width: 1200,
-        height: 630,
-        alt: "AwardBro - Create Interactive Award Shows",
-      },
-    ],
   },
 };
 
