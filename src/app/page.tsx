@@ -24,7 +24,7 @@ export default function Page() {
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-start bg-background text-foreground">
       {/* Hero Section */}
-      <section className="w-full px-4 py-12 sm:py-24">
+      <section className="flex min-h-screen w-full items-center justify-center px-4">
         <motion.div
           className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-8 text-center"
           initial="hidden"
