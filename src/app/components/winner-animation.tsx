@@ -16,12 +16,22 @@ type Nomination = {
   updatedAt: Date;
 };
 
-export function WinnerAnimation({ nomination, index }: { nomination: Nomination; index: number }) {
+export function WinnerAnimation({
+  nomination,
+  index,
+  isWinner,
+  isTied,
+}: {
+  nomination: Nomination;
+  index: number;
+  isWinner: boolean;
+  isTied: boolean;
+}) {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     setIsAnimating(true);
-    if (index === 0) {
+    if (isWinner) {
       // Initial burst
       const count = 200;
       const defaults = {
@@ -112,7 +122,7 @@ export function WinnerAnimation({ nomination, index }: { nomination: Nomination;
       // Cleanup
       return () => clearInterval(burstInterval);
     }
-  }, [index]);
+  }, [index, isWinner]);
 
   const variants = {
     hidden: {
@@ -174,23 +184,47 @@ export function WinnerAnimation({ nomination, index }: { nomination: Nomination;
           initial="hidden"
           animate="visible"
           variants={variants}
-          className={`rounded-xl p-6 border-2 backdrop-blur-sm ${
+          className={`rounded-xl p-6 border-2 backdrop-blur-sm ${isWinner ? "p-8 " : ""}${
             medalColors[index as keyof typeof medalColors] ??
             "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30"
           }`}
         >
-          <div className="flex items-center justify-between">
-            <motion.h3
-              className="text-2xl font-extrabold text-background"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.3 + 0.3 }}
-            >
-              {nomination.name}
-            </motion.h3>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
+              {isWinner && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: index * 0.3 + 0.6 }}
+                  className="mb-2 inline-block bg-background/20 rounded-full px-4 py-1 text-sm font-bold text-background"
+                >
+                  🏆 {isTied ? "Tied Winner" : "Winner"}
+                </motion.div>
+              )}
+              <motion.h3
+                className={`${
+                  isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
+                } font-extrabold text-background`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.3 + 0.3 }}
+              >
+                {nomination.name}
+              </motion.h3>
+              {nomination.description && (
+                <motion.p
+                  variants={descriptionVariants}
+                  className={`mt-2 ${isWinner ? "text-base" : "text-sm"} text-background/80`}
+                >
+                  {nomination.description}
+                </motion.p>
+              )}
+            </div>
             <motion.div variants={votesVariants} className="flex items-center gap-2">
               <motion.span
-                className="text-2xl font-black text-background"
+                className={`${
+                  isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
+                } font-black text-background whitespace-nowrap`}
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{
                   duration: 0.5,
@@ -203,11 +237,6 @@ export function WinnerAnimation({ nomination, index }: { nomination: Nomination;
               <span className="text-background font-semibold">votes</span>
             </motion.div>
           </div>
-          {nomination.description && (
-            <motion.p variants={descriptionVariants} className="mt-2 text-sm text-background/80">
-              {nomination.description}
-            </motion.p>
-          )}
         </motion.div>
       )}
     </AnimatePresence>

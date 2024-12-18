@@ -110,7 +110,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
       ) : (
         <motion.div
           key="active"
-          className="container mx-auto px-4"
+          className="container mx-auto px-4 pt-16"
           initial="hidden"
           animate="visible"
           exit="exit"
@@ -123,7 +123,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
               {session.categories.map((category) => (
                 <motion.div
                   key={category.id}
-                  className={`rounded-lg bg-card p-8 transition-all duration-500 ${
+                  className={`rounded-lg bg-background p-8 transition-all duration-500 ${
                     !category.revealed && "opacity-50"
                   }`}
                   variants={categoryVariants}
@@ -142,20 +142,38 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
 
                   {category.revealed ? (
                     <motion.div
-                      className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+                      className="grid grid-cols-1 gap-8"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.3 }}
                     >
-                      {category.nominations
-                        .sort((a, b) => b._count.votes - a._count.votes)
-                        .map((nomination, index) => (
-                          <WinnerAnimation
+                      {(() => {
+                        const sortedNominations = category.nominations.sort(
+                          (a, b) => b._count.votes - a._count.votes
+                        );
+                        const highestVoteCount = sortedNominations[0]?._count.votes;
+
+                        return sortedNominations.map((nomination, index) => (
+                          <div
                             key={nomination.id}
-                            nomination={nomination}
-                            index={index}
-                          />
-                        ))}
+                            className={`${
+                              nomination._count.votes === highestVoteCount
+                                ? "col-span-1 md:px-12"
+                                : "col-span-1 md:max-w-2xl md:mx-auto md:w-full"
+                            }`}
+                          >
+                            <WinnerAnimation
+                              nomination={nomination}
+                              index={index}
+                              isWinner={nomination._count.votes === highestVoteCount}
+                              isTied={
+                                sortedNominations.filter((n) => n._count.votes === highestVoteCount)
+                                  .length > 1
+                              }
+                            />
+                          </div>
+                        ));
+                      })()}
                     </motion.div>
                   ) : (
                     <LiveVoting
