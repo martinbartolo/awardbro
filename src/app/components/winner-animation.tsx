@@ -146,9 +146,13 @@ export function WinnerAnimation({
   };
 
   const medalColors = {
-    0: "bg-gradient-to-br from-yellow-300 to-yellow-500 border-yellow-400 shadow-lg shadow-yellow-500/50 text-shadow-medal",
-    1: "bg-gradient-to-br from-gray-200 to-gray-400 border-gray-300 shadow-lg shadow-gray-400/50 text-shadow-medal",
-    2: "bg-gradient-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal",
+    winner:
+      "bg-gradient-to-br from-yellow-300 to-yellow-500 border-yellow-400 shadow-lg shadow-yellow-500/50 text-shadow-medal",
+    second:
+      "bg-gradient-to-br from-gray-200 to-gray-400 border-gray-300 shadow-lg shadow-gray-400/50 text-shadow-medal",
+    third:
+      "bg-gradient-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal",
+    other: "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30",
   };
 
   const votesVariants = {
@@ -185,8 +189,13 @@ export function WinnerAnimation({
           animate="visible"
           variants={variants}
           className={`rounded-xl p-6 border-2 backdrop-blur-sm ${isWinner ? "p-8 " : ""}${
-            medalColors[index as keyof typeof medalColors] ??
-            "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30"
+            isWinner
+              ? medalColors.winner
+              : index === 1
+                ? medalColors.second
+                : index === 2
+                  ? medalColors.third
+                  : medalColors.other
           }`}
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
