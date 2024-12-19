@@ -11,6 +11,7 @@ import { CategoryActions } from "~/app/components/category-actions";
 import { NominationActions } from "~/app/components/nomination-actions";
 import { PasswordVerification } from "~/app/components/password-verification";
 import Image from "next/image";
+import { Badge } from "~/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "Manage Award Show",
@@ -119,7 +120,14 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                 <Card key={category.id} className="border-border">
                   <CardHeader className="border-b border-border">
                     <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-xl">{category.name}</span>
+                      <div>
+                        <span className="text-xl">{category.name}</span>
+                        {category.isAggregate && (
+                          <Badge variant="secondary" className="ml-2">
+                            Aggregate
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <CategoryActions categoryId={category.id} />
                         <SetActiveCategoryButton
@@ -135,11 +143,46 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                     {category.description && (
                       <p className="text-sm text-muted-foreground">{category.description}</p>
                     )}
+                    {category.isAggregate &&
+                      category.sourceCategories &&
+                      category.sourceCategories.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm text-muted-foreground max-w-screen-md">
+                            This is an aggregate category that automatically sums up votes from its
+                            source categories. Each nomination&apos;s vote count represents the
+                            total votes across all source categories.
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-muted-foreground">
+                            Source Categories:
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {category.sourceCategories.map((sourceCategory) => (
+                              <Badge key={sourceCategory.id} variant="outline">
+                                {sourceCategory.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                   </CardHeader>
                   <CardContent className="mt-4">
                     <div className="mb-6">
                       <h3 className="mb-3 text-lg font-medium text-foreground">Add Nomination</h3>
-                      <AddNominationForm categoryId={category.id} />
+                      {category.isAggregate ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground max-w-screen-md">
+                            Nominations for aggregate categories are automatically synced from
+                            source categories. New nominations will appear here when they are added
+                            to any source category.
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Vote counts shown are the sum of votes across all source categories and
+                            update automatically.
+                          </p>
+                        </div>
+                      ) : (
+                        <AddNominationForm categoryId={category.id} />
+                      )}
                     </div>
                     <div className="space-y-3">
                       <h3 className="text-lg font-medium text-foreground">Nominations</h3>

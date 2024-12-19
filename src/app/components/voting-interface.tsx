@@ -11,13 +11,16 @@ import { NominationDescription } from "./nomination-description";
 export function VotingInterface({
   nominations,
   categoryId,
+  isAggregate,
 }: {
   nominations: {
     id: string;
     name: string;
     description?: string | null;
+    _count?: { votes: number };
   }[];
   categoryId: string;
+  isAggregate: boolean;
 }) {
   const [selectedNominationId, setSelectedNominationId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
@@ -28,6 +31,7 @@ export function VotingInterface({
     { categoryId },
     {
       refetchInterval: 5000,
+      enabled: !isAggregate,
     }
   );
 
@@ -59,6 +63,15 @@ export function VotingInterface({
     setIsVoting(true);
     vote.mutate({ nominationId: selectedNominationId });
   };
+
+  if (isAggregate) {
+    return (
+      <p>
+        This is an aggregate category that combines votes from multiple categories. Voting is not
+        available.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-6">

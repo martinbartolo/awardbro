@@ -21,16 +21,19 @@ model Session {
 }
 
 model Category {
-    id          String       @id @default(cuid())
-    name        String
-    description String?
-    revealed    Boolean      @default(false)
-    isActive    Boolean      @default(false)
-    sessionId   String
-    session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-    nominations Nomination[]
-    createdAt   DateTime     @default(now())
-    updatedAt   DateTime     @updatedAt
+    id               String       @id @default(cuid())
+    name             String
+    description      String?
+    revealed         Boolean      @default(false)
+    isActive         Boolean      @default(false)
+    isAggregate      Boolean      @default(false)
+    sourceCategories Category[]   @relation("AggregateToSource")
+    aggregateOf      Category[]   @relation("AggregateToSource")
+    sessionId        String
+    session          Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+    nominations      Nomination[]
+    createdAt        DateTime     @default(now())
+    updatedAt        DateTime     @updatedAt
 
     @@index([sessionId])
 }

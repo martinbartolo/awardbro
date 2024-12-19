@@ -74,6 +74,8 @@ const categoryInput = z.object({
   sessionId: z.string().min(1, "Session ID is required"),
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
   description: z.string().max(500, "Description is too long").optional(),
+  isAggregate: z.boolean().optional(),
+  sourceCategories: z.array(z.string()).optional(),
 });
 
 const nominationInput = z.object({
@@ -159,6 +161,7 @@ export const awardRouter = createTRPCRouter({
                   },
                 },
               },
+              sourceCategories: true,
             },
           },
         },
@@ -171,35 +174,124 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      return session;
+      // Process aggregate categories
+      const categoriesWithAggregateVotes = await Promise.all(
+        session.categories.map(async (category) => {
+          if (!category.isAggregate) {
+            return category;
+          }
+
+          const nominationsWithTotalVotes = await Promise.all(
+            category.nominations.map(async (nomination) => {
+              // Find matching nominations in source categories
+              const sourceNominations = await ctx.db.nomination.findMany({
+                where: {
+                  name: nomination.name,
+                  categoryId: {
+                    in: category.sourceCategories.map((c) => c.id),
+                  },
+                },
+                include: {
+                  _count: {
+                    select: { votes: true },
+                  },
+                },
+              });
+
+              // Sum up all votes for this nomination across source categories
+              const totalVotes = sourceNominations.reduce((sum, nom) => sum + nom._count.votes, 0);
+
+              return {
+                ...nomination,
+                _count: {
+                  votes: totalVotes,
+                },
+              };
+            })
+          );
+
+          return {
+            ...category,
+            nominations: nominationsWithTotalVotes,
+          };
+        })
+      );
+
+      return {
+        ...session,
+        categories: categoriesWithAggregateVotes,
+      };
     }),
 
-  addCategory: publicProcedure
-    .input(
-      z.object({
-        ...categoryInput.shape,
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      try {
-        return await ctx.db.category.create({
-          data: {
-            sessionId: input.sessionId,
-            name: input.name,
-            description: input.description,
+  getSessionCategories: publicProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.category.findMany({
+        where: {
+          sessionId: input.sessionId,
+          isAggregate: false, // Only return non-aggregate categories as sources
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+    }),
+
+  addCategory: publicProcedure.input(categoryInput).mutation(async ({ ctx, input }) => {
+    try {
+      const category = await ctx.db.category.create({
+        data: {
+          sessionId: input.sessionId,
+          name: input.name,
+          description: input.description,
+          isAggregate: input.isAggregate ?? false,
+          sourceCategories:
+            input.isAggregate && input.sourceCategories
+              ? {
+                  connect: input.sourceCategories.map((id) => ({ id })),
+                }
+              : undefined,
+        },
+      });
+
+      // If this is an aggregate category, copy nominations from source categories
+      if (input.isAggregate && input.sourceCategories?.length) {
+        const sourceNominations = await ctx.db.nomination.findMany({
+          where: {
+            categoryId: {
+              in: input.sourceCategories,
+            },
+          },
+          distinct: ["name"],
+          select: {
+            name: true,
+            description: true,
           },
         });
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create category",
+
+        // Create nominations in the aggregate category
+        await ctx.db.nomination.createMany({
+          data: sourceNominations.map((nom) => ({
+            name: nom.name,
+            description: nom.description,
+            categoryId: category.id,
+          })),
         });
       }
-    }),
+
+      return category;
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create category",
+      });
+    }
+  }),
 
   getCategory: publicProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
-    return ctx.db.category.findUnique({
+    const category = await ctx.db.category.findUnique({
       where: { id: input.id },
       include: {
         nominations: {
@@ -209,8 +301,55 @@ export const awardRouter = createTRPCRouter({
             },
           },
         },
+        sourceCategories: true,
       },
     });
+
+    if (!category) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Category not found",
+      });
+    }
+
+    // If this is an aggregate category, sum up votes from source categories
+    if (category.isAggregate) {
+      const nominationsWithTotalVotes = await Promise.all(
+        category.nominations.map(async (nomination) => {
+          // Find matching nominations in source categories
+          const sourceNominations = await ctx.db.nomination.findMany({
+            where: {
+              name: nomination.name,
+              categoryId: {
+                in: category.sourceCategories.map((c) => c.id),
+              },
+            },
+            include: {
+              _count: {
+                select: { votes: true },
+              },
+            },
+          });
+
+          // Sum up all votes for this nomination across source categories
+          const totalVotes = sourceNominations.reduce((sum, nom) => sum + nom._count.votes, 0);
+
+          return {
+            ...nomination,
+            _count: {
+              votes: totalVotes,
+            },
+          };
+        })
+      );
+
+      return {
+        ...category,
+        nominations: nominationsWithTotalVotes,
+      };
+    }
+
+    return category;
   }),
 
   toggleRevealCategory: publicProcedure
@@ -324,11 +463,7 @@ export const awardRouter = createTRPCRouter({
         const nomination = await ctx.db.nomination.findUnique({
           where: { id: input.nominationId },
           include: {
-            category: {
-              include: {
-                session: true,
-              },
-            },
+            category: true,
           },
         });
 
@@ -339,6 +474,13 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
+        if (nomination.category.isAggregate) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot vote in aggregate categories",
+          });
+        }
+
         if (!nomination.category.isActive) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -346,7 +488,7 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
-        // Check if user has already voted for this nomination's category
+        // Handle regular category voting
         const existingVote = await ctx.db.vote.findFirst({
           where: {
             deviceId: deviceId,
@@ -356,17 +498,15 @@ export const awardRouter = createTRPCRouter({
           },
         });
 
-        // If there's an existing vote, delete it first
         if (existingVote) {
           await ctx.db.vote.delete({
             where: { id: existingVote.id },
           });
         }
 
-        // Create the new vote
         return await ctx.db.vote.create({
           data: {
-            deviceId: deviceId,
+            deviceId,
             nominationId: input.nominationId,
           },
         });
