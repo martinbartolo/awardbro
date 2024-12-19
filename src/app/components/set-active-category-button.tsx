@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Presentation } from "lucide-react";
+import { Ban, Presentation } from "lucide-react";
 
 export function SetActiveCategoryButton({
   categoryId,
@@ -41,7 +41,9 @@ export function SetActiveCategoryButton({
       className="group"
     >
       {isUpdating ? "Updating..." : isActive ? "Stop Presenting" : "Present"}
-      {!isActive && (
+      {isActive ? (
+        <Ban className="size-4 transition-transform duration-200 group-hover:scale-110" />
+      ) : (
         <Presentation className="size-4 transition-transform duration-200 group-hover:scale-110" />
       )}
     </Button>

@@ -4,6 +4,7 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Award, Ban } from "lucide-react";
 
 export function RevealCategoryButton({
   categoryId,
@@ -13,30 +14,36 @@ export function RevealCategoryButton({
   revealed: boolean;
 }) {
   const router = useRouter();
-  const revealCategory = api.award.revealCategory.useMutation({
+  const toggleReveal = api.award.toggleRevealCategory.useMutation({
     onSuccess: () => {
       router.refresh();
     },
     onError: () => {
-      toast.error("Failed to reveal winner");
+      toast.error(revealed ? "Failed to hide winner" : "Failed to reveal winner");
     },
   });
-
-  if (revealed) {
-    return (
-      <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-500 flex items-center gap-2">
-        Winners Revealed
-      </span>
-    );
-  }
 
   return (
     <Button
       size="sm"
-      onClick={() => revealCategory.mutate({ id: categoryId })}
-      disabled={revealCategory.isPending}
+      variant={revealed ? "destructive" : "default"}
+      onClick={() => toggleReveal.mutate({ id: categoryId })}
+      disabled={toggleReveal.isPending}
+      className="group"
     >
-      {revealCategory.isPending ? "Revealing..." : "Reveal Winner"}
+      {toggleReveal.isPending ? (
+        "Updating..."
+      ) : revealed ? (
+        <>
+          Hide Winner
+          <Ban className="size-4 transition-transform duration-200 group-hover:scale-110" />
+        </>
+      ) : (
+        <>
+          Reveal Winner
+          <Award className="size-4 transition-transform duration-200 group-hover:scale-110" />
+        </>
+      )}
     </Button>
   );
 }

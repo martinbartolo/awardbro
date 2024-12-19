@@ -32,6 +32,9 @@ export function WinnerAnimation({
 
   useEffect(() => {
     setIsAnimating(true);
+    let burstInterval: NodeJS.Timeout;
+    let animationFrame: number;
+
     if (isWinner) {
       // Initial burst
       const count = 200;
@@ -79,7 +82,7 @@ export function WinnerAnimation({
       const duration = 8 * 1000;
       const end = Date.now() + duration;
 
-      (function frame() {
+      function frame() {
         void confetti({
           particleCount: 2,
           angle: 60,
@@ -96,13 +99,14 @@ export function WinnerAnimation({
         });
 
         if (Date.now() < end) {
-          requestAnimationFrame(frame);
+          animationFrame = requestAnimationFrame(frame);
         }
-      })();
+      }
+      frame();
 
       // Random bursts during the duration
       const burstEnd = Date.now() + duration;
-      const burstInterval = setInterval(() => {
+      burstInterval = setInterval(() => {
         if (Date.now() > burstEnd) {
           clearInterval(burstInterval);
           return;
@@ -119,10 +123,15 @@ export function WinnerAnimation({
           drift: Math.random() - 0.5,
         });
       }, 1000);
-
-      // Cleanup
-      return () => clearInterval(burstInterval);
     }
+
+    // Cleanup function
+    return () => {
+      setIsAnimating(false);
+      if (burstInterval) clearInterval(burstInterval);
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      confetti.reset();
+    };
   }, [index, isWinner]);
 
   const variants = {
@@ -142,6 +151,14 @@ export function WinnerAnimation({
         stiffness: 200,
         damping: 15,
         delay: index * 0.3,
+      },
+    },
+    exit: {
+      opacity: 0,
+      scale: 0.5,
+      y: -100,
+      transition: {
+        duration: 0.2,
       },
     },
   };
@@ -168,6 +185,13 @@ export function WinnerAnimation({
         delay: index * 0.3 + 0.5,
       },
     },
+    exit: {
+      scale: 0,
+      rotate: 180,
+      transition: {
+        duration: 0.2,
+      },
+    },
   };
 
   const descriptionVariants = {
@@ -180,14 +204,22 @@ export function WinnerAnimation({
         delay: index * 0.3 + 0.7,
       },
     },
+    exit: {
+      opacity: 0,
+      x: -50,
+      transition: {
+        duration: 0.2,
+      },
+    },
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isAnimating && (
         <motion.div
           initial="hidden"
           animate="visible"
+          exit="exit"
           variants={variants}
           className={`rounded-xl p-6 border-2 backdrop-blur-sm ${isWinner ? "p-8 " : ""}${
             isWinner
@@ -205,6 +237,7 @@ export function WinnerAnimation({
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
                   transition={{ delay: index * 0.3 + 0.6 }}
                   className="mb-2 inline-block bg-background/20 rounded-full px-4 py-1 text-sm font-bold text-background"
                 >
@@ -217,6 +250,7 @@ export function WinnerAnimation({
                 } font-extrabold text-background`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.3 + 0.3 }}
               >
                 {nomination.name}

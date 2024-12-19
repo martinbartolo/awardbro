@@ -213,12 +213,24 @@ export const awardRouter = createTRPCRouter({
     });
   }),
 
-  revealCategory: publicProcedure
+  toggleRevealCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const category = await ctx.db.category.findUnique({
+        where: { id: input.id },
+        select: { revealed: true },
+      });
+
+      if (!category) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Category not found",
+        });
+      }
+
       return ctx.db.category.update({
         where: { id: input.id },
-        data: { revealed: true },
+        data: { revealed: !category.revealed },
       });
     }),
 
