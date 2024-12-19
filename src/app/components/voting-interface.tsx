@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "~/lib/utils";
+import { NominationDescription } from "./nomination-description";
 
 export function VotingInterface({
   nominations,
@@ -83,7 +84,10 @@ export function VotingInterface({
               )}
             </div>
             {nomination.description && (
-              <div className="text-sm text-muted-foreground">{nomination.description}</div>
+              <NominationDescription
+                description={nomination.description}
+                className="text-sm text-muted-foreground break-words"
+              />
             )}
           </button>
         ))}

@@ -31,7 +31,7 @@ const containerVariants = {
 };
 
 const categoryVariants = {
-  hidden: { opacity: 0, x: -20 },
+  hidden: { opacity: 0, x: 0 },
   visible: {
     opacity: 1,
     x: 0,
@@ -39,7 +39,7 @@ const categoryVariants = {
   },
   exit: {
     opacity: 0,
-    x: 20,
+    x: 0,
     transition: { duration: 0.3 },
   },
 };

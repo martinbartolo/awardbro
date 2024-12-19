@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
+import { NominationDescription } from "./nomination-description";
 
 type Nomination = {
   _count: {
@@ -221,12 +222,12 @@ export function WinnerAnimation({
                 {nomination.name}
               </motion.h3>
               {nomination.description && (
-                <motion.p
-                  variants={descriptionVariants}
-                  className={`mt-2 ${isWinner ? "text-base" : "text-sm"} text-background/80`}
-                >
-                  {nomination.description}
-                </motion.p>
+                <motion.div variants={descriptionVariants}>
+                  <NominationDescription
+                    description={nomination.description}
+                    className={`mt-2 ${isWinner ? "text-base" : "text-sm"} text-background/80`}
+                  />
+                </motion.div>
               )}
             </div>
             <motion.div variants={votesVariants} className="flex items-center gap-2">

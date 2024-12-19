@@ -53,6 +53,10 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="description">Description (Optional)</Label>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Add a description using text, paste an image URL, or use a Google Drive sharing link (make
+          sure the file is set to &quot;Anyone with the link can view&quot;).
+        </p>
         <Textarea
           id="description"
           value={description}
