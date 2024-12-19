@@ -1,21 +1,35 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { type SessionFormValues, sessionFormSchema } from "~/lib/schemas";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "~/components/ui/form";
 
 export function CreateSessionForm() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [password, setPassword] = useState("");
+  const form = useForm<SessionFormValues>({
+    resolver: zodResolver(sessionFormSchema),
+    defaultValues: {
+      name: "",
+      slug: "",
+      password: "",
+    },
+  });
 
   const createSession = api.award.createSession.useMutation({
     onSuccess: (data) => {
@@ -31,16 +45,18 @@ export function CreateSessionForm() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createSession.mutate({ name, slug, password: password || undefined });
+  const onSubmit = (values: SessionFormValues) => {
+    createSession.mutate({
+      name: values.name,
+      slug: values.slug,
+      password: values.password ?? undefined,
+    });
   };
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setName(newName);
-    // Generate a URL-friendly slug from the name
-    setSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+  // Generate a URL-friendly slug from the name
+  const handleNameChange = (value: string) => {
+    form.setValue("name", value);
+    form.setValue("slug", value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   };
 
   return (
@@ -50,62 +66,78 @@ export function CreateSessionForm() {
         <CardDescription>Create a new award show and share it with your friends</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={handleNameChange}
-              placeholder="e.g., Movie Awards 2024"
-              required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      placeholder="e.g., Movie Awards 2024"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="slug">URL</Label>
-            <Input
-              id="slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="movie-awards-2024"
-              required
-              pattern="[a-z0-9-]+"
-              autoCapitalize="off"
+            <FormField
+              control={form.control}
+              name="slug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="movie-awards-2024" autoCapitalize="off" />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Your award show will be available at: /vote/{field.value}
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <p className="text-xs text-muted-foreground">
-              Your award show will be available at: /vote/
-              <span className="font-mono">{slug || "your-url"}</span>
-            </p>
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="password">Password</Label>
-              <span className="text-xs text-muted-foreground">(Optional)</span>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Password</FormLabel>
+                    <span className="text-xs text-muted-foreground">(Optional)</span>
+                  </div>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="password"
+                      placeholder="Password for management access"
+                      autoCapitalize="off"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex items-start gap-2 rounded-md bg-muted p-3">
+              <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground">
+                Make sure to save your management URL and password. You&apos;ll need both to access
+                your award show management later!
+              </p>
             </div>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password for management access"
-              autoCapitalize="off"
-            />
-          </div>
 
-          <div className="flex items-start gap-2 rounded-md bg-muted p-3">
-            <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-sm text-muted-foreground">
-              Make sure to save your management URL and password. You&apos;ll need both to access
-              your award show management later!
-            </p>
-          </div>
-
-          <Button type="submit" className="w-full" disabled={createSession.isPending}>
-            {createSession.isPending ? "Creating..." : "Create Award Show"}
-          </Button>
-        </form>
+            <Button type="submit" className="w-full" disabled={createSession.isPending}>
+              {createSession.isPending ? "Creating..." : "Create Award Show"}
+            </Button>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   );

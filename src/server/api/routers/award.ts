@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { sessionFormSchema, categoryFormSchema, nominationFormSchema } from "~/lib/schemas";
 
 const DEVICE_ID_COOKIE = "device_id";
 const SALT_ROUNDS = 10;
@@ -55,37 +56,8 @@ const recordLoginAttempt = (identifier: string, success: boolean) => {
   }
 };
 
-// Input validation schemas
-const sessionInput = z.object({
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  slug: z
-    .string()
-    .min(1, "Slug is required")
-    .max(100, "Slug is too long")
-    .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
-  password: z
-    .string()
-    .min(4, "Password must be at least 4 characters")
-    .max(100, "Password is too long")
-    .optional(),
-});
-
-const categoryInput = z.object({
-  sessionId: z.string().min(1, "Session ID is required"),
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  description: z.string().max(500, "Description is too long").optional(),
-  isAggregate: z.boolean().optional(),
-  sourceCategories: z.array(z.string()).optional(),
-});
-
-const nominationInput = z.object({
-  categoryId: z.string().min(1, "Category ID is required"),
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  description: z.string().max(500, "Description is too long").optional(),
-});
-
 export const awardRouter = createTRPCRouter({
-  createSession: publicProcedure.input(sessionInput).mutation(async ({ ctx, input }) => {
+  createSession: publicProcedure.input(sessionFormSchema).mutation(async ({ ctx, input }) => {
     try {
       return await ctx.db.session.create({
         data: {
@@ -238,7 +210,7 @@ export const awardRouter = createTRPCRouter({
       });
     }),
 
-  addCategory: publicProcedure.input(categoryInput).mutation(async ({ ctx, input }) => {
+  addCategory: publicProcedure.input(categoryFormSchema).mutation(async ({ ctx, input }) => {
     try {
       const category = await ctx.db.category.create({
         data: {
@@ -373,7 +345,7 @@ export const awardRouter = createTRPCRouter({
       });
     }),
 
-  addNomination: publicProcedure.input(nominationInput).mutation(async ({ ctx, input }) => {
+  addNomination: publicProcedure.input(nominationFormSchema).mutation(async ({ ctx, input }) => {
     try {
       // First verify the category exists
       const category = await ctx.db.category.findUnique({

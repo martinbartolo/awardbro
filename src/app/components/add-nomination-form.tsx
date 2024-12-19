@@ -1,24 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { type NominationFormValues, nominationFormSchema } from "~/lib/schemas";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "~/components/ui/form";
 
 export function AddNominationForm({ categoryId }: { categoryId: string }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const form = useForm<NominationFormValues>({
+    resolver: zodResolver(nominationFormSchema),
+    defaultValues: {
+      categoryId,
+      name: "",
+      description: "",
+    },
+  });
 
   const addNomination = api.award.addNomination.useMutation({
     onSuccess: () => {
-      setName("");
-      setDescription("");
+      form.reset();
       router.refresh();
     },
     onError: (error) => {
@@ -30,49 +44,54 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    addNomination.mutate({
-      categoryId,
-      name,
-      description,
-    });
+  const onSubmit = (values: NominationFormValues) => {
+    addNomination.mutate(values);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Nomination Name</Label>
-        <Input
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Enter nomination"
-          required
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nomination Name</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Enter nomination" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="description">Description (Optional)</Label>
-        <p className="mb-3 text-sm text-muted-foreground max-w-screen-md">
-          Add a description using text, paste an image URL, or use a Google Drive sharing link (make
-          sure the file is set to &quot;Anyone with the link can view&quot;)
-        </p>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add some details..."
-          rows={2}
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Optional)</FormLabel>
+              <p className="mb-3 text-sm text-muted-foreground max-w-screen-md">
+                Add a description using text, paste an image URL, or use a Google Drive sharing link
+                (make sure the file is set to &quot;Anyone with the link can view&quot;)
+              </p>
+              <FormControl>
+                <Textarea {...field} placeholder="Add some details..." rows={2} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      <Button
-        type="submit"
-        variant="secondary"
-        className="w-full"
-        disabled={addNomination.isPending}
-      >
-        {addNomination.isPending ? "Adding..." : "Add Nomination"}
-      </Button>
-    </form>
+
+        <Button
+          type="submit"
+          variant="secondary"
+          className="w-full"
+          disabled={addNomination.isPending}
+        >
+          {addNomination.isPending ? "Adding..." : "Add Nomination"}
+        </Button>
+      </form>
+    </Form>
   );
 }
