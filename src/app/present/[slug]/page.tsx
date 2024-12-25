@@ -23,6 +23,15 @@ export async function generateMetadata({
     metadataBase: new URL("https://awardbro.com"),
     title: `${session.name} - Live Presentation`,
     description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
+    robots: {
+      index: false,
+      follow: false,
+      nocache: true,
+      googleBot: {
+        index: false,
+        follow: false,
+      },
+    },
     openGraph: {
       title: `${session.name} - Live Presentation`,
       description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,

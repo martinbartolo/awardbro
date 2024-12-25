@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/trpc/", "/manage/"],
+      disallow: ["/api/", "/trpc/", "/manage/", "/present/", "/vote/"],
     },
     sitemap: "https://awardbro.com/sitemap.xml",
   };
