@@ -15,13 +15,21 @@ export const sessionFormSchema = z.object({
     .optional(),
 });
 
-export const categoryFormSchema = z.object({
-  sessionId: z.string().min(1, "Session ID is required"),
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  description: z.string().max(500, "Description is too long").optional(),
-  isAggregate: z.boolean().optional(),
-  sourceCategories: z.array(z.string()).optional(),
-});
+export const categoryFormSchema = z
+  .object({
+    sessionId: z.string().min(1, "Session ID is required"),
+    name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+    description: z.string().max(500, "Description is too long").optional(),
+    isAggregate: z.boolean().optional(),
+    sourceCategories: z.array(z.string()),
+  })
+  .refine(
+    (data) => !data.isAggregate || (data.sourceCategories && data.sourceCategories.length > 0),
+    {
+      message: "Aggregate categories must have at least one source category",
+      path: ["sourceCategories"],
+    }
+  );
 
 export const nominationFormSchema = z.object({
   categoryId: z.string().min(1, "Category ID is required"),

@@ -37,11 +37,14 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
 
   const { data: categories } = api.award.getSessionCategories.useQuery({ sessionId });
 
+  const utils = api.useUtils();
+
   const addCategory = api.award.addCategory.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Category added successfully");
       form.reset();
       router.refresh();
+      await utils.award.getSessionCategories.invalidate({ sessionId });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -49,13 +52,21 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   });
 
   const onSubmit = (values: CategoryFormValues) => {
+    if (values.isAggregate && (!values.sourceCategories || values.sourceCategories.length === 0)) {
+      toast.error("Please select at least one source category");
+      return;
+    }
+
     addCategory.mutate({
       ...values,
-      sourceCategories: values.isAggregate ? values.sourceCategories : undefined,
+      sourceCategories: values.isAggregate ? values.sourceCategories : [],
     });
   };
 
   const isAggregate = form.watch("isAggregate");
+  const sourceCategories = form.watch("sourceCategories");
+  const isSubmitDisabled =
+    addCategory.isPending || (isAggregate && (!sourceCategories || sourceCategories.length === 0));
 
   return (
     <Card>
@@ -191,7 +202,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
               />
             )}
 
-            <Button type="submit" className="w-full" disabled={addCategory.isPending}>
+            <Button type="submit" className="w-full" disabled={isSubmitDisabled}>
               {addCategory.isPending ? "Adding..." : "Add Category"}
             </Button>
           </form>
