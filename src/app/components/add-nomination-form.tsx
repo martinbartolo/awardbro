@@ -32,6 +32,7 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
 
   const addNomination = api.award.addNomination.useMutation({
     onSuccess: () => {
+      toast.success("Nomination added successfully");
       form.reset();
       router.refresh();
     },

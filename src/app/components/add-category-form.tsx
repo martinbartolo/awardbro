@@ -39,6 +39,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
 
   const addCategory = api.award.addCategory.useMutation({
     onSuccess: () => {
+      toast.success("Category added successfully");
       form.reset();
       router.refresh();
     },
