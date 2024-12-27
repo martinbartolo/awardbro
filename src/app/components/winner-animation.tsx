@@ -35,7 +35,7 @@ export function WinnerAnimation({
     let burstInterval: NodeJS.Timeout;
     let animationFrame: number;
 
-    if (isWinner) {
+    if (isWinner && (!isTied || index === 0)) {
       // Initial burst
       const count = 200;
       const defaults = {
@@ -132,7 +132,7 @@ export function WinnerAnimation({
       if (animationFrame) cancelAnimationFrame(animationFrame);
       confetti.reset();
     };
-  }, [index, isWinner]);
+  }, [index, isWinner, isTied]);
 
   const variants = {
     hidden: {
