@@ -2,6 +2,7 @@ import ogImage from "./opengraph-image.png";
 import { api } from "~/trpc/server";
 import { notFound } from "next/navigation";
 import { LivePresentation } from "~/app/components/live-presentation";
+import { FullscreenButton } from "~/app/components/fullscreen-button";
 import { type Metadata } from "next";
 
 export async function generateMetadata({
@@ -70,6 +71,7 @@ export default async function PresentPage({ params }: { params: Promise<{ slug: 
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+      <FullscreenButton />
       <LivePresentation initialSession={session} slug={slug} />
     </main>
   );
