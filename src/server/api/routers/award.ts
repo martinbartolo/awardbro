@@ -1,8 +1,8 @@
-import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
+import { Prisma } from "~/generated/prisma/client";
 import {
   categoryFormSchema,
   nominationFormSchema,
@@ -236,17 +236,16 @@ export const awardRouter = createTRPCRouter({
             name: input.name,
             description: input.description,
             isAggregate: input.isAggregate ?? false,
-            sourceCategories:
-              input.isAggregate && input.sourceCategories
-                ? {
-                    connect: input.sourceCategories.map(id => ({ id })),
-                  }
-                : undefined,
+            sourceCategories: input.isAggregate
+              ? {
+                  connect: input.sourceCategories.map(id => ({ id })),
+                }
+              : undefined,
           },
         });
 
         // If this is an aggregate category, copy nominations from source categories
-        if (input.isAggregate && input.sourceCategories?.length) {
+        if (input.isAggregate && input.sourceCategories.length) {
           const sourceNominations = await ctx.db.nomination.findMany({
             where: {
               categoryId: {

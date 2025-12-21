@@ -1,5 +1,4 @@
 import { type Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { LiveVotingSession } from "~/app/components/live-voting-session";
 import { api } from "~/trpc/server";
@@ -13,13 +12,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const session = await api.award.getSessionBySlug({ slug });
-
-  if (!session) {
-    return {
-      title: "Award Show Not Found",
-      description: "This award show voting session does not exist.",
-    };
-  }
 
   return {
     metadataBase: new URL("https://awardbro.com"),
@@ -72,10 +64,6 @@ export default async function VotePage({
     slug,
     activeOnly: true,
   });
-
-  if (!session) {
-    notFound();
-  }
 
   // Since we're using activeOnly, we know there's at most one category
   const activeCategory = session.categories[0];

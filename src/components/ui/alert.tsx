@@ -41,7 +41,9 @@ const AlertTitle = React.forwardRef<
     ref={ref}
     className={cn("mb-1 leading-none font-medium tracking-tight", className)}
     {...props}
-  />
+  >
+    {props.children}
+  </h5>
 ));
 AlertTitle.displayName = "AlertTitle";
 

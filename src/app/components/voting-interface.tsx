@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -25,9 +25,8 @@ export function VotingInterface({
   categoryId: string;
   isAggregate: boolean;
 }) {
-  const [selectedNominationId, setSelectedNominationId] = useState<
-    string | null
-  >(null);
+  // Track only the user's explicit selection (null = no manual selection yet)
+  const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const router = useRouter();
 
@@ -40,17 +39,16 @@ export function VotingInterface({
     },
   );
 
-  // Set the selected nomination to the current vote when it loads
-  useEffect(() => {
-    if (currentVote) {
-      setSelectedNominationId(currentVote.nominationId);
-    }
-  }, [currentVote]);
+  // Derive effective selection: user's choice takes precedence, fall back to current vote
+  const selectedNominationId =
+    userSelectedId ?? currentVote?.nominationId ?? null;
 
   const vote = api.award.vote.useMutation({
     onSuccess: () => {
       router.refresh();
       toast.success("Vote cast successfully!");
+      // Reset user selection after successful vote so it syncs with server
+      setUserSelectedId(null);
     },
     onError: error => {
       toast.error(error.message || "Error casting vote. Please try again.");
@@ -84,7 +82,7 @@ export function VotingInterface({
         {nominations.map(nomination => (
           <button
             key={nomination.id}
-            onClick={() => setSelectedNominationId(nomination.id)}
+            onClick={() => setUserSelectedId(nomination.id)}
             className={cn(
               "w-full text-left transition-colors",
               "rounded-lg p-4",

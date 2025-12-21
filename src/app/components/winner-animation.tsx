@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
@@ -30,12 +30,9 @@ export function WinnerAnimation({
   isWinner: boolean;
   isTied: boolean;
 }) {
-  const [isAnimating, setIsAnimating] = useState(false);
-
   useEffect(() => {
-    setIsAnimating(true);
-    let burstInterval: NodeJS.Timeout;
-    let animationFrame: number;
+    let burstInterval: NodeJS.Timeout | undefined;
+    let animationFrame: number | undefined;
 
     if (isWinner && (!isTied || index === 0)) {
       // Initial burst
@@ -136,7 +133,6 @@ export function WinnerAnimation({
 
     // Cleanup function
     return () => {
-      setIsAnimating(false);
       if (burstInterval) clearInterval(burstInterval);
       if (animationFrame) cancelAnimationFrame(animationFrame);
       confetti.reset();
@@ -156,7 +152,7 @@ export function WinnerAnimation({
       y: 0,
       rotate: 0,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 200,
         damping: 15,
         delay: index * 0.3,
@@ -188,7 +184,7 @@ export function WinnerAnimation({
       scale: 1,
       rotate: 0,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 260,
         damping: 20,
         delay: index * 0.3 + 0.5,
@@ -224,77 +220,75 @@ export function WinnerAnimation({
 
   return (
     <AnimatePresence mode="wait">
-      {isAnimating && (
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          variants={variants}
-          className={`rounded-xl border-2 p-6 backdrop-blur-xs ${isWinner ? "p-8" : ""}${
-            isWinner
-              ? medalColors.winner
-              : index === 1
-                ? medalColors.second
-                : index === 2
-                  ? medalColors.third
-                  : medalColors.other
-          }`}
-        >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex-1">
-              {isWinner && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ delay: index * 0.3 + 0.6 }}
-                  className="bg-background/20 text-background mb-2 inline-block rounded-full px-4 py-1 text-sm font-bold"
-                >
-                  🏆 {isTied ? "Tied Winner" : "Winner"}
-                </motion.div>
-              )}
-              <motion.h3
-                className={`${
-                  isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
-                } text-background font-extrabold`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.3 + 0.3 }}
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        variants={variants}
+        className={`rounded-xl border-2 p-6 backdrop-blur-xs ${isWinner ? "p-8" : ""}${
+          isWinner
+            ? medalColors.winner
+            : index === 1
+              ? medalColors.second
+              : index === 2
+                ? medalColors.third
+                : medalColors.other
+        }`}
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex-1">
+            {isWinner && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ delay: index * 0.3 + 0.6 }}
+                className="bg-background/20 text-background mb-2 inline-block rounded-full px-4 py-1 text-sm font-bold"
               >
-                {nomination.name}
-              </motion.h3>
-              {nomination.description && (
-                <motion.div variants={descriptionVariants}>
-                  <NominationDescription
-                    description={nomination.description}
-                    className={`mt-2 ${isWinner ? "text-base" : "text-sm"} text-background/80`}
-                  />
-                </motion.div>
-              )}
-            </div>
-            <motion.div
-              variants={votesVariants}
-              className="flex items-center gap-2"
+                🏆 {isTied ? "Tied Winner" : "Winner"}
+              </motion.div>
+            )}
+            <motion.h3
+              className={`${
+                isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
+              } text-background font-extrabold`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: index * 0.3 + 0.3 }}
             >
-              <motion.span
-                className={`${
-                  isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
-                } text-background font-black whitespace-nowrap`}
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{
-                  duration: 0.5,
-                  repeat: Infinity,
-                  repeatDelay: 2,
-                }}
-              >
-                {nomination._count.votes}
-              </motion.span>
-              <span className="text-background font-semibold">votes</span>
-            </motion.div>
+              {nomination.name}
+            </motion.h3>
+            {nomination.description && (
+              <motion.div variants={descriptionVariants}>
+                <NominationDescription
+                  description={nomination.description}
+                  className={`mt-2 ${isWinner ? "text-base" : "text-sm"} text-background/80`}
+                />
+              </motion.div>
+            )}
           </div>
-        </motion.div>
-      )}
+          <motion.div
+            variants={votesVariants}
+            className="flex items-center gap-2"
+          >
+            <motion.span
+              className={`${
+                isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
+              } text-background font-black whitespace-nowrap`}
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{
+                duration: 0.5,
+                repeat: Infinity,
+                repeatDelay: 2,
+              }}
+            >
+              {nomination._count.votes}
+            </motion.span>
+            <span className="text-background font-semibold">votes</span>
+          </motion.div>
+        </div>
+      </motion.div>
     </AnimatePresence>
   );
 }

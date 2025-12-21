@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
@@ -21,7 +21,7 @@ const containerVariants = {
     scale: 1,
     transition: {
       duration: 0.5,
-      type: "spring",
+      type: "spring" as const,
       stiffness: 200,
       damping: 20,
     },
@@ -33,45 +33,61 @@ const containerVariants = {
   },
 };
 
-export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
-  const [totalVotes, setTotalVotes] = useState(initialVoteCount);
-  const [prevVotes, setPrevVotes] = useState(initialVoteCount);
-  const [errorCount, setErrorCount] = useState(0);
+const MAX_RETRIES = 3;
 
-  const { data, error, isError } = api.award.getCategory.useQuery(
+export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
+  const [prevVotes, setPrevVotes] = useState(initialVoteCount);
+  const lastToastTimeRef = useRef(0);
+
+  const { data, error, isError, failureCount } = api.award.getCategory.useQuery(
     { id: categoryId },
     {
-      refetchInterval: 500,
+      refetchInterval: 1000,
       staleTime: 0,
-      retry: 3,
+      retry: MAX_RETRIES,
     },
   );
 
-  useEffect(() => {
-    if (isError) {
-      setErrorCount(prev => prev + 1);
-      if (errorCount < 3) {
-        toast.error("Failed to fetch vote updates, retrying...");
-      } else {
-        toast.error("Failed to fetch vote updates. Please refresh the page.");
-      }
-    }
-  }, [isError, errorCount]);
+  // Derive error limit exceeded from failureCount (no setState needed)
+  const hasExceededErrorLimit = isError && failureCount >= MAX_RETRIES;
 
-  useEffect(() => {
-    if (data) {
-      const newTotal = data.nominations.reduce(
-        (sum, nom) => sum + nom._count.votes,
-        0,
-      );
-      if (newTotal !== totalVotes) {
-        setPrevVotes(totalVotes);
-        setTotalVotes(newTotal);
-      }
-    }
-  }, [data, totalVotes]);
+  // Calculate totalVotes directly from data (derived state)
+  const totalVotes = data
+    ? data.nominations.reduce((sum, nom) => sum + nom._count.votes, 0)
+    : initialVoteCount;
 
-  if (isError && errorCount >= 3) {
+  // Calculate the vote difference for animation
+  const voteDiff = totalVotes - prevVotes;
+  const showVoteDiff = voteDiff > 0;
+
+  // Update prevVotes after animation has time to display
+  useEffect(() => {
+    if (totalVotes === prevVotes) return;
+
+    const timer = setTimeout(() => {
+      setPrevVotes(totalVotes);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [totalVotes, prevVotes]);
+
+  // Handle error toasts with debouncing
+  useEffect(() => {
+    if (!isError) return;
+
+    const now = Date.now();
+    // Debounce toast notifications (at least 2 seconds apart)
+    if (now - lastToastTimeRef.current < 2000) return;
+
+    lastToastTimeRef.current = now;
+
+    if (failureCount < MAX_RETRIES) {
+      toast.error("Failed to fetch vote updates, retrying...");
+    } else {
+      toast.error("Failed to fetch vote updates. Please refresh the page.");
+    }
+  }, [isError, failureCount]);
+
+  if (hasExceededErrorLimit) {
     return (
       <motion.div
         variants={containerVariants}
@@ -83,7 +99,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            {error?.message || "Failed to load voting data"}
+            {error.message}
             <button
               onClick={() => window.location.reload()}
               className="underline hover:no-underline"
@@ -130,8 +146,9 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         </motion.div>
 
         <AnimatePresence>
-          {totalVotes > prevVotes && (
+          {showVoteDiff && (
             <motion.div
+              key={`diff-${totalVotes}`}
               initial={{ opacity: 1, scale: 1, y: 0 }}
               animate={{ opacity: 0, scale: 2, y: -30 }}
               exit={{ opacity: 0 }}
@@ -143,7 +160,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
               }}
               className="absolute top-0 left-1/2 -translate-x-1/2 transform font-bold text-green-400"
             >
-              +{(totalVotes - prevVotes).toLocaleString()}
+              +{voteDiff.toLocaleString()}
             </motion.div>
           )}
         </AnimatePresence>
@@ -154,7 +171,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 1.5, repeat: Infinity }}
       >
-        {[0, 1, 2].map((_, i) => (
+        {[0, 1, 2].map(i => (
           <motion.div
             key={i}
             className="h-3 w-3 rounded-full bg-white"

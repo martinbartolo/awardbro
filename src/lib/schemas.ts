@@ -26,15 +26,10 @@ export const categoryFormSchema = z
     isAggregate: z.boolean().optional(),
     sourceCategories: z.array(z.string()),
   })
-  .refine(
-    data =>
-      !data.isAggregate ||
-      (data.sourceCategories && data.sourceCategories.length > 0),
-    {
-      path: ["sourceCategories"],
-      error: "Aggregate categories must have at least one source category",
-    },
-  );
+  .refine(data => !data.isAggregate || data.sourceCategories.length > 0, {
+    path: ["sourceCategories"],
+    error: "Aggregate categories must have at least one source category",
+  });
 
 export const nominationFormSchema = z.object({
   categoryId: z.string().min(1, "Category ID is required"),

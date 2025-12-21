@@ -83,7 +83,7 @@ export function LivePresentation({
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            {sessionError?.message || "Failed to load presentation"}
+            {sessionError.message || "Failed to load presentation"}
             <button
               onClick={() => window.location.reload()}
               className="underline hover:no-underline"

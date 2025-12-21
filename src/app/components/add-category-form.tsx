@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HelpCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
@@ -60,10 +60,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   });
 
   const onSubmit = (values: CategoryFormValues) => {
-    if (
-      values.isAggregate &&
-      (!values.sourceCategories || values.sourceCategories.length === 0)
-    ) {
+    if (values.isAggregate && values.sourceCategories.length === 0) {
       toast.error("Please select at least one source category");
       return;
     }
@@ -74,11 +71,13 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
     });
   };
 
-  const isAggregate = form.watch("isAggregate");
-  const sourceCategories = form.watch("sourceCategories");
+  const isAggregate = useWatch({ control: form.control, name: "isAggregate" });
+  const sourceCategories = useWatch({
+    control: form.control,
+    name: "sourceCategories",
+  });
   const isSubmitDisabled =
-    addCategory.isPending ||
-    (isAggregate && (!sourceCategories || sourceCategories.length === 0));
+    addCategory.isPending || (isAggregate && sourceCategories.length === 0);
 
   return (
     <Card>
@@ -203,9 +202,9 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                             >
                               <FormControl>
                                 <Checkbox
-                                  checked={field.value?.includes(category.id)}
+                                  checked={field.value.includes(category.id)}
                                   onCheckedChange={checked => {
-                                    const currentValue = field.value ?? [];
+                                    const currentValue = field.value;
                                     const newValue = checked
                                       ? [...currentValue, category.id]
                                       : currentValue.filter(

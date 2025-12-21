@@ -1,5 +1,4 @@
 import { type Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { FullscreenButton } from "~/app/components/fullscreen-button";
 import { LivePresentation } from "~/app/components/live-presentation";
@@ -14,13 +13,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
-
-  if (!session) {
-    return {
-      title: "Award Show Not Found",
-      description: "This award show presentation does not exist.",
-    };
-  }
 
   return {
     metadataBase: new URL("https://awardbro.com"),
@@ -70,10 +62,6 @@ export default async function PresentPage({
 }) {
   const { slug } = await params;
   const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
-
-  if (!session) {
-    notFound();
-  }
 
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">

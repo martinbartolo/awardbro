@@ -94,7 +94,7 @@ export function LiveVotingSession({
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            {sessionError?.message || "Failed to load voting session"}
+            {sessionError.message || "Failed to load voting session"}
           </AlertDescription>
         </Alert>
       </motion.div>

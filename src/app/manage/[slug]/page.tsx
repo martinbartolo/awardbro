@@ -1,6 +1,5 @@
 import { type Metadata } from "next";
 import Image from "next/image";
-import { notFound } from "next/navigation";
 
 import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
@@ -95,10 +94,6 @@ export default async function ManagePage({
     slug,
   });
 
-  if (!session) {
-    notFound();
-  }
-
   return (
     <main className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -163,7 +158,6 @@ export default async function ManagePage({
                       </p>
                     )}
                     {category.isAggregate &&
-                      category.sourceCategories &&
                       category.sourceCategories.length > 0 && (
                         <div className="mt-2">
                           <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
