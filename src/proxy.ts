@@ -1,5 +1,5 @@
+import { randomUUID } from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
 
 const DEVICE_ID_COOKIE = "device_id";
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
@@ -10,7 +10,7 @@ export function proxy(request: NextRequest) {
   // Check if device ID cookie exists
   if (!request.cookies.has(DEVICE_ID_COOKIE)) {
     // Generate new device ID
-    const deviceId = uuidv4();
+    const deviceId = randomUUID();
 
     // Set cookie with proper security settings
     response.cookies.set({
