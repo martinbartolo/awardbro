@@ -41,12 +41,12 @@ export function NominationDescription({
   }
 
   return (
-    <div className="relative h-72 sm:h-80 md:h-96 lg:h-[28rem] w-full mt-2">
+    <div className="relative mt-2 h-72 w-full sm:h-80 md:h-96 lg:h-112">
       <Image
         src={imageUrl}
         alt="Nomination image"
         fill
-        className="object-contain rounded-md"
+        className="rounded-md object-contain"
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
       />
     </div>

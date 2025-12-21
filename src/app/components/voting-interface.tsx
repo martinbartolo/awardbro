@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
+import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
+
 import { NominationDescription } from "./nomination-description";
 
 export function VotingInterface({
@@ -22,7 +25,9 @@ export function VotingInterface({
   categoryId: string;
   isAggregate: boolean;
 }) {
-  const [selectedNominationId, setSelectedNominationId] = useState<string | null>(null);
+  const [selectedNominationId, setSelectedNominationId] = useState<
+    string | null
+  >(null);
   const [isVoting, setIsVoting] = useState(false);
   const router = useRouter();
 
@@ -32,7 +37,7 @@ export function VotingInterface({
     {
       refetchInterval: 5000,
       enabled: !isAggregate,
-    }
+    },
   );
 
   // Set the selected nomination to the current vote when it loads
@@ -47,7 +52,7 @@ export function VotingInterface({
       router.refresh();
       toast.success("Vote cast successfully!");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message || "Error casting vote. Please try again.");
     },
     onSettled: () => {
@@ -67,8 +72,8 @@ export function VotingInterface({
   if (isAggregate) {
     return (
       <p>
-        This is an aggregate category that combines votes from multiple categories. Voting is not
-        available.
+        This is an aggregate category that combines votes from multiple
+        categories. Voting is not available.
       </p>
     );
   }
@@ -76,7 +81,7 @@ export function VotingInterface({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        {nominations.map((nomination) => (
+        {nominations.map(nomination => (
           <button
             key={nomination.id}
             onClick={() => setSelectedNominationId(nomination.id)}
@@ -84,22 +89,24 @@ export function VotingInterface({
               "w-full text-left transition-colors",
               "rounded-lg p-4",
               selectedNominationId === nomination.id
-                ? "bg-primary/20 ring-2 ring-primary"
+                ? "bg-primary/20 ring-primary ring-2"
                 : "bg-white/10 hover:bg-white/20",
-              isVoting && "cursor-not-allowed opacity-50"
+              isVoting && "cursor-not-allowed opacity-50",
             )}
             disabled={isVoting}
           >
             <div className="font-semibold">
               {nomination.name}
               {currentVote?.nominationId === nomination.id && (
-                <span className="ml-2 text-sm text-primary">(Current Vote)</span>
+                <span className="text-primary ml-2 text-sm">
+                  (Current Vote)
+                </span>
               )}
             </div>
             {nomination.description && (
               <NominationDescription
                 description={nomination.description}
-                className="text-sm text-muted-foreground break-words"
+                className="text-muted-foreground text-sm wrap-break-word"
               />
             )}
           </button>

@@ -1,17 +1,18 @@
-import { api } from "~/trpc/server";
-import { notFound } from "next/navigation";
 import { type Metadata } from "next";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+
 import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
-import { RevealCategoryButton } from "~/app/components/reveal-category-button";
-import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { SessionActions } from "~/app/components/session-actions";
 import { CategoryActions } from "~/app/components/category-actions";
 import { NominationActions } from "~/app/components/nomination-actions";
 import { PasswordVerification } from "~/app/components/password-verification";
-import Image from "next/image";
+import { RevealCategoryButton } from "~/app/components/reveal-category-button";
+import { SessionActions } from "~/app/components/session-actions";
+import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
 import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
   title: "Manage Award Show",
@@ -54,7 +55,7 @@ const NominationDescription = ({ description }: { description: string }) => {
 
   if (!isImageUrl(description)) {
     return (
-      <div className="mt-1 text-sm text-muted-foreground">
+      <div className="text-muted-foreground mt-1 text-sm">
         {/* Ensure text content is escaped properly */}
         {description}
       </div>
@@ -63,23 +64,31 @@ const NominationDescription = ({ description }: { description: string }) => {
 
   const imageUrl = getImageUrl(description);
   if (!imageUrl) {
-    return <div className="mt-1 text-sm text-muted-foreground">Invalid image URL provided</div>;
+    return (
+      <div className="text-muted-foreground mt-1 text-sm">
+        Invalid image URL provided
+      </div>
+    );
   }
 
   return (
-    <div className="mt-1 relative h-48 w-full">
+    <div className="relative mt-1 h-48 w-full">
       <Image
         src={imageUrl}
         alt="Nomination image"
         fill
-        className="object-contain rounded-md"
+        className="rounded-md object-contain"
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
       />
     </div>
   );
 };
 
-export default async function ManagePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ManagePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
 
   const session = await api.award.getSessionBySlug({
@@ -91,15 +100,19 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <PasswordVerification slug={slug}>
           {/* Header Section */}
-          <div className="mb-8 rounded-lg bg-card p-6">
+          <div className="bg-card mb-8 rounded-lg p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-4xl font-bold text-foreground">{session.name}</h1>
-                <p className="mt-2 text-muted-foreground">Manage your award show</p>
+                <h1 className="text-foreground text-4xl font-bold">
+                  {session.name}
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Manage your award show
+                </p>
               </div>
               <SessionActions slug={slug} sessionId={session.id} />
             </div>
@@ -108,17 +121,21 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
           {/* Main Content */}
           <div className="space-y-8">
             {/* Add Category Section */}
-            <section className="rounded-lg bg-card p-6">
-              <h2 className="mb-4 text-2xl font-semibold text-foreground">Add New Category</h2>
+            <section className="bg-card rounded-lg p-6">
+              <h2 className="text-foreground mb-4 text-2xl font-semibold">
+                Add New Category
+              </h2>
               <AddCategoryForm sessionId={session.id} />
             </section>
 
             {/* Categories List */}
             <section className="space-y-6">
-              <h2 className="text-2xl font-semibold text-foreground">Categories</h2>
-              {session.categories.map((category) => (
+              <h2 className="text-foreground text-2xl font-semibold">
+                Categories
+              </h2>
+              {session.categories.map(category => (
                 <Card key={category.id} className="border-border">
-                  <CardHeader className="border-b border-border">
+                  <CardHeader className="border-border border-b">
                     <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <span className="text-xl">{category.name}</span>
@@ -141,22 +158,25 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                       </div>
                     </CardTitle>
                     {category.description && (
-                      <p className="text-sm text-muted-foreground">{category.description}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {category.description}
+                      </p>
                     )}
                     {category.isAggregate &&
                       category.sourceCategories &&
                       category.sourceCategories.length > 0 && (
                         <div className="mt-2">
-                          <p className="text-sm text-muted-foreground max-w-screen-md">
-                            This is an aggregate category that automatically sums up votes from its
-                            source categories. Each nomination&apos;s vote count represents the
-                            total votes across all source categories.
+                          <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
+                            This is an aggregate category that automatically
+                            sums up votes from its source categories. Each
+                            nomination&apos;s vote count represents the total
+                            votes across all source categories.
                           </p>
-                          <p className="mt-2 text-sm font-medium text-muted-foreground">
+                          <p className="text-muted-foreground mt-2 text-sm font-medium">
                             Source Categories:
                           </p>
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {category.sourceCategories.map((sourceCategory) => (
+                            {category.sourceCategories.map(sourceCategory => (
                               <Badge key={sourceCategory.id} variant="outline">
                                 {sourceCategory.name}
                               </Badge>
@@ -167,17 +187,20 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                   </CardHeader>
                   <CardContent className="mt-4">
                     <div className="mb-6">
-                      <h3 className="mb-3 text-lg font-medium text-foreground">Add Nomination</h3>
+                      <h3 className="text-foreground mb-3 text-lg font-medium">
+                        Add Nomination
+                      </h3>
                       {category.isAggregate ? (
                         <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground max-w-screen-md">
-                            Nominations for aggregate categories are automatically synced from
-                            source categories. New nominations will appear here when they are added
-                            to any source category.
+                          <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
+                            Nominations for aggregate categories are
+                            automatically synced from source categories. New
+                            nominations will appear here when they are added to
+                            any source category.
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            Vote counts shown are the sum of votes across all source categories and
-                            update automatically.
+                          <p className="text-muted-foreground text-sm">
+                            Vote counts shown are the sum of votes across all
+                            source categories and update automatically.
                           </p>
                         </div>
                       ) : (
@@ -185,18 +208,22 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                       )}
                     </div>
                     <div className="space-y-3">
-                      <h3 className="text-lg font-medium text-foreground">Nominations</h3>
-                      {category.nominations.map((nomination) => (
+                      <h3 className="text-foreground text-lg font-medium">
+                        Nominations
+                      </h3>
+                      {category.nominations.map(nomination => (
                         <div
                           key={nomination.id}
-                          className="flex items-center justify-between rounded-lg bg-secondary p-4 transition-colors hover:bg-secondary/80"
+                          className="bg-secondary hover:bg-secondary/80 flex items-center justify-between rounded-lg p-4 transition-colors"
                         >
                           <div className="flex-1">
-                            <div className="font-semibold text-secondary-foreground">
+                            <div className="text-secondary-foreground font-semibold">
                               {nomination.name}
                             </div>
-                            <NominationDescription description={nomination.description ?? ""} />
-                            <div className="mt-2 text-sm text-accent">
+                            <NominationDescription
+                              description={nomination.description ?? ""}
+                            />
+                            <div className="text-accent mt-2 text-sm">
                               {nomination._count.votes} votes
                             </div>
                           </div>

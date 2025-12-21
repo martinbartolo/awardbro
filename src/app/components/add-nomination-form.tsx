@@ -1,15 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { api } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
-import { toast } from "sonner";
-import { TRPCClientError } from "@trpc/client";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type NominationFormValues, nominationFormSchema } from "~/lib/schemas";
+import { TRPCClientError } from "@trpc/client";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+import { Button } from "~/components/ui/button";
 import {
   Form,
   FormControl,
@@ -18,6 +15,10 @@ import {
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
+import { nominationFormSchema, type NominationFormValues } from "~/lib/schemas";
+import { api } from "~/trpc/react";
 
 export function AddNominationForm({ categoryId }: { categoryId: string }) {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
       form.reset();
       router.refresh();
     },
-    onError: (error) => {
+    onError: error => {
       if (error instanceof TRPCClientError) {
         toast.error(error.message);
       } else {
@@ -72,12 +73,17 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
-              <p className="mb-3 text-sm text-muted-foreground max-w-screen-md">
-                Add a description using text, paste an image URL, or use a Google Drive sharing link
-                (make sure the file is set to &quot;Anyone with the link can view&quot;)
+              <p className="text-muted-foreground mb-3 max-w-(--breakpoint-md) text-sm">
+                Add a description using text, paste an image URL, or use a
+                Google Drive sharing link (make sure the file is set to
+                &quot;Anyone with the link can view&quot;)
               </p>
               <FormControl>
-                <Textarea {...field} placeholder="Add some details..." rows={2} />
+                <Textarea
+                  {...field}
+                  placeholder="Add some details..."
+                  rows={2}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

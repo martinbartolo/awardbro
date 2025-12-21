@@ -1,22 +1,25 @@
 "use client";
 
-import { api } from "~/trpc/react";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { VotingInterface } from "./voting-interface";
-import { type RouterOutputs } from "~/trpc/react";
-import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/react";
+
+import { VotingInterface } from "./voting-interface";
 
 type Session = RouterOutputs["award"]["getSessionBySlug"];
 
-interface LiveVotingSessionProps {
+type LiveVotingSessionProps = {
   initialSession: Session;
   slug: string;
   initialHasVoted: boolean;
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -47,7 +50,7 @@ export function LiveVotingSession({
       refetchInterval: 5000,
       initialData: initialSession,
       retry: 3,
-    }
+    },
   );
 
   const activeCategory = session.categories[0];
@@ -63,7 +66,7 @@ export function LiveVotingSession({
       initialData: initialHasVoted,
       retry: 3,
       enabled: !!activeCategory,
-    }
+    },
   );
 
   useEffect(() => {
@@ -111,7 +114,7 @@ export function LiveVotingSession({
         >
           <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
           <p className="text-2xl">Waiting for the next award.</p>
-          <p className="mt-4 text-muted-foreground">
+          <p className="text-muted-foreground mt-4">
             The host will present the next category soon.
           </p>
         </motion.div>
@@ -126,16 +129,19 @@ export function LiveVotingSession({
         >
           <div className="mb-8 text-center">
             <h1 className="text-4xl font-bold">{session.name}</h1>
-            <p className="mt-2 text-muted-foreground">Cast your vote</p>
+            <p className="text-muted-foreground mt-2">Cast your vote</p>
             {hasVoted && (
-              <p className="mt-2 text-chart-2">You have already voted in this category</p>
+              <p className="text-chart-2 mt-2">
+                You have already voted in this category
+              </p>
             )}
             {voteError && (
               <Alert variant="destructive" className="mt-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Warning</AlertTitle>
                 <AlertDescription>
-                  {voteError.message || "There was an error checking your vote status"}
+                  {voteError.message ||
+                    "There was an error checking your vote status"}
                 </AlertDescription>
               </Alert>
             )}
@@ -150,7 +156,9 @@ export function LiveVotingSession({
               <CardHeader>
                 <CardTitle>{activeCategory.name}</CardTitle>
                 {activeCategory.description && (
-                  <p className="text-sm text-muted-foreground">{activeCategory.description}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {activeCategory.description}
+                  </p>
                 )}
               </CardHeader>
               <CardContent>

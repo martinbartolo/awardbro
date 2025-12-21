@@ -1,10 +1,9 @@
 "use client";
 
-import { Button } from "~/components/ui/button";
-import { Trash2, RotateCcw } from "lucide-react";
-import { api } from "~/trpc/react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,10 +15,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 
-interface CategoryActionsProps {
+type CategoryActionsProps = {
   categoryId: string;
-}
+};
 
 export function CategoryActions({ categoryId }: CategoryActionsProps) {
   const router = useRouter();
@@ -60,7 +61,8 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset category votes?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all votes from this category. This action cannot be undone.
+              This will remove all votes from this category. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -90,8 +92,8 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete category?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this category and all its nominations. This action cannot
-              be undone.
+              This will permanently delete this category and all its
+              nominations. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

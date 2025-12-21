@@ -1,19 +1,30 @@
 "use client";
 
-import { useState, type ReactNode, useEffect } from "react";
-import { api } from "~/trpc/react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { type ReactNode, useEffect, useState } from "react";
+
 import { toast } from "sonner";
 
-interface PasswordVerificationProps {
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { api } from "~/trpc/react";
+
+type PasswordVerificationProps = {
   children: ReactNode;
   slug: string;
-}
+};
 
-export function PasswordVerification({ children, slug }: PasswordVerificationProps) {
+export function PasswordVerification({
+  children,
+  slug,
+}: PasswordVerificationProps) {
   const [password, setPassword] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -24,7 +35,7 @@ export function PasswordVerification({ children, slug }: PasswordVerificationPro
       // Store the verification in sessionStorage
       sessionStorage.setItem(`manage-access-${slug}`, "true");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message);
       setPassword("");
     },
@@ -77,7 +88,7 @@ export function PasswordVerification({ children, slug }: PasswordVerificationPro
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 placeholder="Enter management password"
                 required
               />

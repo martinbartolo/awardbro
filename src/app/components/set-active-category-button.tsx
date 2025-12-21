@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+
+import { Ban, Presentation } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Ban, Presentation } from "lucide-react";
+
+import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 
 export function SetActiveCategoryButton({
   categoryId,
@@ -36,7 +38,7 @@ export function SetActiveCategoryButton({
         setActive.mutate({ categoryId });
       }}
       disabled={isUpdating}
-      variant={isActive ? "destructive" : "outline"}
+      variant={isActive ? "destructive" : "outline-solid"}
       size="sm"
       className="group"
     >

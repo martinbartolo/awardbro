@@ -1,11 +1,22 @@
 "use client";
 
+import { motion } from "framer-motion";
+import {
+  Lock,
+  PlusCircle,
+  Presentation,
+  Search,
+  Timer,
+  Users,
+  Vote,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
+
+import { Button } from "~/components/ui/button";
+
 import { CreateSessionForm } from "./components/create-session-form";
 import { ExistingSessions } from "./components/existing-sessions";
-import { Button } from "~/components/ui/button";
-import Link from "next/link";
-import { Vote, Users, Timer, Lock, Zap, PlusCircle, Search, Presentation } from "lucide-react";
-import { motion } from "framer-motion";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -22,7 +33,7 @@ const stagger = {
 
 export default function Page() {
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-start bg-background text-foreground">
+    <main className="bg-background text-foreground flex min-h-screen w-full flex-col items-center justify-start">
       {/* Hero Section */}
       <section className="flex min-h-screen w-full items-center justify-center px-4">
         <motion.div
@@ -38,11 +49,11 @@ export default function Page() {
             Let&apos;s Get This Party Started! 🎉
           </motion.h1>
           <motion.p
-            className="mt-4 px-4 text-lg text-muted-foreground sm:text-xl"
+            className="text-muted-foreground mt-4 px-4 text-lg sm:text-xl"
             variants={fadeIn}
           >
-            Create a real-time interactive award show for your team or friends. Add categories,
-            collect votes, and present winners live!
+            Create a real-time interactive award show for your team or friends.
+            Add categories, collect votes, and present winners live!
           </motion.p>
           <motion.div
             className="mt-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-center"
@@ -63,7 +74,7 @@ export default function Page() {
       </section>
 
       {/* Features Section */}
-      <section className="w-full border-t bg-muted/50">
+      <section className="bg-muted/50 w-full border-t">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:py-24">
           <motion.h2
             className="text-center text-2xl font-bold sm:text-3xl lg:text-4xl"
@@ -116,7 +127,7 @@ export default function Page() {
       </section>
 
       {/* How It Works Section */}
-      <section className="w-full border-t bg-muted/50">
+      <section className="bg-muted/50 w-full border-t">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:py-24">
           <motion.h2
             className="text-center text-2xl font-bold sm:text-3xl lg:text-4xl"
@@ -169,11 +180,14 @@ export default function Page() {
             >
               Get Started
             </motion.h2>
-            <motion.p className="mt-4 px-4 text-center text-muted-foreground" variants={fadeIn}>
+            <motion.p
+              className="text-muted-foreground mt-4 px-4 text-center"
+              variants={fadeIn}
+            >
               Create a new award show or access an existing one
             </motion.p>
             <motion.div
-              className="mt-8 w-full grid gap-6 sm:mt-12 sm:grid-cols-2"
+              className="mt-8 grid w-full gap-6 sm:mt-12 sm:grid-cols-2"
               variants={fadeIn}
             >
               <CreateSessionForm />
@@ -184,30 +198,31 @@ export default function Page() {
       </section>
 
       {/* Footer */}
-      <footer className="w-full border-t bg-muted/50">
+      <footer className="bg-muted/50 w-full border-t">
         <div className="mx-auto max-w-7xl px-4 py-16">
           <div className="flex flex-col items-center justify-center text-center">
             <h3 className="text-xl font-semibold">AwardBro</h3>
-            <p className="mt-4 max-w-md text-muted-foreground">
-              Create interactive award shows with live voting and real-time results. Perfect for
-              team events, celebrations, and social gatherings.
+            <p className="text-muted-foreground mt-4 max-w-md">
+              Create interactive award shows with live voting and real-time
+              results. Perfect for team events, celebrations, and social
+              gatherings.
             </p>
             <div className="mt-8 flex gap-6">
               <Link
                 href="#get-started"
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Create Show
               </Link>
               <Link
                 href="#get-started"
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Access Show
               </Link>
             </div>
-            <div className="mt-8 pt-8 border-t w-full text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="mt-8 w-full border-t pt-8 text-center">
+              <p className="text-muted-foreground text-sm">
                 © {new Date().getFullYear()} AwardBro Created by{" "}
                 <a
                   href="https://martinbartolo.com"
@@ -236,10 +251,10 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <motion.div className="rounded-lg border bg-card p-6" variants={fadeIn}>
-      <Icon className="h-12 w-12 text-primary" />
+    <motion.div className="bg-card rounded-lg border p-6" variants={fadeIn}>
+      <Icon className="text-primary h-12 w-12" />
       <h3 className="mt-4 text-xl font-semibold">{title}</h3>
-      <p className="mt-2 text-muted-foreground">{description}</p>
+      <p className="text-muted-foreground mt-2">{description}</p>
     </motion.div>
   );
 }
@@ -254,12 +269,12 @@ function StepCard({
   description: string;
 }) {
   return (
-    <motion.div className="rounded-lg border bg-card p-6" variants={fadeIn}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+    <motion.div className="bg-card rounded-lg border p-6" variants={fadeIn}>
+      <div className="bg-primary text-primary-foreground flex h-12 w-12 items-center justify-center rounded-full text-2xl font-bold">
         {number}
       </div>
       <h3 className="mt-4 text-xl font-semibold">{title}</h3>
-      <p className="mt-2 text-muted-foreground">{description}</p>
+      <p className="text-muted-foreground mt-2">{description}</p>
     </motion.div>
   );
 }

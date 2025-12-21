@@ -1,10 +1,11 @@
 "use client";
 
-import { api } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
+import { Award, Ban } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Award, Ban } from "lucide-react";
+
+import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 
 export function RevealCategoryButton({
   categoryId,
@@ -19,7 +20,9 @@ export function RevealCategoryButton({
       router.refresh();
     },
     onError: () => {
-      toast.error(revealed ? "Failed to hide winner" : "Failed to reveal winner");
+      toast.error(
+        revealed ? "Failed to hide winner" : "Failed to reveal winner",
+      );
     },
   });
 

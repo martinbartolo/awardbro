@@ -1,9 +1,11 @@
-import ogImage from "./opengraph-image.png";
-import { api } from "~/trpc/server";
-import { notFound } from "next/navigation";
-import { LivePresentation } from "~/app/components/live-presentation";
-import { FullscreenButton } from "~/app/components/fullscreen-button";
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { FullscreenButton } from "~/app/components/fullscreen-button";
+import { LivePresentation } from "~/app/components/live-presentation";
+import { api } from "~/trpc/server";
+
+import ogImage from "./opengraph-image.png";
 
 export async function generateMetadata({
   params,
@@ -61,7 +63,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function PresentPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PresentPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
 
@@ -70,7 +76,7 @@ export default async function PresentPage({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+    <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
       <FullscreenButton />
       <LivePresentation initialSession={session} slug={slug} />
     </main>

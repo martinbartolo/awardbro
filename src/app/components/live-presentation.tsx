@@ -1,20 +1,23 @@
 "use client";
 
-import { api, type RouterOutputs } from "~/trpc/react";
-import { WinnerAnimation } from "./winner-animation";
-import { LiveVoting } from "./live-voting";
-import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { api, type RouterOutputs } from "~/trpc/react";
+
+import { LiveVoting } from "./live-voting";
+import { WinnerAnimation } from "./winner-animation";
 
 type Session = RouterOutputs["award"]["getSessionBySlug"];
 
-interface LivePresentationProps {
+type LivePresentationProps = {
   initialSession: Session;
   slug: string;
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -44,7 +47,10 @@ const categoryVariants = {
   },
 };
 
-export function LivePresentation({ initialSession, slug }: LivePresentationProps) {
+export function LivePresentation({
+  initialSession,
+  slug,
+}: LivePresentationProps) {
   const {
     data: session,
     error: sessionError,
@@ -55,7 +61,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
       refetchInterval: 5000,
       initialData: initialSession,
       retry: 3,
-    }
+    },
   );
 
   useEffect(() => {
@@ -103,7 +109,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
         >
           <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
           <p className="text-2xl">Waiting for the next award.</p>
-          <p className="mt-4 text-muted-foreground">
+          <p className="text-muted-foreground mt-4">
             The host will activate categories when ready.
           </p>
         </motion.div>
@@ -116,14 +122,16 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
           exit="exit"
           variants={containerVariants}
         >
-          <h1 className="mb-12 text-center text-6xl font-bold text-foreground">{session.name}</h1>
+          <h1 className="text-foreground mb-12 text-center text-6xl font-bold">
+            {session.name}
+          </h1>
 
           <div className="space-y-8">
             <AnimatePresence mode="wait">
-              {session.categories.map((category) => (
+              {session.categories.map(category => (
                 <motion.div
                   key={category.id}
-                  className={`rounded-lg bg-background p-8 transition-all duration-500 ${
+                  className={`bg-background rounded-lg p-8 transition-all duration-500 ${
                     !category.revealed && "opacity-50"
                   }`}
                   variants={categoryVariants}
@@ -131,11 +139,11 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
                   animate="visible"
                   exit="exit"
                 >
-                  <h2 className="mb-6 text-center text-4xl font-semibold text-foreground">
+                  <h2 className="text-foreground mb-6 text-center text-4xl font-semibold">
                     {category.name}
                   </h2>
                   {category.description && (
-                    <p className="mb-8 text-center text-xl text-muted-foreground">
+                    <p className="text-muted-foreground mb-8 text-center text-xl">
                       {category.description}
                     </p>
                   )}
@@ -149,9 +157,10 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
                     >
                       {(() => {
                         const sortedNominations = category.nominations.sort(
-                          (a, b) => b._count.votes - a._count.votes
+                          (a, b) => b._count.votes - a._count.votes,
                         );
-                        const highestVoteCount = sortedNominations[0]?._count.votes;
+                        const highestVoteCount =
+                          sortedNominations[0]?._count.votes;
 
                         return sortedNominations.map((nomination, index) => (
                           <div
@@ -159,16 +168,19 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
                             className={`${
                               nomination._count.votes === highestVoteCount
                                 ? "col-span-1 md:px-12"
-                                : "col-span-1 md:max-w-2xl md:mx-auto md:w-full"
+                                : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
                             }`}
                           >
                             <WinnerAnimation
                               nomination={nomination}
                               index={index}
-                              isWinner={nomination._count.votes === highestVoteCount}
+                              isWinner={
+                                nomination._count.votes === highestVoteCount
+                              }
                               isTied={
-                                sortedNominations.filter((n) => n._count.votes === highestVoteCount)
-                                  .length > 1
+                                sortedNominations.filter(
+                                  n => n._count.votes === highestVoteCount,
+                                ).length > 1
                               }
                             />
                           </div>
@@ -180,7 +192,7 @@ export function LivePresentation({ initialSession, slug }: LivePresentationProps
                       categoryId={category.id}
                       initialVoteCount={category.nominations.reduce(
                         (sum, nom) => sum + nom._count.votes,
-                        0
+                        0,
                       )}
                     />
                   )}

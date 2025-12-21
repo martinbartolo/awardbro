@@ -1,13 +1,20 @@
-import { type Config } from "tailwindcss";
-import { fontFamily } from "tailwindcss/defaultTheme";
+import type { Config } from "tailwindcss";
+import tailwindAnimate from "tailwindcss-animate";
+import tailwindDefaultTheme from "tailwindcss/defaultTheme";
 
 export default {
-  darkMode: ["class"],
-  content: ["./src/**/*.tsx"],
+  darkMode: "class",
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@nextui-org/theme/dist/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
+        sans: [
+          "var(--font-geist-sans)",
+          ...tailwindDefaultTheme.fontFamily.sans,
+        ],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -58,5 +65,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindAnimate],
 } satisfies Config;

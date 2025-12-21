@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 const DEVICE_ID_COOKIE = "device_id";
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
   // Check if device ID cookie exists

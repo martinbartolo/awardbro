@@ -1,18 +1,14 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { HelpCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { api } from "~/trpc/react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Checkbox } from "~/components/ui/checkbox";
-import { HelpCircle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
-import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { type CategoryFormValues, categoryFormSchema } from "~/lib/schemas";
 import {
   Form,
   FormControl,
@@ -21,6 +17,16 @@ import {
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
+import { categoryFormSchema, type CategoryFormValues } from "~/lib/schemas";
+import { api } from "~/trpc/react";
 
 export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -35,7 +41,9 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
     },
   });
 
-  const { data: categories } = api.award.getSessionCategories.useQuery({ sessionId });
+  const { data: categories } = api.award.getSessionCategories.useQuery({
+    sessionId,
+  });
 
   const utils = api.useUtils();
 
@@ -46,13 +54,16 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       router.refresh();
       await utils.award.getSessionCategories.invalidate({ sessionId });
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message);
     },
   });
 
   const onSubmit = (values: CategoryFormValues) => {
-    if (values.isAggregate && (!values.sourceCategories || values.sourceCategories.length === 0)) {
+    if (
+      values.isAggregate &&
+      (!values.sourceCategories || values.sourceCategories.length === 0)
+    ) {
       toast.error("Please select at least one source category");
       return;
     }
@@ -66,7 +77,8 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   const isAggregate = form.watch("isAggregate");
   const sourceCategories = form.watch("sourceCategories");
   const isSubmitDisabled =
-    addCategory.isPending || (isAggregate && (!sourceCategories || sourceCategories.length === 0));
+    addCategory.isPending ||
+    (isAggregate && (!sourceCategories || sourceCategories.length === 0));
 
   return (
     <Card>
@@ -117,7 +129,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                     <FormControl>
                       <Checkbox
                         checked={field.value}
-                        onCheckedChange={(checked) => {
+                        onCheckedChange={checked => {
                           field.onChange(checked);
                           if (!checked) {
                             form.setValue("sourceCategories", []);
@@ -130,24 +142,31 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                       <TooltipProvider>
                         <Tooltip delayDuration={0}>
                           <TooltipTrigger asChild>
-                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                            <HelpCircle className="text-muted-foreground h-4 w-4" />
                           </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-[260px] p-4 text-sm">
+                          <TooltipContent
+                            side="right"
+                            className="max-w-[260px] p-4 text-sm"
+                          >
                             <div className="space-y-2">
                               <p>
-                                An aggregate category automatically combines votes from multiple
-                                categories.
+                                An aggregate category automatically combines
+                                votes from multiple categories.
                               </p>
                               <p>
-                                For example, if &quot;Best Overall&quot; aggregates &quot;Best
-                                Performance&quot; and &quot;Best Technical&quot;:
+                                For example, if &quot;Best Overall&quot;
+                                aggregates &quot;Best Performance&quot; and
+                                &quot;Best Technical&quot;:
                               </p>
                               <ul className="list-disc pl-4">
                                 <li>
-                                  John: 2 votes in Performance + 3 in Technical = 5 total votes
+                                  John: 2 votes in Performance + 3 in Technical
+                                  = 5 total votes
                                 </li>
                               </ul>
-                              <p>Voting is disabled for aggregate categories.</p>
+                              <p>
+                                Voting is disabled for aggregate categories.
+                              </p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
@@ -166,26 +185,32 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                 render={() => (
                   <FormItem>
                     <FormLabel>Select Source Categories</FormLabel>
-                    <p className="text-sm text-muted-foreground mb-2 max-w-screen-md">
-                      Choose the categories whose votes you want to combine. Nominations that appear
-                      in multiple source categories will have their votes added together.
+                    <p className="text-muted-foreground mb-2 max-w-(--breakpoint-md) text-sm">
+                      Choose the categories whose votes you want to combine.
+                      Nominations that appear in multiple source categories will
+                      have their votes added together.
                     </p>
                     <div className="space-y-2">
-                      {categories.map((category) => (
+                      {categories.map(category => (
                         <FormField
                           key={category.id}
                           control={form.control}
                           name="sourceCategories"
                           render={({ field }) => (
-                            <FormItem key={category.id} className="flex items-center space-x-2">
+                            <FormItem
+                              key={category.id}
+                              className="flex items-center space-x-2"
+                            >
                               <FormControl>
                                 <Checkbox
                                   checked={field.value?.includes(category.id)}
-                                  onCheckedChange={(checked) => {
+                                  onCheckedChange={checked => {
                                     const currentValue = field.value ?? [];
                                     const newValue = checked
                                       ? [...currentValue, category.id]
-                                      : currentValue.filter((id) => id !== category.id);
+                                      : currentValue.filter(
+                                          id => id !== category.id,
+                                        );
                                     field.onChange(newValue);
                                   }}
                                 />
@@ -202,7 +227,11 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
               />
             )}
 
-            <Button type="submit" className="w-full" disabled={isSubmitDisabled}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitDisabled}
+            >
               {addCategory.isPending ? "Adding..." : "Add Category"}
             </Button>
           </form>

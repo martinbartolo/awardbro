@@ -1,11 +1,16 @@
 "use client";
 
-import { Button } from "~/components/ui/button";
+import {
+  ArrowRight,
+  CopyIcon,
+  RotateCcw,
+  Share2Icon,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Trash2, RotateCcw, Share2Icon, CopyIcon } from "lucide-react";
-import { toast } from "sonner";
-import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,11 +22,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 
-interface SessionActionsProps {
+type SessionActionsProps = {
   slug: string;
   sessionId: string;
-}
+};
 
 export function SessionActions({ slug, sessionId }: SessionActionsProps) {
   const router = useRouter();
@@ -57,14 +64,14 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
 
   return (
     <div className="flex flex-wrap gap-3">
-      <Button asChild className="w-full sm:w-auto group">
+      <Button asChild className="group w-full sm:w-auto">
         <Link href={`/vote/${slug}`} target="_blank">
           Voting
           <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
         </Link>
       </Button>
 
-      <Button asChild className="w-full sm:w-auto group">
+      <Button asChild className="group w-full sm:w-auto">
         <Link href={`/present/${slug}`} target="_blank">
           Presentation
           <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -96,7 +103,8 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset all votes?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all votes from all categories. This action cannot be undone.
+              This will remove all votes from all categories. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -126,8 +134,8 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete award show?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete your award show and all its data. This action cannot be
-              undone.
+              This will permanently delete your award show and all its data.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

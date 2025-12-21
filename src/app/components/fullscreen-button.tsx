@@ -1,8 +1,10 @@
 "use client";
 
-import { Button } from "~/components/ui/button";
+import { useEffect, useState } from "react";
+
 import { Maximize2, Minimize2 } from "lucide-react";
-import { useState, useEffect } from "react";
+
+import { Button } from "~/components/ui/button";
 
 export function FullscreenButton() {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -13,7 +15,8 @@ export function FullscreenButton() {
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   const toggleFullscreen = async () => {
@@ -33,7 +36,7 @@ export function FullscreenButton() {
       onClick={toggleFullscreen}
       variant="ghost"
       size="icon"
-      className="fixed right-4 top-4 z-50"
+      className="fixed top-4 right-4 z-50"
       tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
     >
       {isFullscreen ? <Minimize2 /> : <Maximize2 />}

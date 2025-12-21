@@ -1,7 +1,9 @@
-import { api } from "~/trpc/server";
-import { notFound } from "next/navigation";
-import { LiveVotingSession } from "~/app/components/live-voting-session";
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { LiveVotingSession } from "~/app/components/live-voting-session";
+import { api } from "~/trpc/server";
+
 import ogImage from "./opengraph-image.png";
 
 export async function generateMetadata({
@@ -60,7 +62,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function VotePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function VotePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const session = await api.award.getSessionBySlug({
     slug,
@@ -78,8 +84,12 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
     : false;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
-      <LiveVotingSession initialSession={session} slug={slug} initialHasVoted={hasVoted} />
+    <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
+      <LiveVotingSession
+        initialSession={session}
+        slug={slug}
+        initialHasVoted={hasVoted}
+      />
     </main>
   );
 }

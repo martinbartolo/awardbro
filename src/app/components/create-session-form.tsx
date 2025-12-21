@@ -1,16 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { api } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { AlertCircle } from "lucide-react";
-import { toast } from "sonner";
-import { TRPCClientError } from "@trpc/client";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type SessionFormValues, sessionFormSchema } from "~/lib/schemas";
+import { TRPCClientError } from "@trpc/client";
+import { AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import {
   Form,
   FormControl,
@@ -19,6 +23,9 @@ import {
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
+import { sessionFormSchema, type SessionFormValues } from "~/lib/schemas";
+import { api } from "~/trpc/react";
 
 export function CreateSessionForm() {
   const router = useRouter();
@@ -32,11 +39,11 @@ export function CreateSessionForm() {
   });
 
   const createSession = api.award.createSession.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       sessionStorage.setItem("initial-access", data.slug);
       router.push(`/manage/${data.slug}`);
     },
-    onError: (error) => {
+    onError: error => {
       if (error instanceof TRPCClientError) {
         toast.error(error.message);
       } else {
@@ -63,7 +70,9 @@ export function CreateSessionForm() {
     <Card>
       <CardHeader>
         <CardTitle>Create Award Show</CardTitle>
-        <CardDescription>Create a new award show and share it with your friends</CardDescription>
+        <CardDescription>
+          Create a new award show and share it with your friends
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -77,7 +86,7 @@ export function CreateSessionForm() {
                   <FormControl>
                     <Input
                       {...field}
-                      onChange={(e) => handleNameChange(e.target.value)}
+                      onChange={e => handleNameChange(e.target.value)}
                       placeholder="e.g., Movie Awards 2024"
                     />
                   </FormControl>
@@ -93,9 +102,13 @@ export function CreateSessionForm() {
                 <FormItem>
                   <FormLabel>URL</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="movie-awards-2024" autoCapitalize="off" />
+                    <Input
+                      {...field}
+                      placeholder="movie-awards-2024"
+                      autoCapitalize="off"
+                    />
                   </FormControl>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Your award show will be available at: /vote/{field.value}
                   </p>
                   <FormMessage />
@@ -110,7 +123,9 @@ export function CreateSessionForm() {
                 <FormItem>
                   <div className="flex items-center gap-2">
                     <FormLabel>Password</FormLabel>
-                    <span className="text-xs text-muted-foreground">(Optional)</span>
+                    <span className="text-muted-foreground text-xs">
+                      (Optional)
+                    </span>
                   </div>
                   <FormControl>
                     <Input
@@ -125,15 +140,19 @@ export function CreateSessionForm() {
               )}
             />
 
-            <div className="flex items-start gap-2 rounded-md bg-muted p-3">
-              <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              <p className="text-sm text-muted-foreground">
-                Make sure to save your management URL and password. You&apos;ll need both to access
-                your award show management later!
+            <div className="bg-muted flex items-start gap-2 rounded-md p-3">
+              <AlertCircle className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+              <p className="text-muted-foreground text-sm">
+                Make sure to save your management URL and password. You&apos;ll
+                need both to access your award show management later!
               </p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={createSession.isPending}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={createSession.isPending}
+            >
               {createSession.isPending ? "Creating..." : "Create Award Show"}
             </Button>
           </form>

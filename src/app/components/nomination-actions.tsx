@@ -1,10 +1,9 @@
 "use client";
 
-import { Button } from "~/components/ui/button";
 import { XIcon } from "lucide-react";
-import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +15,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 
-interface NominationActionsProps {
+type NominationActionsProps = {
   nominationId: string;
   nominationName: string;
-}
+};
 
-export function NominationActions({ nominationId, nominationName }: NominationActionsProps) {
+export function NominationActions({
+  nominationId,
+  nominationName,
+}: NominationActionsProps) {
   const router = useRouter();
 
   const deleteNomination = api.award.deleteNomination.useMutation({
@@ -51,8 +55,9 @@ export function NominationActions({ nominationId, nominationName }: NominationAc
         <AlertDialogHeader>
           <AlertDialogTitle>Delete nomination?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &quot;{nominationName}&quot;? This will permanently
-            remove this nomination and all its votes. This action cannot be undone.
+            Are you sure you want to delete &quot;{nominationName}&quot;? This
+            will permanently remove this nomination and all its votes. This
+            action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "~/trpc/react";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
-interface LiveVotingProps {
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { api } from "~/trpc/react";
+
+type LiveVotingProps = {
   categoryId: string;
   initialVoteCount: number;
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0, scale: 0.8 },
@@ -42,12 +44,12 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
       refetchInterval: 500,
       staleTime: 0,
       retry: 3,
-    }
+    },
   );
 
   useEffect(() => {
     if (isError) {
-      setErrorCount((prev) => prev + 1);
+      setErrorCount(prev => prev + 1);
       if (errorCount < 3) {
         toast.error("Failed to fetch vote updates, retrying...");
       } else {
@@ -58,7 +60,10 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
 
   useEffect(() => {
     if (data) {
-      const newTotal = data.nominations.reduce((sum, nom) => sum + nom._count.votes, 0);
+      const newTotal = data.nominations.reduce(
+        (sum, nom) => sum + nom._count.votes,
+        0,
+      );
       if (newTotal !== totalVotes) {
         setPrevVotes(totalVotes);
         setTotalVotes(newTotal);
@@ -68,7 +73,12 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
 
   if (isError && errorCount >= 3) {
     return (
-      <motion.div variants={containerVariants} initial="hidden" animate="visible" exit="exit">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
@@ -111,7 +121,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         </motion.div>
 
         <motion.div
-          className="text-xl text-muted-foreground mt-2"
+          className="text-muted-foreground mt-2 text-xl"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -131,7 +141,7 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
                 stiffness: 100,
                 damping: 10,
               }}
-              className="absolute top-0 left-1/2 transform -translate-x-1/2 text-green-400 font-bold"
+              className="absolute top-0 left-1/2 -translate-x-1/2 transform font-bold text-green-400"
             >
               +{(totalVotes - prevVotes).toLocaleString()}
             </motion.div>

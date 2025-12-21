@@ -7,7 +7,10 @@ export const sessionFormSchema = z.object({
     .string()
     .min(1, "Slug is required")
     .max(100, "Slug is too long")
-    .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Slug can only contain lowercase letters, numbers, and hyphens",
+    ),
   password: z
     .string()
     .min(4, "Password must be at least 4 characters")
@@ -24,11 +27,13 @@ export const categoryFormSchema = z
     sourceCategories: z.array(z.string()),
   })
   .refine(
-    (data) => !data.isAggregate || (data.sourceCategories && data.sourceCategories.length > 0),
+    data =>
+      !data.isAggregate ||
+      (data.sourceCategories && data.sourceCategories.length > 0),
     {
-      message: "Aggregate categories must have at least one source category",
       path: ["sourceCategories"],
-    }
+      error: "Aggregate categories must have at least one source category",
+    },
   );
 
 export const nominationFormSchema = z.object({

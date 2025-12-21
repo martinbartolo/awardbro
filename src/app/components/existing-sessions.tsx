@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
+
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
+
 import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 
 export function ExistingSessions() {
@@ -26,7 +34,9 @@ export function ExistingSessions() {
     <Card>
       <CardHeader>
         <CardTitle>Access Existing Show</CardTitle>
-        <CardDescription>Enter the URL of an existing award show</CardDescription>
+        <CardDescription>
+          Enter the URL of an existing award show
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -35,12 +45,13 @@ export function ExistingSessions() {
             <Input
               id="existing-url"
               value={slug}
-              onChange={(e) => setSlug(e.target.value.trim())}
+              onChange={e => setSlug(e.target.value.trim())}
               placeholder="your-award-show"
               autoCapitalize="off"
             />
-            <p className="text-xs text-muted-foreground">
-              Enter just the show name for voting, or add manage/ prefix for management
+            <p className="text-muted-foreground text-xs">
+              Enter just the show name for voting, or add manage/ prefix for
+              management
             </p>
           </div>
           <Button type="submit" className="w-full">

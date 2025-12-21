@@ -1,9 +1,14 @@
-import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { sessionFormSchema, categoryFormSchema, nominationFormSchema } from "~/lib/schemas";
+import { z } from "zod";
+
+import {
+  categoryFormSchema,
+  nominationFormSchema,
+  sessionFormSchema,
+} from "~/lib/schemas";
+import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 const DEVICE_ID_COOKIE = "device_id";
 const SALT_ROUNDS = 10;
@@ -25,7 +30,9 @@ const checkRateLimit = (identifier: string) => {
     }
 
     if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-      const timeLeft = Math.ceil((LOCKOUT_TIME - (now - attempts.lastAttempt)) / 1000 / 60);
+      const timeLeft = Math.ceil(
+        (LOCKOUT_TIME - (now - attempts.lastAttempt)) / 1000 / 60,
+      );
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message: `Too many attempts. Please try again in ${timeLeft} minutes`,
@@ -57,65 +64,71 @@ const recordLoginAttempt = (identifier: string, success: boolean) => {
 };
 
 export const awardRouter = createTRPCRouter({
-  createSession: publicProcedure.input(sessionFormSchema).mutation(async ({ ctx, input }) => {
-    try {
-      return await ctx.db.session.create({
-        data: {
-          name: input.name,
-          slug: input.slug,
-          password: input.password ? await bcrypt.hash(input.password, SALT_ROUNDS) : null,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2002") {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "That URL is already in use. Please try another one",
-          });
+  createSession: publicProcedure
+    .input(sessionFormSchema)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.db.session.create({
+          data: {
+            name: input.name,
+            slug: input.slug,
+            password: input.password
+              ? await bcrypt.hash(input.password, SALT_ROUNDS)
+              : null,
+          },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          if (error.code === "P2002") {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "That URL is already in use. Please try another one",
+            });
+          }
         }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create session",
+        });
       }
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create session",
-      });
-    }
-  }),
+    }),
 
-  getSession: publicProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
-    const session = await ctx.db.session.findUnique({
-      where: { id: input.id },
-      include: {
-        categories: {
-          include: {
-            nominations: {
-              include: {
-                _count: {
-                  select: { votes: true },
+  getSession: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const session = await ctx.db.session.findUnique({
+        where: { id: input.id },
+        include: {
+          categories: {
+            include: {
+              nominations: {
+                include: {
+                  _count: {
+                    select: { votes: true },
+                  },
                 },
               },
             },
           },
         },
-      },
-    });
-
-    if (!session) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Session not found",
       });
-    }
 
-    return session;
-  }),
+      if (!session) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Session not found",
+        });
+      }
+
+      return session;
+    }),
 
   getSessionBySlug: publicProcedure
     .input(
       z.object({
         slug: z.string(),
         activeOnly: z.boolean().optional(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
@@ -148,19 +161,19 @@ export const awardRouter = createTRPCRouter({
 
       // Process aggregate categories
       const categoriesWithAggregateVotes = await Promise.all(
-        session.categories.map(async (category) => {
+        session.categories.map(async category => {
           if (!category.isAggregate) {
             return category;
           }
 
           const nominationsWithTotalVotes = await Promise.all(
-            category.nominations.map(async (nomination) => {
+            category.nominations.map(async nomination => {
               // Find matching nominations in source categories
               const sourceNominations = await ctx.db.nomination.findMany({
                 where: {
                   name: nomination.name,
                   categoryId: {
-                    in: category.sourceCategories.map((c) => c.id),
+                    in: category.sourceCategories.map(c => c.id),
                   },
                 },
                 include: {
@@ -171,7 +184,10 @@ export const awardRouter = createTRPCRouter({
               });
 
               // Sum up all votes for this nomination across source categories
-              const totalVotes = sourceNominations.reduce((sum, nom) => sum + nom._count.votes, 0);
+              const totalVotes = sourceNominations.reduce(
+                (sum, nom) => sum + nom._count.votes,
+                0,
+              );
 
               return {
                 ...nomination,
@@ -179,14 +195,14 @@ export const awardRouter = createTRPCRouter({
                   votes: totalVotes,
                 },
               };
-            })
+            }),
           );
 
           return {
             ...category,
             nominations: nominationsWithTotalVotes,
           };
-        })
+        }),
       );
 
       return {
@@ -210,119 +226,126 @@ export const awardRouter = createTRPCRouter({
       });
     }),
 
-  addCategory: publicProcedure.input(categoryFormSchema).mutation(async ({ ctx, input }) => {
-    try {
-      const category = await ctx.db.category.create({
-        data: {
-          sessionId: input.sessionId,
-          name: input.name,
-          description: input.description,
-          isAggregate: input.isAggregate ?? false,
-          sourceCategories:
-            input.isAggregate && input.sourceCategories
-              ? {
-                  connect: input.sourceCategories.map((id) => ({ id })),
-                }
-              : undefined,
-        },
-      });
-
-      // If this is an aggregate category, copy nominations from source categories
-      if (input.isAggregate && input.sourceCategories?.length) {
-        const sourceNominations = await ctx.db.nomination.findMany({
-          where: {
-            categoryId: {
-              in: input.sourceCategories,
-            },
-          },
-          distinct: ["name"],
-          select: {
-            name: true,
-            description: true,
+  addCategory: publicProcedure
+    .input(categoryFormSchema)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const category = await ctx.db.category.create({
+          data: {
+            sessionId: input.sessionId,
+            name: input.name,
+            description: input.description,
+            isAggregate: input.isAggregate ?? false,
+            sourceCategories:
+              input.isAggregate && input.sourceCategories
+                ? {
+                    connect: input.sourceCategories.map(id => ({ id })),
+                  }
+                : undefined,
           },
         });
 
-        // Create nominations in the aggregate category
-        await ctx.db.nomination.createMany({
-          data: sourceNominations.map((nom) => ({
-            name: nom.name,
-            description: nom.description,
-            categoryId: category.id,
-          })),
-        });
-      }
-
-      return category;
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create category",
-      });
-    }
-  }),
-
-  getCategory: publicProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
-    const category = await ctx.db.category.findUnique({
-      where: { id: input.id },
-      include: {
-        nominations: {
-          include: {
-            _count: {
-              select: { votes: true },
-            },
-          },
-        },
-        sourceCategories: true,
-      },
-    });
-
-    if (!category) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Category not found",
-      });
-    }
-
-    // If this is an aggregate category, sum up votes from source categories
-    if (category.isAggregate) {
-      const nominationsWithTotalVotes = await Promise.all(
-        category.nominations.map(async (nomination) => {
-          // Find matching nominations in source categories
+        // If this is an aggregate category, copy nominations from source categories
+        if (input.isAggregate && input.sourceCategories?.length) {
           const sourceNominations = await ctx.db.nomination.findMany({
             where: {
-              name: nomination.name,
               categoryId: {
-                in: category.sourceCategories.map((c) => c.id),
+                in: input.sourceCategories,
               },
             },
+            distinct: ["name"],
+            select: {
+              name: true,
+              description: true,
+            },
+          });
+
+          // Create nominations in the aggregate category
+          await ctx.db.nomination.createMany({
+            data: sourceNominations.map(nom => ({
+              name: nom.name,
+              description: nom.description,
+              categoryId: category.id,
+            })),
+          });
+        }
+
+        return category;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create category",
+        });
+      }
+    }),
+
+  getCategory: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const category = await ctx.db.category.findUnique({
+        where: { id: input.id },
+        include: {
+          nominations: {
             include: {
               _count: {
                 select: { votes: true },
               },
             },
-          });
+          },
+          sourceCategories: true,
+        },
+      });
 
-          // Sum up all votes for this nomination across source categories
-          const totalVotes = sourceNominations.reduce((sum, nom) => sum + nom._count.votes, 0);
+      if (!category) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Category not found",
+        });
+      }
 
-          return {
-            ...nomination,
-            _count: {
-              votes: totalVotes,
-            },
-          };
-        })
-      );
+      // If this is an aggregate category, sum up votes from source categories
+      if (category.isAggregate) {
+        const nominationsWithTotalVotes = await Promise.all(
+          category.nominations.map(async nomination => {
+            // Find matching nominations in source categories
+            const sourceNominations = await ctx.db.nomination.findMany({
+              where: {
+                name: nomination.name,
+                categoryId: {
+                  in: category.sourceCategories.map(c => c.id),
+                },
+              },
+              include: {
+                _count: {
+                  select: { votes: true },
+                },
+              },
+            });
 
-      return {
-        ...category,
-        nominations: nominationsWithTotalVotes,
-      };
-    }
+            // Sum up all votes for this nomination across source categories
+            const totalVotes = sourceNominations.reduce(
+              (sum, nom) => sum + nom._count.votes,
+              0,
+            );
 
-    return category;
-  }),
+            return {
+              ...nomination,
+              _count: {
+                votes: totalVotes,
+              },
+            };
+          }),
+        );
+
+        return {
+          ...category,
+          nominations: nominationsWithTotalVotes,
+        };
+      }
+
+      return category;
+    }),
 
   toggleRevealCategory: publicProcedure
     .input(z.object({ id: z.string() }))
@@ -345,35 +368,37 @@ export const awardRouter = createTRPCRouter({
       });
     }),
 
-  addNomination: publicProcedure.input(nominationFormSchema).mutation(async ({ ctx, input }) => {
-    try {
-      // First verify the category exists
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.categoryId },
-      });
+  addNomination: publicProcedure
+    .input(nominationFormSchema)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        // First verify the category exists
+        const category = await ctx.db.category.findUnique({
+          where: { id: input.categoryId },
+        });
 
-      if (!category) {
+        if (!category) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Category not found",
+          });
+        }
+
+        return await ctx.db.nomination.create({
+          data: {
+            categoryId: input.categoryId,
+            name: input.name,
+            description: input.description,
+          },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create nomination",
         });
       }
-
-      return await ctx.db.nomination.create({
-        data: {
-          categoryId: input.categoryId,
-          name: input.name,
-          description: input.description,
-        },
-      });
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create nomination",
-      });
-    }
-  }),
+    }),
 
   setActiveCategory: publicProcedure
     .input(z.object({ categoryId: z.string() }))
@@ -415,14 +440,14 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         nominationId: z.string().min(1, "Nomination ID is required"),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
         const deviceId = ctx.headers
           .get("cookie")
           ?.split(";")
-          .find((c) => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+          .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
           ?.split("=")[1];
 
         if (!deviceId) {
@@ -497,7 +522,7 @@ export const awardRouter = createTRPCRouter({
       const deviceId = ctx.headers
         .get("cookie")
         ?.split(";")
-        .find((c) => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
         ?.split("=")[1];
 
       if (!deviceId) {
@@ -525,7 +550,7 @@ export const awardRouter = createTRPCRouter({
       const deviceId = ctx.headers
         .get("cookie")
         ?.split(";")
-        .find((c) => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
         ?.split("=")[1];
 
       if (!deviceId) {
@@ -594,7 +619,7 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -697,7 +722,7 @@ export const awardRouter = createTRPCRouter({
       z.object({
         slug: z.string(),
         password: z.string(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       // Check rate limit before proceeding

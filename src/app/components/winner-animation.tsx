@@ -1,8 +1,10 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
+
 import confetti from "canvas-confetti";
+import { AnimatePresence, motion } from "framer-motion";
+
 import { NominationDescription } from "./nomination-description";
 
 type Nomination = {
@@ -117,7 +119,14 @@ export function WinnerAnimation({
           angle: 90,
           spread: 70,
           origin: { y: 0.7, x: Math.random() },
-          colors: ["#FFD700", "#FDB931", "#ff0000", "#00ff00", "#0000ff", "#ff00ff"],
+          colors: [
+            "#FFD700",
+            "#FDB931",
+            "#ff0000",
+            "#00ff00",
+            "#0000ff",
+            "#ff00ff",
+          ],
           startVelocity: 30,
           gravity: 1.2,
           drift: Math.random() - 0.5,
@@ -165,11 +174,11 @@ export function WinnerAnimation({
 
   const medalColors = {
     winner:
-      "bg-gradient-to-br from-yellow-300 to-yellow-500 border-yellow-400 shadow-lg shadow-yellow-500/50 text-shadow-medal",
+      "bg-linear-to-br from-yellow-300 to-yellow-500 border-yellow-400 shadow-lg shadow-yellow-500/50 text-shadow-medal",
     second:
-      "bg-gradient-to-br from-gray-200 to-gray-400 border-gray-300 shadow-lg shadow-gray-400/50 text-shadow-medal",
+      "bg-linear-to-br from-gray-200 to-gray-400 border-gray-300 shadow-lg shadow-gray-400/50 text-shadow-medal",
     third:
-      "bg-gradient-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal",
+      "bg-linear-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal",
     other: "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30",
   };
 
@@ -221,7 +230,7 @@ export function WinnerAnimation({
           animate="visible"
           exit="exit"
           variants={variants}
-          className={`rounded-xl p-6 border-2 backdrop-blur-sm ${isWinner ? "p-8 " : ""}${
+          className={`rounded-xl border-2 p-6 backdrop-blur-xs ${isWinner ? "p-8" : ""}${
             isWinner
               ? medalColors.winner
               : index === 1
@@ -231,7 +240,7 @@ export function WinnerAnimation({
                   : medalColors.other
           }`}
         >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1">
               {isWinner && (
                 <motion.div
@@ -239,7 +248,7 @@ export function WinnerAnimation({
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
                   transition={{ delay: index * 0.3 + 0.6 }}
-                  className="mb-2 inline-block bg-background/20 rounded-full px-4 py-1 text-sm font-bold text-background"
+                  className="bg-background/20 text-background mb-2 inline-block rounded-full px-4 py-1 text-sm font-bold"
                 >
                   🏆 {isTied ? "Tied Winner" : "Winner"}
                 </motion.div>
@@ -247,7 +256,7 @@ export function WinnerAnimation({
               <motion.h3
                 className={`${
                   isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
-                } font-extrabold text-background`}
+                } text-background font-extrabold`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -264,11 +273,14 @@ export function WinnerAnimation({
                 </motion.div>
               )}
             </div>
-            <motion.div variants={votesVariants} className="flex items-center gap-2">
+            <motion.div
+              variants={votesVariants}
+              className="flex items-center gap-2"
+            >
               <motion.span
                 className={`${
                   isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
-                } font-black text-background whitespace-nowrap`}
+                } text-background font-black whitespace-nowrap`}
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{
                   duration: 0.5,
