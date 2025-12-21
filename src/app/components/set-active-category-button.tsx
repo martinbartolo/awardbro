@@ -38,7 +38,7 @@ export function SetActiveCategoryButton({
         setActive.mutate({ categoryId });
       }}
       disabled={isUpdating}
-      variant={isActive ? "destructive" : "outline-solid"}
+      variant={isActive ? "destructive" : "outline"}
       size="sm"
       className="group"
     >
