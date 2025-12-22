@@ -7,11 +7,15 @@ import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { type CategoryType } from "~/generated/prisma/enums";
 import { api } from "~/trpc/react";
 
 type LiveVotingProps = {
   categoryId: string;
   initialVoteCount: number;
+  categoryType: CategoryType;
+  rankingTop?: number | null;
+  hideVoteCounts?: boolean;
 };
 
 const containerVariants = {
@@ -35,7 +39,13 @@ const containerVariants = {
 
 const MAX_RETRIES = 3;
 
-export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
+export function LiveVoting({
+  categoryId,
+  initialVoteCount,
+  categoryType,
+  rankingTop,
+  hideVoteCounts = false,
+}: LiveVotingProps) {
   const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const lastToastTimeRef = useRef(0);
 
@@ -52,9 +62,17 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
   const hasExceededErrorLimit = isError && failureCount >= MAX_RETRIES;
 
   // Calculate totalVotes directly from data (derived state)
-  const totalVotes = data
+  // For ranking categories, _count.votes contains points - we need to estimate voters
+  const rawTotal = data
     ? data.nominations.reduce((sum, nom) => sum + nom._count.votes, 0)
     : initialVoteCount;
+
+  // For ranking categories, estimate voter count from points
+  // Each voter contributes sum of 1+2+...+rankingTop points = rankingTop*(rankingTop+1)/2
+  const totalVotes =
+    categoryType === "RANKING" && rankingTop
+      ? Math.round(rawTotal / ((rankingTop * (rankingTop + 1)) / 2))
+      : rawTotal;
 
   // Calculate the vote difference for animation
   const voteDiff = totalVotes - prevVotes;
@@ -121,49 +139,67 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
       exit="exit"
     >
       <motion.div className="relative mb-4" initial={false}>
-        <motion.div
-          key={totalVotes}
-          initial={{ scale: 1.5, y: -20, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 20,
-            duration: 0.5,
-          }}
-          className="text-5xl font-bold text-white"
-        >
-          {totalVotes.toLocaleString()}
-        </motion.div>
-
-        <motion.div
-          className="text-muted-foreground mt-2 text-xl"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          Total Votes
-        </motion.div>
-
-        <AnimatePresence>
-          {showVoteDiff && (
+        {hideVoteCounts ? (
+          <motion.div
+            initial={{ scale: 1.5, y: -20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 20,
+              duration: 0.5,
+            }}
+            className="text-4xl font-bold text-white"
+          >
+            Voting Open
+          </motion.div>
+        ) : (
+          <>
             <motion.div
-              key={`diff-${totalVotes}`}
-              initial={{ opacity: 1, scale: 1, y: 0 }}
-              animate={{ opacity: 0, scale: 2, y: -30 }}
-              exit={{ opacity: 0 }}
+              key={totalVotes}
+              initial={{ scale: 1.5, y: -20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{
-                duration: 0.7,
                 type: "spring",
-                stiffness: 100,
-                damping: 10,
+                stiffness: 300,
+                damping: 20,
+                duration: 0.5,
               }}
-              className="absolute top-0 left-1/2 -translate-x-1/2 transform font-bold text-green-400"
+              className="text-5xl font-bold text-white"
             >
-              +{voteDiff.toLocaleString()}
+              {totalVotes.toLocaleString()}
             </motion.div>
-          )}
-        </AnimatePresence>
+
+            <motion.div
+              className="text-muted-foreground mt-2 text-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              Total Votes
+            </motion.div>
+
+            <AnimatePresence>
+              {showVoteDiff && (
+                <motion.div
+                  key={`diff-${totalVotes}`}
+                  initial={{ opacity: 1, scale: 1, y: 0 }}
+                  animate={{ opacity: 0, scale: 2, y: -30 }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: 0.7,
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 10,
+                  }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 transform font-bold text-green-400"
+                >
+                  +{voteDiff.toLocaleString()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </motion.div>
 
       <motion.div

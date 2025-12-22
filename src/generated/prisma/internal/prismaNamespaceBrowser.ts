@@ -92,6 +92,8 @@ export const CategoryScalarFieldEnum = {
   revealed: 'revealed',
   isActive: 'isActive',
   type: 'type',
+  rankingTop: 'rankingTop',
+  hideVoteCounts: 'hideVoteCounts',
   sessionId: 'sessionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -116,6 +118,7 @@ export const VoteScalarFieldEnum = {
   id: 'id',
   deviceId: 'deviceId',
   nominationId: 'nominationId',
+  rank: 'rank',
   createdAt: 'createdAt'
 } as const
 

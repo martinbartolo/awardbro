@@ -20,14 +20,25 @@ export type VoteModel = runtime.Types.Result.DefaultSelection<Prisma.$VotePayloa
 
 export type AggregateVote = {
   _count: VoteCountAggregateOutputType | null
+  _avg: VoteAvgAggregateOutputType | null
+  _sum: VoteSumAggregateOutputType | null
   _min: VoteMinAggregateOutputType | null
   _max: VoteMaxAggregateOutputType | null
+}
+
+export type VoteAvgAggregateOutputType = {
+  rank: number | null
+}
+
+export type VoteSumAggregateOutputType = {
+  rank: number | null
 }
 
 export type VoteMinAggregateOutputType = {
   id: string | null
   deviceId: string | null
   nominationId: string | null
+  rank: number | null
   createdAt: Date | null
 }
 
@@ -35,6 +46,7 @@ export type VoteMaxAggregateOutputType = {
   id: string | null
   deviceId: string | null
   nominationId: string | null
+  rank: number | null
   createdAt: Date | null
 }
 
@@ -42,15 +54,25 @@ export type VoteCountAggregateOutputType = {
   id: number
   deviceId: number
   nominationId: number
+  rank: number
   createdAt: number
   _all: number
 }
 
 
+export type VoteAvgAggregateInputType = {
+  rank?: true
+}
+
+export type VoteSumAggregateInputType = {
+  rank?: true
+}
+
 export type VoteMinAggregateInputType = {
   id?: true
   deviceId?: true
   nominationId?: true
+  rank?: true
   createdAt?: true
 }
 
@@ -58,6 +80,7 @@ export type VoteMaxAggregateInputType = {
   id?: true
   deviceId?: true
   nominationId?: true
+  rank?: true
   createdAt?: true
 }
 
@@ -65,6 +88,7 @@ export type VoteCountAggregateInputType = {
   id?: true
   deviceId?: true
   nominationId?: true
+  rank?: true
   createdAt?: true
   _all?: true
 }
@@ -107,6 +131,18 @@ export type VoteAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: VoteAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: VoteSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: VoteMinAggregateInputType
@@ -137,6 +173,8 @@ export type VoteGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: VoteCountAggregateInputType | true
+  _avg?: VoteAvgAggregateInputType
+  _sum?: VoteSumAggregateInputType
   _min?: VoteMinAggregateInputType
   _max?: VoteMaxAggregateInputType
 }
@@ -145,8 +183,11 @@ export type VoteGroupByOutputType = {
   id: string
   deviceId: string
   nominationId: string
+  rank: number | null
   createdAt: Date
   _count: VoteCountAggregateOutputType | null
+  _avg: VoteAvgAggregateOutputType | null
+  _sum: VoteSumAggregateOutputType | null
   _min: VoteMinAggregateOutputType | null
   _max: VoteMaxAggregateOutputType | null
 }
@@ -173,6 +214,7 @@ export type VoteWhereInput = {
   id?: Prisma.StringFilter<"Vote"> | string
   deviceId?: Prisma.StringFilter<"Vote"> | string
   nominationId?: Prisma.StringFilter<"Vote"> | string
+  rank?: Prisma.IntNullableFilter<"Vote"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Vote"> | Date | string
   nomination?: Prisma.XOR<Prisma.NominationScalarRelationFilter, Prisma.NominationWhereInput>
 }
@@ -181,6 +223,7 @@ export type VoteOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   deviceId?: Prisma.SortOrder
   nominationId?: Prisma.SortOrder
+  rank?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   nomination?: Prisma.NominationOrderByWithRelationInput
 }
@@ -193,6 +236,7 @@ export type VoteWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.VoteWhereInput | Prisma.VoteWhereInput[]
   deviceId?: Prisma.StringFilter<"Vote"> | string
   nominationId?: Prisma.StringFilter<"Vote"> | string
+  rank?: Prisma.IntNullableFilter<"Vote"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Vote"> | Date | string
   nomination?: Prisma.XOR<Prisma.NominationScalarRelationFilter, Prisma.NominationWhereInput>
 }, "id" | "deviceId_nominationId">
@@ -201,10 +245,13 @@ export type VoteOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   deviceId?: Prisma.SortOrder
   nominationId?: Prisma.SortOrder
+  rank?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.VoteCountOrderByAggregateInput
+  _avg?: Prisma.VoteAvgOrderByAggregateInput
   _max?: Prisma.VoteMaxOrderByAggregateInput
   _min?: Prisma.VoteMinOrderByAggregateInput
+  _sum?: Prisma.VoteSumOrderByAggregateInput
 }
 
 export type VoteScalarWhereWithAggregatesInput = {
@@ -214,12 +261,14 @@ export type VoteScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Vote"> | string
   deviceId?: Prisma.StringWithAggregatesFilter<"Vote"> | string
   nominationId?: Prisma.StringWithAggregatesFilter<"Vote"> | string
+  rank?: Prisma.IntNullableWithAggregatesFilter<"Vote"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Vote"> | Date | string
 }
 
 export type VoteCreateInput = {
   id?: string
   deviceId: string
+  rank?: number | null
   createdAt?: Date | string
   nomination: Prisma.NominationCreateNestedOneWithoutVotesInput
 }
@@ -228,12 +277,14 @@ export type VoteUncheckedCreateInput = {
   id?: string
   deviceId: string
   nominationId: string
+  rank?: number | null
   createdAt?: Date | string
 }
 
 export type VoteUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   nomination?: Prisma.NominationUpdateOneRequiredWithoutVotesNestedInput
 }
@@ -242,6 +293,7 @@ export type VoteUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
   nominationId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -249,12 +301,14 @@ export type VoteCreateManyInput = {
   id?: string
   deviceId: string
   nominationId: string
+  rank?: number | null
   createdAt?: Date | string
 }
 
 export type VoteUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -262,6 +316,7 @@ export type VoteUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
   nominationId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -284,13 +339,19 @@ export type VoteCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   deviceId?: Prisma.SortOrder
   nominationId?: Prisma.SortOrder
+  rank?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+}
+
+export type VoteAvgOrderByAggregateInput = {
+  rank?: Prisma.SortOrder
 }
 
 export type VoteMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   deviceId?: Prisma.SortOrder
   nominationId?: Prisma.SortOrder
+  rank?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -298,7 +359,12 @@ export type VoteMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   deviceId?: Prisma.SortOrder
   nominationId?: Prisma.SortOrder
+  rank?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+}
+
+export type VoteSumOrderByAggregateInput = {
+  rank?: Prisma.SortOrder
 }
 
 export type VoteCreateNestedManyWithoutNominationInput = {
@@ -346,12 +412,14 @@ export type VoteUncheckedUpdateManyWithoutNominationNestedInput = {
 export type VoteCreateWithoutNominationInput = {
   id?: string
   deviceId: string
+  rank?: number | null
   createdAt?: Date | string
 }
 
 export type VoteUncheckedCreateWithoutNominationInput = {
   id?: string
   deviceId: string
+  rank?: number | null
   createdAt?: Date | string
 }
 
@@ -388,30 +456,35 @@ export type VoteScalarWhereInput = {
   id?: Prisma.StringFilter<"Vote"> | string
   deviceId?: Prisma.StringFilter<"Vote"> | string
   nominationId?: Prisma.StringFilter<"Vote"> | string
+  rank?: Prisma.IntNullableFilter<"Vote"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Vote"> | Date | string
 }
 
 export type VoteCreateManyNominationInput = {
   id?: string
   deviceId: string
+  rank?: number | null
   createdAt?: Date | string
 }
 
 export type VoteUpdateWithoutNominationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type VoteUncheckedUpdateWithoutNominationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type VoteUncheckedUpdateManyWithoutNominationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   deviceId?: Prisma.StringFieldUpdateOperationsInput | string
+  rank?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -421,6 +494,7 @@ export type VoteSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   id?: boolean
   deviceId?: boolean
   nominationId?: boolean
+  rank?: boolean
   createdAt?: boolean
   nomination?: boolean | Prisma.NominationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["vote"]>
@@ -429,6 +503,7 @@ export type VoteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   deviceId?: boolean
   nominationId?: boolean
+  rank?: boolean
   createdAt?: boolean
   nomination?: boolean | Prisma.NominationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["vote"]>
@@ -437,6 +512,7 @@ export type VoteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   deviceId?: boolean
   nominationId?: boolean
+  rank?: boolean
   createdAt?: boolean
   nomination?: boolean | Prisma.NominationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["vote"]>
@@ -445,10 +521,11 @@ export type VoteSelectScalar = {
   id?: boolean
   deviceId?: boolean
   nominationId?: boolean
+  rank?: boolean
   createdAt?: boolean
 }
 
-export type VoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deviceId" | "nominationId" | "createdAt", ExtArgs["result"]["vote"]>
+export type VoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deviceId" | "nominationId" | "rank" | "createdAt", ExtArgs["result"]["vote"]>
 export type VoteInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   nomination?: boolean | Prisma.NominationDefaultArgs<ExtArgs>
 }
@@ -468,6 +545,7 @@ export type $VotePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     deviceId: string
     nominationId: string
+    rank: number | null
     createdAt: Date
   }, ExtArgs["result"]["vote"]>
   composites: {}
@@ -896,6 +974,7 @@ export interface VoteFieldRefs {
   readonly id: Prisma.FieldRef<"Vote", 'String'>
   readonly deviceId: Prisma.FieldRef<"Vote", 'String'>
   readonly nominationId: Prisma.FieldRef<"Vote", 'String'>
+  readonly rank: Prisma.FieldRef<"Vote", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Vote", 'DateTime'>
 }
     

@@ -12,7 +12,8 @@
 export const CategoryType = {
   NORMAL: 'NORMAL',
   IMAGE: 'IMAGE',
-  AGGREGATE: 'AGGREGATE'
+  AGGREGATE: 'AGGREGATE',
+  RANKING: 'RANKING'
 } as const
 
 export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType]

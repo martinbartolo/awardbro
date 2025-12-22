@@ -1,6 +1,8 @@
 "use client";
 
-import { RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -20,10 +22,47 @@ import { api } from "~/trpc/react";
 
 type CategoryActionsProps = {
   categoryId: string;
+  hideVoteCounts: boolean;
 };
 
-export function CategoryActions({ categoryId }: CategoryActionsProps) {
+export function CategoryActions({
+  categoryId,
+  hideVoteCounts,
+}: CategoryActionsProps) {
   const router = useRouter();
+  const utils = api.useUtils();
+
+  // Optimistic local state for instant UI feedback
+  const [optimisticValue, setOptimisticValue] = useState(hideVoteCounts);
+
+  // Sync optimistic state when prop changes (e.g., after server refresh)
+  useEffect(() => {
+    setOptimisticValue(hideVoteCounts);
+  }, [hideVoteCounts]);
+
+  const toggleHideVoteCounts = api.award.toggleHideVoteCounts.useMutation({
+    onMutate: () => {
+      // Optimistically update local state
+      setOptimisticValue(prev => !prev);
+    },
+    onSuccess: data => {
+      // Sync with server response
+      setOptimisticValue(data.hideVoteCounts);
+      // Invalidate to update presentation view live
+      void utils.award.getSessionBySlug.invalidate();
+      router.refresh();
+      toast.success(
+        data.hideVoteCounts
+          ? "Vote counts will be hidden in presentation"
+          : "Vote counts will be visible in presentation",
+      );
+    },
+    onError: () => {
+      // Revert optimistic update
+      setOptimisticValue(hideVoteCounts);
+      toast.error("Failed to update setting");
+    },
+  });
 
   const deleteCategory = api.award.deleteCategory.useMutation({
     onSuccess: () => {
@@ -46,6 +85,21 @@ export function CategoryActions({ categoryId }: CategoryActionsProps) {
 
   return (
     <div className="flex gap-1">
+      <Button
+        variant="ghost"
+        size="iconSm"
+        tooltip={optimisticValue ? "Show vote counts" : "Hide vote counts"}
+        aria-label={optimisticValue ? "Show vote counts" : "Hide vote counts"}
+        onClick={() => toggleHideVoteCounts.mutate({ categoryId })}
+        disabled={toggleHideVoteCounts.isPending}
+      >
+        {optimisticValue ? (
+          <Eye className="size-4" />
+        ) : (
+          <EyeOff className="size-4" />
+        )}
+      </Button>
+
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button

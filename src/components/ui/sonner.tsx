@@ -13,7 +13,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       offset={16}
       theme="dark"
       className="toaster group"
-      richColors
+      richColors={true}
       toastOptions={{
         classNames: {
           toast:
