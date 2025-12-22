@@ -9,7 +9,10 @@
 * 🟢 You can import this file directly.
 */
 
+export const CategoryType = {
+  NORMAL: 'NORMAL',
+  IMAGE: 'IMAGE',
+  AGGREGATE: 'AGGREGATE'
+} as const
 
-
-// This file is empty because there are no enums in the schema.
-export {}
+export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType]

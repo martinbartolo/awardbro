@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import { CategoryType } from "~/generated/prisma/enums";
+
+// Derive Zod enum from Prisma-generated enum to ensure they stay in sync
+const categoryTypeValues = Object.values(CategoryType) as [string, ...string[]];
+export const categoryTypeEnum = z.enum(categoryTypeValues);
+
 // Reuse the exact schemas from award.ts
 export const sessionFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
@@ -23,13 +29,16 @@ export const categoryFormSchema = z
     sessionId: z.string().min(1, "Session ID is required"),
     name: z.string().min(1, "Name is required").max(100, "Name is too long"),
     description: z.string().max(500, "Description is too long").optional(),
-    isAggregate: z.boolean().optional(),
+    type: categoryTypeEnum,
     sourceCategories: z.array(z.string()),
   })
-  .refine(data => !data.isAggregate || data.sourceCategories.length > 0, {
-    path: ["sourceCategories"],
-    error: "Aggregate categories must have at least one source category",
-  });
+  .refine(
+    data => data.type !== "AGGREGATE" || data.sourceCategories.length > 0,
+    {
+      path: ["sourceCategories"],
+      message: "Aggregate categories must have at least one source category",
+    },
+  );
 
 export const nominationFormSchema = z.object({
   categoryId: z.string().min(1, "Category ID is required"),

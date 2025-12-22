@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
+import { type CategoryType } from "~/generated/prisma/enums";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -14,7 +15,7 @@ import { NominationDescription } from "./nomination-description";
 export function VotingInterface({
   nominations,
   categoryId,
-  isAggregate,
+  categoryType,
 }: {
   nominations: {
     id: string;
@@ -23,8 +24,9 @@ export function VotingInterface({
     _count?: { votes: number };
   }[];
   categoryId: string;
-  isAggregate: boolean;
+  categoryType: CategoryType;
 }) {
+  const isAggregate = categoryType === "AGGREGATE";
   // Track only the user's explicit selection (null = no manual selection yet)
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);

@@ -1,6 +1,5 @@
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, ImageIcon, Layers } from "lucide-react";
 import { type Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 import { AddCategoryForm } from "~/app/components/add-category-form";
@@ -30,37 +29,33 @@ export const metadata: Metadata = {
   },
 };
 
+// Helper to check if a URL looks like an image
+const isImageUrl = (url: string) => {
+  // Check for common image extensions
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url)) return true;
+  // Google Drive share links
+  if (url.includes("drive.google.com") && url.includes("/file/d/")) return true;
+  return false;
+};
+
+// Helper to transform URLs to direct image URLs where needed
+const getImageUrl = (url: string) => {
+  // Transform Google Drive share links to direct URLs
+  if (url.includes("drive.google.com") && url.includes("/file/d/")) {
+    const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
+    const fileId = matches?.[1];
+    if (!fileId) return "";
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+  return url;
+};
+
 const NominationDescription = ({ description }: { description: string }) => {
-  const isImageUrl = (url: string) => {
-    // Only allow specific image extensions and Google Drive URLs
-    return (
-      /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) ||
-      (url.includes("drive.google.com") && url.includes("/file/d/"))
-    );
-  };
-
-  const getImageUrl = (url: string) => {
-    if (url.includes("drive.google.com")) {
-      // Only handle the secure /file/d/ format for Google Drive
-      const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
-      const fileId = matches?.[1];
-
-      if (!fileId) return "";
-
-      // Use the secure direct access URL
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-    return url;
-  };
-
   if (!description) return null;
 
   if (!isImageUrl(description)) {
     return (
-      <div className="text-muted-foreground mt-1 text-sm">
-        {/* Ensure text content is escaped properly */}
-        {description}
-      </div>
+      <div className="text-muted-foreground mt-1 text-sm">{description}</div>
     );
   }
 
@@ -73,14 +68,15 @@ const NominationDescription = ({ description }: { description: string }) => {
     );
   }
 
+  // Using native img tag for user-provided images (fetched client-side, no SSRF risk)
   return (
-    <div className="relative mt-1 h-48 w-full">
-      <Image
+    <div className="mt-1 flex h-48 w-full items-center justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={imageUrl}
-        alt="Nomination image"
-        fill
-        className="rounded-md object-contain"
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        alt="Nomination"
+        className="max-h-full max-w-full rounded-md object-contain"
+        loading="lazy"
       />
     </div>
   );
@@ -145,11 +141,24 @@ export default async function ManagePage({
                 <Card key={category.id} className="border-border">
                   <CardHeader className="border-border border-b">
                     <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xl">{category.name}</span>
-                        {category.isAggregate && (
-                          <Badge variant="secondary" className="ml-2">
+                        {category.type === "AGGREGATE" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 bg-purple-500/15 px-2.5 py-1 text-purple-600 dark:text-purple-400"
+                          >
+                            <Layers className="h-3.5 w-3.5" />
                             Aggregate
+                          </Badge>
+                        )}
+                        {category.type === "IMAGE" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 bg-blue-500/15 px-2.5 py-1 text-blue-600"
+                          >
+                            <ImageIcon className="h-3.5 w-3.5" />
+                            Image
                           </Badge>
                         )}
                       </div>
@@ -170,7 +179,7 @@ export default async function ManagePage({
                         {category.description}
                       </p>
                     )}
-                    {category.isAggregate &&
+                    {category.type === "AGGREGATE" &&
                       category.sourceCategories.length > 0 && (
                         <div className="mt-2">
                           <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
@@ -197,7 +206,7 @@ export default async function ManagePage({
                       <h3 className="text-foreground mb-3 text-lg font-medium">
                         Add Nomination
                       </h3>
-                      {category.isAggregate ? (
+                      {category.type === "AGGREGATE" ? (
                         <div className="space-y-2">
                           <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
                             Nominations for aggregate categories are
@@ -211,7 +220,10 @@ export default async function ManagePage({
                           </p>
                         </div>
                       ) : (
-                        <AddNominationForm categoryId={category.id} />
+                        <AddNominationForm
+                          categoryId={category.id}
+                          categoryType={category.type}
+                        />
                       )}
                     </div>
                     <div className="space-y-3">

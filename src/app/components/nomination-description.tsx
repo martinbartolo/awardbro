@@ -1,4 +1,23 @@
-import Image from "next/image";
+// Helper to check if a URL looks like an image
+const isImageUrl = (url: string) => {
+  // Check for common image extensions
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url)) return true;
+  // Google Drive share links
+  if (url.includes("drive.google.com") && url.includes("/file/d/")) return true;
+  return false;
+};
+
+// Helper to transform URLs to direct image URLs where needed
+const getImageUrl = (url: string) => {
+  // Transform Google Drive share links to direct URLs
+  if (url.includes("drive.google.com") && url.includes("/file/d/")) {
+    const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
+    const fileId = matches?.[1];
+    if (!fileId) return "";
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+  return url;
+};
 
 export function NominationDescription({
   description,
@@ -7,28 +26,6 @@ export function NominationDescription({
   description: string | null;
   className?: string;
 }) {
-  const isImageUrl = (url: string) => {
-    // Only allow specific image extensions and Google Drive URLs
-    return (
-      /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) ||
-      (url.includes("drive.google.com") && url.includes("/file/d/"))
-    );
-  };
-
-  const getImageUrl = (url: string) => {
-    if (url.includes("drive.google.com")) {
-      // Only handle the secure /file/d/ format for Google Drive
-      const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
-      const fileId = matches?.[1];
-
-      if (!fileId) return "";
-
-      // Use the secure direct access URL
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-    return url;
-  };
-
   if (!description) return null;
 
   if (!isImageUrl(description)) {
@@ -40,14 +37,15 @@ export function NominationDescription({
     return <div className={className}>Invalid image URL provided</div>;
   }
 
+  // Using native img tag for user-provided images (fetched client-side, no SSRF risk)
   return (
-    <div className="relative mt-2 h-72 w-full sm:h-80 md:h-96 lg:h-112">
-      <Image
+    <div className="relative mt-2 flex h-72 w-full items-center justify-center sm:h-80 md:h-96 lg:h-112">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={imageUrl}
-        alt="Nomination image"
-        fill
-        className="rounded-md object-contain"
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        alt="Nomination"
+        className="max-h-full max-w-full rounded-md object-contain"
+        loading="lazy"
       />
     </div>
   );

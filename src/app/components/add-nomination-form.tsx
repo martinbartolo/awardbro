@@ -17,10 +17,34 @@ import {
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
+import { type CategoryType } from "~/generated/prisma/enums";
 import { nominationFormSchema, type NominationFormValues } from "~/lib/schemas";
 import { api } from "~/trpc/react";
 
-export function AddNominationForm({ categoryId }: { categoryId: string }) {
+// Helper to validate image URLs
+const isValidImageUrl = (url: string) => {
+  // Must be a valid URL
+  try {
+    new URL(url);
+  } catch {
+    return false;
+  }
+  // Check for common image extensions
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url)) return true;
+  // Google Drive share links
+  if (url.includes("drive.google.com") && url.includes("/file/d/")) return true;
+  return false;
+};
+
+type AddNominationFormProps = {
+  categoryId: string;
+  categoryType?: CategoryType;
+};
+
+export function AddNominationForm({
+  categoryId,
+  categoryType = "NORMAL",
+}: AddNominationFormProps) {
   const router = useRouter();
   const form = useForm<NominationFormValues>({
     resolver: zodResolver(nominationFormSchema),
@@ -46,7 +70,22 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
     },
   });
 
+  const isImageCategory = categoryType === "IMAGE";
+
   const onSubmit = (values: NominationFormValues) => {
+    // Validate image URL for IMAGE categories
+    if (isImageCategory) {
+      if (!values.description) {
+        toast.error("Image URL is required for image categories");
+        return;
+      }
+      if (!isValidImageUrl(values.description)) {
+        toast.error(
+          "Please enter a valid image URL (e.g., ending in .jpg, .png, .gif, .webp, or from imgur, Google Drive, etc.)",
+        );
+        return;
+      }
+    }
     addNomination.mutate(values);
   };
 
@@ -58,9 +97,18 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nomination Name</FormLabel>
+              <FormLabel>
+                {isImageCategory ? "Image Caption" : "Nomination Name"}
+              </FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Enter nomination" />
+                <Input
+                  {...field}
+                  placeholder={
+                    isImageCategory
+                      ? "Enter a caption for this image"
+                      : "Enter nomination"
+                  }
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -72,18 +120,28 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description (Optional)</FormLabel>
-              <p className="text-muted-foreground mb-3 max-w-(--breakpoint-md) text-sm">
-                Add a description using text, paste an image URL, or use a
-                Google Drive sharing link (make sure the file is set to
-                &quot;Anyone with the link can view&quot;)
-              </p>
+              <FormLabel>
+                {isImageCategory ? "Image URL" : "Description (Optional)"}
+              </FormLabel>
+              {isImageCategory && (
+                <p className="text-muted-foreground mb-3 max-w-(--breakpoint-md) text-sm">
+                  Paste a direct image URL (e.g., .jpg, .png, .gif) or a link
+                  from imgur, Google Drive, Unsplash, etc.
+                </p>
+              )}
               <FormControl>
-                <Textarea
-                  {...field}
-                  placeholder="Add some details..."
-                  rows={2}
-                />
+                {isImageCategory ? (
+                  <Input
+                    {...field}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                ) : (
+                  <Textarea
+                    {...field}
+                    placeholder="Add some details..."
+                    rows={2}
+                  />
+                )}
               </FormControl>
               <FormMessage />
             </FormItem>
