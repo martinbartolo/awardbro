@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -48,6 +49,11 @@ export function VotingInterface({
   // Derive effective selection: user's choice takes precedence, fall back to current vote
   const selectedNominationId =
     userSelectedId ?? currentVote?.nominationId ?? null;
+
+  // Get the selected nomination for display
+  const selectedNomination = selectedNominationId
+    ? nominations.find(n => n.id === selectedNominationId)
+    : null;
 
   const vote = api.award.vote.useMutation({
     onSuccess: () => {
@@ -102,39 +108,97 @@ export function VotingInterface({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        {nominations.map(nomination => (
-          <button
-            key={nomination.id}
-            onClick={() => setUserSelectedId(nomination.id)}
+      {/* Instructions */}
+      <p className="text-muted-foreground text-sm">
+        Select your favorite nomination and cast your vote. You can change your
+        vote at any time before voting closes.
+      </p>
+
+      {/* Current selection slot */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Your Vote:</h3>
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg border-2 border-dashed p-3 transition-all",
+            selectedNomination
+              ? "border-primary bg-primary/10"
+              : "border-muted-foreground/30 bg-muted/30",
+          )}
+        >
+          <span
             className={cn(
-              "w-full text-left transition-colors",
-              "rounded-lg p-4",
-              selectedNominationId === nomination.id
-                ? "bg-primary/20 ring-primary ring-2"
-                : "bg-white/10 hover:bg-white/20",
-              isVoting && "cursor-not-allowed opacity-50",
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+              selectedNomination
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
-            disabled={isVoting}
           >
-            <div className="font-semibold">
-              {nomination.name}
-              {currentVote?.nominationId === nomination.id && (
-                <span className="text-primary ml-2 text-sm">
-                  (Current Vote)
-                </span>
-              )}
+            <Check className="h-4 w-4" />
+          </span>
+          {selectedNomination ? (
+            <div className="flex flex-1 items-center justify-between gap-2">
+              <div>
+                <span className="font-medium">{selectedNomination.name}</span>
+                {currentVote?.nominationId === selectedNomination.id && (
+                  <span className="text-primary ml-2 text-xs">(Submitted)</span>
+                )}
+              </div>
             </div>
-            {nomination.description && (
-              <NominationDescription
-                description={nomination.description}
-                className="text-muted-foreground text-sm wrap-break-word"
-              />
-            )}
-          </button>
-        ))}
+          ) : (
+            <span className="text-muted-foreground text-sm">
+              Click a nomination below to select your vote
+            </span>
+          )}
+        </div>
       </div>
 
+      {/* Available nominations */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Available Nominations:</h3>
+        <div className="space-y-2">
+          {nominations.map(nomination => {
+            const isSelected = selectedNominationId === nomination.id;
+            const isCurrentVote = currentVote?.nominationId === nomination.id;
+
+            return (
+              <button
+                key={nomination.id}
+                onClick={() => setUserSelectedId(nomination.id)}
+                className={cn(
+                  "w-full text-left transition-all",
+                  "rounded-lg p-4",
+                  isSelected
+                    ? "bg-primary/20 ring-primary ring-2"
+                    : "cursor-pointer bg-white/10 hover:bg-white/20",
+                  isVoting && "cursor-not-allowed opacity-50",
+                )}
+                disabled={isVoting}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">
+                      {nomination.name}
+                      {!isSelected && isCurrentVote && (
+                        <span className="text-muted-foreground ml-2 text-sm">
+                          (Previously voted)
+                        </span>
+                      )}
+                    </div>
+                    {nomination.description && (
+                      <NominationDescription
+                        description={nomination.description}
+                        className="text-muted-foreground text-sm wrap-break-word"
+                      />
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Submit button */}
       <Button
         className="w-full"
         size="lg"
@@ -144,7 +208,7 @@ export function VotingInterface({
         {isVoting
           ? "Casting Vote..."
           : currentVote
-            ? "Change Vote"
+            ? "Update Vote"
             : selectedNominationId
               ? "Cast Vote"
               : "Select a Nomination"}

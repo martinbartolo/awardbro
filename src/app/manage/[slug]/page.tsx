@@ -173,7 +173,10 @@ export default async function ManagePage({
                         )}
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <CategoryActions categoryId={category.id} />
+                        <CategoryActions
+                          categoryId={category.id}
+                          hideVoteCounts={category.hideVoteCounts}
+                        />
                         <SetActiveCategoryButton
                           categoryId={category.id}
                           isActive={category.isActive}

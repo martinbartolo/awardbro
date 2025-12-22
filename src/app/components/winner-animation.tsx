@@ -28,12 +28,14 @@ export function WinnerAnimation({
   isWinner,
   isTied,
   categoryType = "NORMAL",
+  hideVoteCounts = false,
 }: {
   nomination: Nomination;
   index: number;
   isWinner: boolean;
   isTied: boolean;
   categoryType?: CategoryType;
+  hideVoteCounts?: boolean;
 }) {
   const scoreLabel = getScoreLabel(categoryType, nomination._count.votes);
   useEffect(() => {
@@ -184,27 +186,6 @@ export function WinnerAnimation({
     other: "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30",
   };
 
-  const votesVariants = {
-    hidden: { scale: 0, rotate: -180 },
-    visible: {
-      scale: 1,
-      rotate: 0,
-      transition: {
-        type: "spring" as const,
-        stiffness: 260,
-        damping: 20,
-        delay: index * 0.3 + 0.5,
-      },
-    },
-    exit: {
-      scale: 0,
-      rotate: 180,
-      transition: {
-        duration: 0.2,
-      },
-    },
-  };
-
   const descriptionVariants = {
     hidden: { opacity: 0, x: 50 },
     visible: {
@@ -274,26 +255,40 @@ export function WinnerAnimation({
               </motion.div>
             )}
           </div>
-          <motion.div
-            variants={votesVariants}
-            className="flex items-center gap-2"
-          >
-            <motion.span
-              className={`${
-                isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
-              } text-background font-black whitespace-nowrap`}
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{
-                duration: 0.5,
-                repeat: Infinity,
-                repeatDelay: 2,
-                ease: "easeInOut",
-              }}
-            >
-              {nomination._count.votes}
-            </motion.span>
-            <span className="text-background font-semibold">{scoreLabel}</span>
-          </motion.div>
+          <AnimatePresence mode="wait">
+            {!hideVoteCounts && (
+              <motion.div
+                key="vote-counts"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 20,
+                }}
+                className="flex items-center gap-2"
+              >
+                <motion.span
+                  className={`${
+                    isWinner ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
+                  } text-background font-black whitespace-nowrap`}
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{
+                    duration: 0.5,
+                    repeat: Infinity,
+                    repeatDelay: 2,
+                    ease: "easeInOut",
+                  }}
+                >
+                  {nomination._count.votes}
+                </motion.span>
+                <span className="text-background font-semibold">
+                  {scoreLabel}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </AnimatePresence>

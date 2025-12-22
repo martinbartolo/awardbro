@@ -183,6 +183,7 @@ export function LivePresentation({
                                 ).length > 1
                               }
                               categoryType={category.type}
+                              hideVoteCounts={category.hideVoteCounts}
                             />
                           </div>
                         ));
@@ -210,6 +211,7 @@ export function LivePresentation({
                       })()}
                       categoryType={category.type}
                       rankingTop={category.rankingTop}
+                      hideVoteCounts={category.hideVoteCounts}
                     />
                   )}
                 </motion.div>

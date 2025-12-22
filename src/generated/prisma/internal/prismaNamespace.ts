@@ -762,6 +762,7 @@ export const CategoryScalarFieldEnum = {
   isActive: 'isActive',
   type: 'type',
   rankingTop: 'rankingTop',
+  hideVoteCounts: 'hideVoteCounts',
   sessionId: 'sessionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

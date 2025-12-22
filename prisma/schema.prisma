@@ -35,6 +35,7 @@ model Category {
     isActive         Boolean      @default(false)
     type             CategoryType @default(NORMAL)
     rankingTop       Int? // How many to rank (e.g., 3 = top 3) - only for RANKING type
+    hideVoteCounts   Boolean      @default(false) // Hide vote numbers in presentation, only show rankings
     sourceCategories Category[]   @relation("AggregateToSource")
     aggregateOf      Category[]   @relation("AggregateToSource")
     sessionId        String
