@@ -177,12 +177,10 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
             className="h-3 w-3 rounded-full bg-white"
             animate={{ scale: [1, 1.2, 1] }}
             transition={{
-              duration: 1,
+              duration: 0.6,
               repeat: Infinity,
               delay: i * 0.2,
-              type: "spring",
-              stiffness: 300,
-              damping: 10,
+              ease: "easeInOut",
             }}
           />
         ))}

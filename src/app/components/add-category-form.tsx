@@ -226,11 +226,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
               />
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitDisabled}
-            >
+            <Button type="submit" disabled={isSubmitDisabled}>
               {addCategory.isPending ? "Adding..." : "Add Category"}
             </Button>
           </form>

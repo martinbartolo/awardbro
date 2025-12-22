@@ -1,5 +1,7 @@
+import { HelpCircle } from "lucide-react";
 import { type Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
 import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
@@ -10,6 +12,7 @@ import { RevealCategoryButton } from "~/app/components/reveal-category-button";
 import { SessionActions } from "~/app/components/session-actions";
 import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { api } from "~/trpc/server";
 
@@ -100,15 +103,25 @@ export default async function ManagePage({
         <PasswordVerification slug={slug}>
           {/* Header Section */}
           <div className="bg-card mb-8 rounded-lg p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-foreground text-4xl font-bold">
-                  {session.name}
-                </h1>
-                <p className="text-muted-foreground mt-2">
-                  Manage your award show
-                </p>
+            <div className="flex flex-col gap-6">
+              {/* Title Row */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-foreground text-3xl font-bold sm:text-4xl">
+                    {session.name}
+                  </h1>
+                  <p className="text-muted-foreground mt-1">
+                    Manage your award show
+                  </p>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="shrink-0">
+                  <Link href="/help" target="_blank">
+                    <HelpCircle className="h-4 w-4" />
+                    Help
+                  </Link>
+                </Button>
               </div>
+              {/* Actions Row */}
               <SessionActions slug={slug} sessionId={session.id} />
             </div>
           </div>

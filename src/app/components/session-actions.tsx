@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  CopyIcon,
-  RotateCcw,
-  Share2Icon,
-  Trash2,
-} from "lucide-react";
+import { ArrowRight, Copy, CopyIcon, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -63,92 +57,86 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
   };
 
   return (
-    <div className="flex flex-wrap gap-3">
-      <Button asChild className="group w-full sm:w-auto">
-        <Link href={`/vote/${slug}`} target="_blank">
-          Voting
-          <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
-        </Link>
-      </Button>
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Primary Actions */}
+      <div className="flex w-full gap-2 sm:w-auto">
+        <Button onClick={copyVotingUrl} className="flex-1 sm:flex-none">
+          <Copy className="size-4" />
+          Copy Voting Link
+        </Button>
 
-      <Button asChild className="group w-full sm:w-auto">
-        <Link href={`/present/${slug}`} target="_blank">
-          Presentation
-          <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
-        </Link>
-      </Button>
+        <Button asChild className="group flex-1 sm:flex-none">
+          <Link href={`/present/${slug}`} target="_blank">
+            Presentation
+            <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
+          </Link>
+        </Button>
+      </div>
 
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={copyVotingUrl}
-        tooltip="Share Voting URL"
-        aria-label="Share Voting URL"
-      >
-        <Share2Icon className="size-4" />
-      </Button>
-
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            tooltip="Reset All Votes"
-            aria-label="Reset All Votes"
-          >
-            <RotateCcw className="size-4" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset all votes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove all votes from all categories. This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => resetAllVotes.mutate({ sessionId })}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      {/* Secondary Actions */}
+      <div className="flex gap-2">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              tooltip="Reset All Votes"
+              aria-label="Reset All Votes"
             >
-              Reset All Votes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <RotateCcw className="size-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset all votes?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove all votes from all categories. This action
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => resetAllVotes.mutate({ sessionId })}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Reset All Votes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="destructive"
-            size="icon"
-            tooltip="Delete Award Show"
-            aria-label="Delete Award Show"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete award show?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete your award show and all its data.
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteSession.mutate({ id: sessionId })}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="destructive"
+              size="icon"
+              tooltip="Delete Award Show"
+              aria-label="Delete Award Show"
             >
-              Delete Show
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Trash2 className="size-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete award show?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete your award show and all its data.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteSession.mutate({ id: sessionId })}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete Show
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

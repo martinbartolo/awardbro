@@ -281,6 +281,7 @@ export function WinnerAnimation({
                 duration: 0.5,
                 repeat: Infinity,
                 repeatDelay: 2,
+                ease: "easeInOut",
               }}
             >
               {nomination._count.votes}

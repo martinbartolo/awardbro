@@ -93,7 +93,6 @@ export function AddNominationForm({ categoryId }: { categoryId: string }) {
         <Button
           type="submit"
           variant="secondary"
-          className="w-full"
           disabled={addNomination.isPending}
         >
           {addNomination.isPending ? "Adding..." : "Add Nomination"}

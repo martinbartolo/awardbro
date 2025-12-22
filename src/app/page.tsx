@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import {
   Heart,
+  HelpCircle,
   Lock,
   PlusCircle,
   Presentation,
@@ -193,6 +194,20 @@ export default function Page() {
               description="Share the voting link, watch the votes roll in, and present winners on the big screen."
             />
           </motion.div>
+          <motion.div
+            className="mt-10 flex justify-center sm:mt-12"
+            initial="hidden"
+            whileInView="visible"
+            variants={fadeIn}
+            viewport={{ once: true }}
+          >
+            <Button asChild variant="outline" size="lg">
+              <Link href="/help">
+                <HelpCircle className="h-5 w-5" />
+                Read the Full Guide
+              </Link>
+            </Button>
+          </motion.div>
         </div>
       </section>
 
@@ -218,6 +233,12 @@ export default function Page() {
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Access Show
+              </Link>
+              <Link
+                href="/help"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
+              >
+                Help
               </Link>
               <a
                 href="https://ko-fi.com/martinbartolo"
