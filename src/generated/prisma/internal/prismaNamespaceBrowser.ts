@@ -91,7 +91,7 @@ export const CategoryScalarFieldEnum = {
   description: 'description',
   revealed: 'revealed',
   isActive: 'isActive',
-  isAggregate: 'isAggregate',
+  type: 'type',
   sessionId: 'sessionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

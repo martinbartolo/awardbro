@@ -28,6 +28,7 @@ export function PasswordVerification({
   const [password, setPassword] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const verifyAccess = api.award.verifyManageAccess.useMutation({
     onSuccess: () => {
@@ -55,6 +56,7 @@ export function PasswordVerification({
         setIsVerified(true);
       }
     }
+    setIsCheckingSession(false);
   }, [slug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,6 +68,11 @@ export function PasswordVerification({
       setIsVerifying(false);
     }
   };
+
+  // Don't render anything until we've checked sessionStorage
+  if (isCheckingSession) {
+    return null;
+  }
 
   if (isVerified) {
     return <>{children}</>;

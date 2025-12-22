@@ -30,7 +30,7 @@ export type CategoryMinAggregateOutputType = {
   description: string | null
   revealed: boolean | null
   isActive: boolean | null
-  isAggregate: boolean | null
+  type: $Enums.CategoryType | null
   sessionId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -42,7 +42,7 @@ export type CategoryMaxAggregateOutputType = {
   description: string | null
   revealed: boolean | null
   isActive: boolean | null
-  isAggregate: boolean | null
+  type: $Enums.CategoryType | null
   sessionId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -54,7 +54,7 @@ export type CategoryCountAggregateOutputType = {
   description: number
   revealed: number
   isActive: number
-  isAggregate: number
+  type: number
   sessionId: number
   createdAt: number
   updatedAt: number
@@ -68,7 +68,7 @@ export type CategoryMinAggregateInputType = {
   description?: true
   revealed?: true
   isActive?: true
-  isAggregate?: true
+  type?: true
   sessionId?: true
   createdAt?: true
   updatedAt?: true
@@ -80,7 +80,7 @@ export type CategoryMaxAggregateInputType = {
   description?: true
   revealed?: true
   isActive?: true
-  isAggregate?: true
+  type?: true
   sessionId?: true
   createdAt?: true
   updatedAt?: true
@@ -92,7 +92,7 @@ export type CategoryCountAggregateInputType = {
   description?: true
   revealed?: true
   isActive?: true
-  isAggregate?: true
+  type?: true
   sessionId?: true
   createdAt?: true
   updatedAt?: true
@@ -177,7 +177,7 @@ export type CategoryGroupByOutputType = {
   description: string | null
   revealed: boolean
   isActive: boolean
-  isAggregate: boolean
+  type: $Enums.CategoryType
   sessionId: string
   createdAt: Date
   updatedAt: Date
@@ -210,7 +210,7 @@ export type CategoryWhereInput = {
   description?: Prisma.StringNullableFilter<"Category"> | string | null
   revealed?: Prisma.BoolFilter<"Category"> | boolean
   isActive?: Prisma.BoolFilter<"Category"> | boolean
-  isAggregate?: Prisma.BoolFilter<"Category"> | boolean
+  type?: Prisma.EnumCategoryTypeFilter<"Category"> | $Enums.CategoryType
   sessionId?: Prisma.StringFilter<"Category"> | string
   createdAt?: Prisma.DateTimeFilter<"Category"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Category"> | Date | string
@@ -226,7 +226,7 @@ export type CategoryOrderByWithRelationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   revealed?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
-  isAggregate?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -245,7 +245,7 @@ export type CategoryWhereUniqueInput = Prisma.AtLeast<{
   description?: Prisma.StringNullableFilter<"Category"> | string | null
   revealed?: Prisma.BoolFilter<"Category"> | boolean
   isActive?: Prisma.BoolFilter<"Category"> | boolean
-  isAggregate?: Prisma.BoolFilter<"Category"> | boolean
+  type?: Prisma.EnumCategoryTypeFilter<"Category"> | $Enums.CategoryType
   sessionId?: Prisma.StringFilter<"Category"> | string
   createdAt?: Prisma.DateTimeFilter<"Category"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Category"> | Date | string
@@ -261,7 +261,7 @@ export type CategoryOrderByWithAggregationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   revealed?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
-  isAggregate?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -279,7 +279,7 @@ export type CategoryScalarWhereWithAggregatesInput = {
   description?: Prisma.StringNullableWithAggregatesFilter<"Category"> | string | null
   revealed?: Prisma.BoolWithAggregatesFilter<"Category"> | boolean
   isActive?: Prisma.BoolWithAggregatesFilter<"Category"> | boolean
-  isAggregate?: Prisma.BoolWithAggregatesFilter<"Category"> | boolean
+  type?: Prisma.EnumCategoryTypeWithAggregatesFilter<"Category"> | $Enums.CategoryType
   sessionId?: Prisma.StringWithAggregatesFilter<"Category"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Category"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Category"> | Date | string
@@ -291,7 +291,7 @@ export type CategoryCreateInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
   sourceCategories?: Prisma.CategoryCreateNestedManyWithoutAggregateOfInput
@@ -306,7 +306,7 @@ export type CategoryUncheckedCreateInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   sessionId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -321,7 +321,7 @@ export type CategoryUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sourceCategories?: Prisma.CategoryUpdateManyWithoutAggregateOfNestedInput
@@ -336,7 +336,7 @@ export type CategoryUncheckedUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -351,7 +351,7 @@ export type CategoryCreateManyInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   sessionId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -363,7 +363,7 @@ export type CategoryUpdateManyMutationInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -374,7 +374,7 @@ export type CategoryUncheckedUpdateManyInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -396,7 +396,7 @@ export type CategoryCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   revealed?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
-  isAggregate?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -408,7 +408,7 @@ export type CategoryMaxOrderByAggregateInput = {
   description?: Prisma.SortOrder
   revealed?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
-  isAggregate?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -420,7 +420,7 @@ export type CategoryMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   revealed?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
-  isAggregate?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -501,6 +501,10 @@ export type BoolFieldUpdateOperationsInput = {
   set?: boolean
 }
 
+export type EnumCategoryTypeFieldUpdateOperationsInput = {
+  set?: $Enums.CategoryType
+}
+
 export type CategoryUpdateManyWithoutAggregateOfNestedInput = {
   create?: Prisma.XOR<Prisma.CategoryCreateWithoutAggregateOfInput, Prisma.CategoryUncheckedCreateWithoutAggregateOfInput> | Prisma.CategoryCreateWithoutAggregateOfInput[] | Prisma.CategoryUncheckedCreateWithoutAggregateOfInput[]
   connectOrCreate?: Prisma.CategoryCreateOrConnectWithoutAggregateOfInput | Prisma.CategoryCreateOrConnectWithoutAggregateOfInput[]
@@ -573,7 +577,7 @@ export type CategoryCreateWithoutSessionInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
   sourceCategories?: Prisma.CategoryCreateNestedManyWithoutAggregateOfInput
@@ -587,7 +591,7 @@ export type CategoryUncheckedCreateWithoutSessionInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
   sourceCategories?: Prisma.CategoryUncheckedCreateNestedManyWithoutAggregateOfInput
@@ -630,7 +634,7 @@ export type CategoryScalarWhereInput = {
   description?: Prisma.StringNullableFilter<"Category"> | string | null
   revealed?: Prisma.BoolFilter<"Category"> | boolean
   isActive?: Prisma.BoolFilter<"Category"> | boolean
-  isAggregate?: Prisma.BoolFilter<"Category"> | boolean
+  type?: Prisma.EnumCategoryTypeFilter<"Category"> | $Enums.CategoryType
   sessionId?: Prisma.StringFilter<"Category"> | string
   createdAt?: Prisma.DateTimeFilter<"Category"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Category"> | Date | string
@@ -642,7 +646,7 @@ export type CategoryCreateWithoutAggregateOfInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
   sourceCategories?: Prisma.CategoryCreateNestedManyWithoutAggregateOfInput
@@ -656,7 +660,7 @@ export type CategoryUncheckedCreateWithoutAggregateOfInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   sessionId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -675,7 +679,7 @@ export type CategoryCreateWithoutSourceCategoriesInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
   aggregateOf?: Prisma.CategoryCreateNestedManyWithoutSourceCategoriesInput
@@ -689,7 +693,7 @@ export type CategoryUncheckedCreateWithoutSourceCategoriesInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   sessionId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -740,7 +744,7 @@ export type CategoryCreateWithoutNominationsInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
   sourceCategories?: Prisma.CategoryCreateNestedManyWithoutAggregateOfInput
@@ -754,7 +758,7 @@ export type CategoryUncheckedCreateWithoutNominationsInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   sessionId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -784,7 +788,7 @@ export type CategoryUpdateWithoutNominationsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sourceCategories?: Prisma.CategoryUpdateManyWithoutAggregateOfNestedInput
@@ -798,7 +802,7 @@ export type CategoryUncheckedUpdateWithoutNominationsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -812,7 +816,7 @@ export type CategoryCreateManySessionInput = {
   description?: string | null
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: $Enums.CategoryType
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -823,7 +827,7 @@ export type CategoryUpdateWithoutSessionInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sourceCategories?: Prisma.CategoryUpdateManyWithoutAggregateOfNestedInput
@@ -837,7 +841,7 @@ export type CategoryUncheckedUpdateWithoutSessionInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sourceCategories?: Prisma.CategoryUncheckedUpdateManyWithoutAggregateOfNestedInput
@@ -851,7 +855,7 @@ export type CategoryUncheckedUpdateManyWithoutSessionInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -862,7 +866,7 @@ export type CategoryUpdateWithoutAggregateOfInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sourceCategories?: Prisma.CategoryUpdateManyWithoutAggregateOfNestedInput
@@ -876,7 +880,7 @@ export type CategoryUncheckedUpdateWithoutAggregateOfInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -890,7 +894,7 @@ export type CategoryUncheckedUpdateManyWithoutAggregateOfInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -902,7 +906,7 @@ export type CategoryUpdateWithoutSourceCategoriesInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   aggregateOf?: Prisma.CategoryUpdateManyWithoutSourceCategoriesNestedInput
@@ -916,7 +920,7 @@ export type CategoryUncheckedUpdateWithoutSourceCategoriesInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -930,7 +934,7 @@ export type CategoryUncheckedUpdateManyWithoutSourceCategoriesInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revealed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isAggregate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  type?: Prisma.EnumCategoryTypeFieldUpdateOperationsInput | $Enums.CategoryType
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -991,7 +995,7 @@ export type CategorySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   description?: boolean
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: boolean
   sessionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1008,7 +1012,7 @@ export type CategorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   description?: boolean
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: boolean
   sessionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1021,7 +1025,7 @@ export type CategorySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   description?: boolean
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: boolean
   sessionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1034,13 +1038,13 @@ export type CategorySelectScalar = {
   description?: boolean
   revealed?: boolean
   isActive?: boolean
-  isAggregate?: boolean
+  type?: boolean
   sessionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type CategoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "revealed" | "isActive" | "isAggregate" | "sessionId" | "createdAt" | "updatedAt", ExtArgs["result"]["category"]>
+export type CategoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "revealed" | "isActive" | "type" | "sessionId" | "createdAt" | "updatedAt", ExtArgs["result"]["category"]>
 export type CategoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   sourceCategories?: boolean | Prisma.Category$sourceCategoriesArgs<ExtArgs>
   aggregateOf?: boolean | Prisma.Category$aggregateOfArgs<ExtArgs>
@@ -1069,7 +1073,7 @@ export type $CategoryPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     description: string | null
     revealed: boolean
     isActive: boolean
-    isAggregate: boolean
+    type: $Enums.CategoryType
     sessionId: string
     createdAt: Date
     updatedAt: Date
@@ -1505,7 +1509,7 @@ export interface CategoryFieldRefs {
   readonly description: Prisma.FieldRef<"Category", 'String'>
   readonly revealed: Prisma.FieldRef<"Category", 'Boolean'>
   readonly isActive: Prisma.FieldRef<"Category", 'Boolean'>
-  readonly isAggregate: Prisma.FieldRef<"Category", 'Boolean'>
+  readonly type: Prisma.FieldRef<"Category", 'CategoryType'>
   readonly sessionId: Prisma.FieldRef<"Category", 'String'>
   readonly createdAt: Prisma.FieldRef<"Category", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Category", 'DateTime'>

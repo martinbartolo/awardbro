@@ -165,7 +165,7 @@ export function LiveVotingSession({
                 <VotingInterface
                   nominations={activeCategory.nominations}
                   categoryId={activeCategory.id}
-                  isAggregate={activeCategory.isAggregate}
+                  categoryType={activeCategory.type}
                 />
               </CardContent>
             </Card>

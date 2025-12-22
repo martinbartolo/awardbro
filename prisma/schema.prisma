@@ -10,6 +10,12 @@ datasource db {
     provider = "postgresql"
 }
 
+enum CategoryType {
+    NORMAL
+    IMAGE
+    AGGREGATE
+}
+
 model Session {
     id         String     @id @default(cuid())
     name       String
@@ -26,7 +32,7 @@ model Category {
     description      String?
     revealed         Boolean      @default(false)
     isActive         Boolean      @default(false)
-    isAggregate      Boolean      @default(false)
+    type             CategoryType @default(NORMAL)
     sourceCategories Category[]   @relation("AggregateToSource")
     aggregateOf      Category[]   @relation("AggregateToSource")
     sessionId        String

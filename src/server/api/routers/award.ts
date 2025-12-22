@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-import { Prisma } from "~/generated/prisma/client";
+import { type CategoryType, Prisma } from "~/generated/prisma/client";
 import {
   categoryFormSchema,
   nominationFormSchema,
@@ -162,7 +162,7 @@ export const awardRouter = createTRPCRouter({
       // Process aggregate categories
       const categoriesWithAggregateVotes = await Promise.all(
         session.categories.map(async category => {
-          if (!category.isAggregate) {
+          if (category.type !== "AGGREGATE") {
             return category;
           }
 
@@ -217,7 +217,7 @@ export const awardRouter = createTRPCRouter({
       return ctx.db.category.findMany({
         where: {
           sessionId: input.sessionId,
-          isAggregate: false, // Only return non-aggregate categories as sources
+          type: { not: "AGGREGATE" }, // Only return non-aggregate categories as sources
         },
         select: {
           id: true,
@@ -235,17 +235,18 @@ export const awardRouter = createTRPCRouter({
             sessionId: input.sessionId,
             name: input.name,
             description: input.description,
-            isAggregate: input.isAggregate ?? false,
-            sourceCategories: input.isAggregate
-              ? {
-                  connect: input.sourceCategories.map(id => ({ id })),
-                }
-              : undefined,
+            type: input.type as CategoryType,
+            sourceCategories:
+              input.type === "AGGREGATE"
+                ? {
+                    connect: input.sourceCategories.map(id => ({ id })),
+                  }
+                : undefined,
           },
         });
 
         // If this is an aggregate category, copy nominations from source categories
-        if (input.isAggregate && input.sourceCategories.length) {
+        if (input.type === "AGGREGATE" && input.sourceCategories.length) {
           const sourceNominations = await ctx.db.nomination.findMany({
             where: {
               categoryId: {
@@ -304,7 +305,7 @@ export const awardRouter = createTRPCRouter({
       }
 
       // If this is an aggregate category, sum up votes from source categories
-      if (category.isAggregate) {
+      if (category.type === "AGGREGATE") {
         const nominationsWithTotalVotes = await Promise.all(
           category.nominations.map(async nomination => {
             // Find matching nominations in source categories
@@ -470,7 +471,7 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
-        if (nomination.category.isAggregate) {
+        if (nomination.category.type === "AGGREGATE") {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Cannot vote in aggregate categories",

@@ -12,12 +12,20 @@ import { Checkbox } from "~/components/ui/checkbox";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import {
   Tooltip,
@@ -25,8 +33,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { type CategoryType } from "~/generated/prisma/enums";
 import { categoryFormSchema, type CategoryFormValues } from "~/lib/schemas";
 import { api } from "~/trpc/react";
+
+const categoryTypeDescriptions: Record<CategoryType, string> = {
+  NORMAL: "Standard category with text-based nominations",
+  IMAGE: "Category for image-based nominations with captions",
+  AGGREGATE: "Combines votes from multiple source categories",
+};
 
 export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -36,7 +51,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       sessionId,
       name: "",
       description: "",
-      isAggregate: false,
+      type: "NORMAL",
       sourceCategories: [],
     },
   });
@@ -60,24 +75,26 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   });
 
   const onSubmit = (values: CategoryFormValues) => {
-    if (values.isAggregate && values.sourceCategories.length === 0) {
+    if (values.type === "AGGREGATE" && values.sourceCategories.length === 0) {
       toast.error("Please select at least one source category");
       return;
     }
 
     addCategory.mutate({
       ...values,
-      sourceCategories: values.isAggregate ? values.sourceCategories : [],
+      sourceCategories:
+        values.type === "AGGREGATE" ? values.sourceCategories : [],
     });
   };
 
-  const isAggregate = useWatch({ control: form.control, name: "isAggregate" });
+  const categoryType = useWatch({ control: form.control, name: "type" });
   const sourceCategories = useWatch({
     control: form.control,
     name: "sourceCategories",
   });
   const isSubmitDisabled =
-    addCategory.isPending || (isAggregate && sourceCategories.length === 0);
+    addCategory.isPending ||
+    (categoryType === "AGGREGATE" && sourceCategories.length === 0);
 
   return (
     <Card>
@@ -87,6 +104,68 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    Category Type
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="text-muted-foreground h-4 w-4" />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          className="max-w-[280px] p-4 text-sm"
+                        >
+                          <div className="space-y-2">
+                            <p>
+                              <strong>Normal:</strong> Standard text-based
+                              nominations.
+                            </p>
+                            <p>
+                              <strong>Image:</strong> Image-based nominations
+                              with captions. Perfect for photo contests.
+                            </p>
+                            <p>
+                              <strong>Aggregate:</strong> Combines votes from
+                              multiple categories. Voting is disabled.
+                            </p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
+                  <Select
+                    onValueChange={value => {
+                      field.onChange(value);
+                      if (value !== "AGGREGATE") {
+                        form.setValue("sourceCategories", []);
+                      }
+                    }}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="NORMAL">Normal</SelectItem>
+                      <SelectItem value="IMAGE">Image</SelectItem>
+                      <SelectItem value="AGGREGATE">Aggregate</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {categoryTypeDescriptions[field.value as CategoryType]}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="name"
@@ -119,112 +198,56 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="isAggregate"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center space-x-2">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={checked => {
-                          field.onChange(checked);
-                          if (!checked) {
-                            form.setValue("sourceCategories", []);
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <FormLabel className="flex items-center gap-2">
-                      Create as Aggregate Category
-                      <TooltipProvider>
-                        <Tooltip delayDuration={0}>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="text-muted-foreground h-4 w-4" />
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="right"
-                            className="max-w-[260px] p-4 text-sm"
-                          >
-                            <div className="space-y-2">
-                              <p>
-                                An aggregate category automatically combines
-                                votes from multiple categories.
-                              </p>
-                              <p>
-                                For example, if &quot;Best Overall&quot;
-                                aggregates &quot;Best Performance&quot; and
-                                &quot;Best Technical&quot;:
-                              </p>
-                              <ul className="list-disc pl-4">
-                                <li>
-                                  John: 2 votes in Performance + 3 in Technical
-                                  = 5 total votes
-                                </li>
-                              </ul>
-                              <p>
-                                Voting is disabled for aggregate categories.
-                              </p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </FormLabel>
-                  </div>
-                  <FormMessage />
-                </FormItem>
+            {categoryType === "AGGREGATE" &&
+              categories &&
+              categories.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="sourceCategories"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Select Source Categories</FormLabel>
+                      <p className="text-muted-foreground mb-2 max-w-(--breakpoint-md) text-sm">
+                        Choose the categories whose votes you want to combine.
+                        Nominations that appear in multiple source categories
+                        will have their votes added together.
+                      </p>
+                      <div className="space-y-2">
+                        {categories.map(category => (
+                          <FormField
+                            key={category.id}
+                            control={form.control}
+                            name="sourceCategories"
+                            render={({ field }) => (
+                              <FormItem
+                                key={category.id}
+                                className="flex flex-row items-center gap-2 space-y-0"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value.includes(category.id)}
+                                    onCheckedChange={checked => {
+                                      const currentValue = field.value;
+                                      const newValue = checked
+                                        ? [...currentValue, category.id]
+                                        : currentValue.filter(
+                                            id => id !== category.id,
+                                          );
+                                      field.onChange(newValue);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel>{category.name}</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
-
-            {isAggregate && categories && categories.length > 0 && (
-              <FormField
-                control={form.control}
-                name="sourceCategories"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Select Source Categories</FormLabel>
-                    <p className="text-muted-foreground mb-2 max-w-(--breakpoint-md) text-sm">
-                      Choose the categories whose votes you want to combine.
-                      Nominations that appear in multiple source categories will
-                      have their votes added together.
-                    </p>
-                    <div className="space-y-2">
-                      {categories.map(category => (
-                        <FormField
-                          key={category.id}
-                          control={form.control}
-                          name="sourceCategories"
-                          render={({ field }) => (
-                            <FormItem
-                              key={category.id}
-                              className="flex items-center space-x-2"
-                            >
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value.includes(category.id)}
-                                  onCheckedChange={checked => {
-                                    const currentValue = field.value;
-                                    const newValue = checked
-                                      ? [...currentValue, category.id]
-                                      : currentValue.filter(
-                                          id => id !== category.id,
-                                        );
-                                    field.onChange(newValue);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel>{category.name}</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <Button type="submit" disabled={isSubmitDisabled}>
               {addCategory.isPending ? "Adding..." : "Add Category"}
