@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import {
+  Heart,
   Lock,
   PlusCircle,
   Presentation,
@@ -13,10 +14,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { AnimatedCounter } from "~/components/ui/animated-counter";
 import { Button } from "~/components/ui/button";
-
-import { CreateSessionForm } from "./components/create-session-form";
-import { ExistingSessions } from "./components/existing-sessions";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -34,14 +33,41 @@ const stagger = {
 export default function Page() {
   return (
     <main className="bg-background text-foreground flex min-h-screen w-full flex-col items-center justify-start">
+      {/* Header */}
+      <header className="bg-background/80 fixed top-0 z-50 w-full border-b backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+          <span className="text-lg font-bold">🎉AwardBro</span>
+          <Button asChild variant="outline" size="sm">
+            <a
+              href="https://ko-fi.com/1martin"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Heart className="h-4 w-4" />
+              <span className="hidden sm:inline">Support</span>
+            </a>
+          </Button>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="flex min-h-screen w-full items-center justify-center px-4">
+      <section className="flex min-h-screen w-full items-center justify-center px-4 pt-14">
         <motion.div
           className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-8 text-center"
           initial="hidden"
           animate="visible"
           variants={stagger}
         >
+          <motion.div
+            className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
+            variants={fadeIn}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+              <span className="bg-primary relative inline-flex h-2 w-2 rounded-full"></span>
+            </span>
+            <AnimatedCounter target={250} suffix="+" /> award shows hosted
+          </motion.div>
           <motion.h1
             className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
             variants={fadeIn}
@@ -60,16 +86,22 @@ export default function Page() {
             variants={fadeIn}
           >
             <Button asChild size="lg" className="h-12 px-8">
-              <Link href="#get-started">
+              <Link href="/create">
                 Create Award Show <PlusCircle className="h-5 w-5" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="h-12 px-8">
-              <Link href="#get-started">
+              <Link href="/join">
                 Access Existing Show <Search className="h-5 w-5" />
               </Link>
             </Button>
           </motion.div>
+          <motion.p
+            className="text-muted-foreground mt-4 text-sm"
+            variants={fadeIn}
+          >
+            Free to use • No sign-up required
+          </motion.p>
         </motion.div>
       </section>
 
@@ -127,7 +159,7 @@ export default function Page() {
       </section>
 
       {/* How It Works Section */}
-      <section className="bg-muted/50 w-full border-t">
+      <section className="w-full border-t">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:py-24">
           <motion.h2
             className="text-center text-2xl font-bold sm:text-3xl lg:text-4xl"
@@ -164,39 +196,6 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Get Started Section */}
-      <section id="get-started" className="w-full border-t">
-        <div className="mx-auto max-w-3xl px-4 py-12 sm:py-24">
-          <motion.div
-            className="flex flex-col items-center justify-center"
-            initial="hidden"
-            whileInView="visible"
-            variants={stagger}
-            viewport={{ once: true }}
-          >
-            <motion.h2
-              className="text-center text-2xl font-bold sm:text-3xl lg:text-4xl"
-              variants={fadeIn}
-            >
-              Get Started
-            </motion.h2>
-            <motion.p
-              className="text-muted-foreground mt-4 px-4 text-center"
-              variants={fadeIn}
-            >
-              Create a new award show or access an existing one
-            </motion.p>
-            <motion.div
-              className="mt-8 grid w-full gap-6 sm:mt-12 sm:grid-cols-2"
-              variants={fadeIn}
-            >
-              <CreateSessionForm />
-              <ExistingSessions />
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="bg-muted/50 w-full border-t">
         <div className="mx-auto max-w-7xl px-4 py-16">
@@ -207,23 +206,39 @@ export default function Page() {
               results. Perfect for team events, celebrations, and social
               gatherings.
             </p>
-            <div className="mt-8 flex gap-6">
+            <div className="mt-8 flex flex-wrap justify-center gap-6">
               <Link
-                href="#get-started"
+                href="/create"
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Create Show
               </Link>
               <Link
-                href="#get-started"
+                href="/join"
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Access Show
               </Link>
+              <a
+                href="https://ko-fi.com/martinbartolo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground text-sm transition-colors hover:text-pink-500"
+              >
+                Support ❤️
+              </a>
+              <a
+                href="https://github.com/martinbartolo/awardbro/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
+              >
+                Report a Bug
+              </a>
             </div>
             <div className="mt-8 w-full border-t pt-8 text-center">
               <p className="text-muted-foreground text-sm">
-                © {new Date().getFullYear()} AwardBro Created by{" "}
+                © {new Date().getFullYear()} AwardBro. Created by{" "}
                 <a
                   href="https://martinbartolo.com"
                   target="_blank"

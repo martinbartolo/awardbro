@@ -26,7 +26,7 @@ const buttonVariants = cva(
         secondary: "bg-chart-2 text-background shadow-xs hover:bg-chart-2/90",
         accent: "bg-chart-3 text-background shadow-xs hover:bg-chart-3/90",
         success: "bg-chart-4 text-background shadow-xs hover:bg-chart-4/90",
-        ghost: "text-primary hover:bg-primary/10 hover:text-primary",
+        ghost: "text-primary hover:bg-primary/20 hover:text-primary",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

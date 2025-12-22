@@ -24,10 +24,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "daily",
         priority: 1,
       },
+      {
+        url: "https://awardbro.com/create",
+        lastModified: new Date(),
+        changeFrequency: "monthly",
+        priority: 0.9,
+      },
+      {
+        url: "https://awardbro.com/join",
+        lastModified: new Date(),
+        changeFrequency: "monthly",
+        priority: 0.9,
+      },
       ...sessionUrls,
     ];
   } catch (error) {
-    // On error, return just the homepage
+    // On error, return just the static pages
     console.error("Failed to generate sitemap:", error);
     return [
       {
@@ -35,6 +47,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(),
         changeFrequency: "daily",
         priority: 1,
+      },
+      {
+        url: "https://awardbro.com/create",
+        lastModified: new Date(),
+        changeFrequency: "monthly",
+        priority: 0.9,
+      },
+      {
+        url: "https://awardbro.com/join",
+        lastModified: new Date(),
+        changeFrequency: "monthly",
+        priority: 0.9,
       },
     ];
   }

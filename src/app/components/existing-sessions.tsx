@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { VoteIcon, WrenchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "~/components/ui/button";
@@ -19,14 +20,23 @@ export function ExistingSessions() {
   const router = useRouter();
   const [slug, setSlug] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const normalizeSlug = (input: string) => {
+    // Strip any existing prefixes the user might have pasted
+    return input.replace(/^\/?(vote|manage|present)\//, "").trim();
+  };
+
+  const handleVote = (e: React.FormEvent) => {
     e.preventDefault();
-    if (slug.startsWith("manage/") || slug.startsWith("/manage/")) {
-      router.push(`/${slug}`);
-    } else if (slug.startsWith("vote/") || slug.startsWith("/vote/")) {
-      router.push(`/${slug}`);
-    } else {
-      router.push(`/vote/${slug}`);
+    const normalized = normalizeSlug(slug);
+    if (normalized) {
+      router.push(`/vote/${normalized}`);
+    }
+  };
+
+  const handleManage = () => {
+    const normalized = normalizeSlug(slug);
+    if (normalized) {
+      router.push(`/manage/${normalized}`);
     }
   };
 
@@ -35,28 +45,37 @@ export function ExistingSessions() {
       <CardHeader>
         <CardTitle>Access Existing Show</CardTitle>
         <CardDescription>
-          Enter the URL of an existing award show
+          Enter the name of an existing award show
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="existing-url">Award Show URL</Label>
+        <form onSubmit={handleVote} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="existing-url">Award Show Name</Label>
             <Input
               id="existing-url"
               value={slug}
               onChange={e => setSlug(e.target.value.trim())}
-              placeholder="your-award-show"
+              placeholder="e.g., movie-awards-2024"
               autoCapitalize="off"
             />
-            <p className="text-muted-foreground text-xs">
-              Enter just the show name for voting, or add manage/ prefix for
-              management
-            </p>
           </div>
-          <Button type="submit" className="w-full">
-            Go to Award Show
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button type="submit" className="flex-1" disabled={!slug}>
+              <VoteIcon className="h-4 w-4" />
+              Vote
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={handleManage}
+              disabled={!slug}
+            >
+              <WrenchIcon className="h-4 w-4" />
+              Manage
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
