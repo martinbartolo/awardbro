@@ -11,11 +11,13 @@ import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
+import { RankingInterface } from "./ranking-interface";
 
 export function VotingInterface({
   nominations,
   categoryId,
   categoryType,
+  rankingTop,
 }: {
   nominations: {
     id: string;
@@ -25,19 +27,21 @@ export function VotingInterface({
   }[];
   categoryId: string;
   categoryType: CategoryType;
+  rankingTop?: number | null;
 }) {
   const isAggregate = categoryType === "AGGREGATE";
+  const isRanking = categoryType === "RANKING";
   // Track only the user's explicit selection (null = no manual selection yet)
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const router = useRouter();
 
-  // Get the current vote
+  // Get the current vote (only for normal/image categories)
   const { data: currentVote } = api.award.getCurrentVote.useQuery(
     { categoryId },
     {
       refetchInterval: 5000,
-      enabled: !isAggregate,
+      enabled: !isAggregate && !isRanking,
     },
   );
 
@@ -75,6 +79,24 @@ export function VotingInterface({
         This is an aggregate category that combines votes from multiple
         categories. Voting is not available.
       </p>
+    );
+  }
+
+  if (isRanking) {
+    if (!rankingTop) {
+      return (
+        <p className="text-destructive">
+          This ranking category is not configured properly. Please contact the
+          organizer.
+        </p>
+      );
+    }
+    return (
+      <RankingInterface
+        nominations={nominations}
+        categoryId={categoryId}
+        rankingTop={rankingTop}
+      />
     );
   }
 

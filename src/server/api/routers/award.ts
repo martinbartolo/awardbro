@@ -6,9 +6,15 @@ import { type CategoryType, Prisma } from "~/generated/prisma/client";
 import {
   categoryFormSchema,
   nominationFormSchema,
+  rankingSubmissionSchema,
   sessionFormSchema,
 } from "~/lib/schemas";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+
+// Helper function to calculate points for a ranking vote
+const calculatePoints = (rank: number, rankingTop: number): number => {
+  return rankingTop - rank + 1;
+};
 
 const DEVICE_ID_COOKIE = "device_id";
 const SALT_ROUNDS = 10;
@@ -159,55 +165,109 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // Process aggregate categories
-      const categoriesWithAggregateVotes = await Promise.all(
+      // Process categories that need vote/point calculation
+      const categoriesWithCalculatedVotes = await Promise.all(
         session.categories.map(async category => {
-          if (category.type !== "AGGREGATE") {
-            return category;
+          // For RANKING categories, calculate points instead of simple vote count
+          if (category.type === "RANKING" && category.rankingTop) {
+            const nominationsWithPoints = await Promise.all(
+              category.nominations.map(async nomination => {
+                const votes = await ctx.db.vote.findMany({
+                  where: { nominationId: nomination.id },
+                });
+
+                // Sum up points for each vote based on rank
+                const totalPoints = votes.reduce((sum, vote) => {
+                  if (vote.rank) {
+                    return (
+                      sum + calculatePoints(vote.rank, category.rankingTop!)
+                    );
+                  }
+                  return sum;
+                }, 0);
+
+                return {
+                  ...nomination,
+                  _count: {
+                    votes: totalPoints,
+                  },
+                };
+              }),
+            );
+
+            return {
+              ...category,
+              nominations: nominationsWithPoints,
+            };
           }
 
-          const nominationsWithTotalVotes = await Promise.all(
-            category.nominations.map(async nomination => {
-              // Find matching nominations in source categories
-              const sourceNominations = await ctx.db.nomination.findMany({
-                where: {
-                  name: nomination.name,
-                  categoryId: {
-                    in: category.sourceCategories.map(c => c.id),
+          // For AGGREGATE categories, sum up votes/points from source categories
+          if (category.type === "AGGREGATE") {
+            const nominationsWithTotalVotes = await Promise.all(
+              category.nominations.map(async nomination => {
+                // Find matching nominations in source categories
+                const sourceNominations = await ctx.db.nomination.findMany({
+                  where: {
+                    name: nomination.name,
+                    categoryId: {
+                      in: category.sourceCategories.map(c => c.id),
+                    },
                   },
-                },
-                include: {
+                  include: {
+                    votes: true,
+                    category: {
+                      select: {
+                        type: true,
+                        rankingTop: true,
+                      },
+                    },
+                  },
+                });
+
+                // Sum up all points for this nomination across source categories
+                let totalPoints = 0;
+                for (const nom of sourceNominations) {
+                  if (
+                    nom.category.type === "RANKING" &&
+                    nom.category.rankingTop
+                  ) {
+                    // Calculate points for ranking categories
+                    for (const vote of nom.votes) {
+                      if (vote.rank) {
+                        totalPoints += calculatePoints(
+                          vote.rank,
+                          nom.category.rankingTop,
+                        );
+                      }
+                    }
+                  } else {
+                    // For normal/image categories, each vote = 1 point
+                    totalPoints += nom.votes.length;
+                  }
+                }
+
+                return {
+                  ...nomination,
                   _count: {
-                    select: { votes: true },
+                    votes: totalPoints,
                   },
-                },
-              });
+                };
+              }),
+            );
 
-              // Sum up all votes for this nomination across source categories
-              const totalVotes = sourceNominations.reduce(
-                (sum, nom) => sum + nom._count.votes,
-                0,
-              );
+            return {
+              ...category,
+              nominations: nominationsWithTotalVotes,
+            };
+          }
 
-              return {
-                ...nomination,
-                _count: {
-                  votes: totalVotes,
-                },
-              };
-            }),
-          );
-
-          return {
-            ...category,
-            nominations: nominationsWithTotalVotes,
-          };
+          return category;
         }),
       );
 
       return {
         ...session,
-        categories: categoriesWithAggregateVotes,
+        categories: categoriesWithCalculatedVotes,
       };
     }),
 
@@ -236,6 +296,7 @@ export const awardRouter = createTRPCRouter({
             name: input.name,
             description: input.description,
             type: input.type as CategoryType,
+            rankingTop: input.type === "RANKING" ? input.rankingTop : null,
             sourceCategories:
               input.type === "AGGREGATE"
                 ? {
@@ -291,6 +352,7 @@ export const awardRouter = createTRPCRouter({
               _count: {
                 select: { votes: true },
               },
+              votes: true,
             },
           },
           sourceCategories: true,
@@ -304,7 +366,32 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // If this is an aggregate category, sum up votes from source categories
+      // For RANKING categories, calculate points instead of vote count
+      if (category.type === "RANKING" && category.rankingTop) {
+        const nominationsWithPoints = category.nominations.map(nomination => {
+          const totalPoints = nomination.votes.reduce((sum, vote) => {
+            if (vote.rank) {
+              return sum + calculatePoints(vote.rank, category.rankingTop!);
+            }
+            return sum;
+          }, 0);
+
+          return {
+            ...nomination,
+            votes: undefined, // Don't expose individual votes
+            _count: {
+              votes: totalPoints,
+            },
+          };
+        });
+
+        return {
+          ...category,
+          nominations: nominationsWithPoints,
+        };
+      }
+
+      // If this is an aggregate category, sum up votes/points from source categories
       if (category.type === "AGGREGATE") {
         const nominationsWithTotalVotes = await Promise.all(
           category.nominations.map(async nomination => {
@@ -317,22 +404,38 @@ export const awardRouter = createTRPCRouter({
                 },
               },
               include: {
-                _count: {
-                  select: { votes: true },
+                votes: true,
+                category: {
+                  select: {
+                    type: true,
+                    rankingTop: true,
+                  },
                 },
               },
             });
 
-            // Sum up all votes for this nomination across source categories
-            const totalVotes = sourceNominations.reduce(
-              (sum, nom) => sum + nom._count.votes,
-              0,
-            );
+            // Sum up all points for this nomination across source categories
+            let totalPoints = 0;
+            for (const nom of sourceNominations) {
+              if (nom.category.type === "RANKING" && nom.category.rankingTop) {
+                for (const vote of nom.votes) {
+                  if (vote.rank) {
+                    totalPoints += calculatePoints(
+                      vote.rank,
+                      nom.category.rankingTop,
+                    );
+                  }
+                }
+              } else {
+                totalPoints += nom.votes.length;
+              }
+            }
 
             return {
               ...nomination,
+              votes: undefined,
               _count: {
-                votes: totalVotes,
+                votes: totalPoints,
               },
             };
           }),
@@ -344,7 +447,14 @@ export const awardRouter = createTRPCRouter({
         };
       }
 
-      return category;
+      // For normal categories, strip votes from response
+      return {
+        ...category,
+        nominations: category.nominations.map(n => ({
+          ...n,
+          votes: undefined,
+        })),
+      };
     }),
 
   toggleRevealCategory: publicProcedure
@@ -478,6 +588,13 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
+        if (nomination.category.type === "RANKING") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Use submitRanking for ranking categories",
+          });
+        }
+
         if (!nomination.category.isActive) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -514,6 +631,163 @@ export const awardRouter = createTRPCRouter({
           message: "Failed to cast vote",
         });
       }
+    }),
+
+  submitRanking: publicProcedure
+    .input(rankingSubmissionSchema)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const deviceId = ctx.headers
+          .get("cookie")
+          ?.split(";")
+          .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+          ?.split("=")[1];
+
+        if (!deviceId) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "No device ID found - please enable cookies",
+          });
+        }
+
+        // Get the category and validate it's a ranking category
+        const category = await ctx.db.category.findUnique({
+          where: { id: input.categoryId },
+          include: {
+            nominations: true,
+          },
+        });
+
+        if (!category) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Category not found",
+          });
+        }
+
+        if (category.type !== "RANKING") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This is not a ranking category",
+          });
+        }
+
+        if (!category.isActive) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Voting is not currently active for this category",
+          });
+        }
+
+        if (!category.rankingTop) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Ranking category is missing rankingTop configuration",
+          });
+        }
+
+        // Validate the correct number of rankings
+        if (input.rankings.length !== category.rankingTop) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `You must rank exactly ${category.rankingTop} nominations`,
+          });
+        }
+
+        // Validate all nominations belong to this category
+        const nominationIds = new Set(category.nominations.map(n => n.id));
+        for (const ranking of input.rankings) {
+          if (!nominationIds.has(ranking.nominationId)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invalid nomination in ranking",
+            });
+          }
+        }
+
+        // Validate unique ranks (1 to rankingTop)
+        const ranks = input.rankings.map(r => r.rank);
+        const expectedRanks = Array.from(
+          { length: category.rankingTop },
+          (_, i) => i + 1,
+        );
+        const sortedRanks = [...ranks].sort((a, b) => a - b);
+        if (JSON.stringify(sortedRanks) !== JSON.stringify(expectedRanks)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Ranks must be unique values from 1 to ${category.rankingTop}`,
+          });
+        }
+
+        // Validate no duplicate nominations
+        const uniqueNominations = new Set(
+          input.rankings.map(r => r.nominationId),
+        );
+        if (uniqueNominations.size !== input.rankings.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot rank the same nomination multiple times",
+          });
+        }
+
+        // Delete existing rankings for this device/category
+        await ctx.db.vote.deleteMany({
+          where: {
+            deviceId: deviceId,
+            nomination: {
+              categoryId: input.categoryId,
+            },
+          },
+        });
+
+        // Create new ranking votes
+        const votes = await ctx.db.vote.createManyAndReturn({
+          data: input.rankings.map(ranking => ({
+            deviceId,
+            nominationId: ranking.nominationId,
+            rank: ranking.rank,
+          })),
+        });
+
+        return votes;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to submit ranking",
+        });
+      }
+    }),
+
+  getCurrentRankings: publicProcedure
+    .input(z.object({ categoryId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const deviceId = ctx.headers
+        .get("cookie")
+        ?.split(";")
+        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
+        ?.split("=")[1];
+
+      if (!deviceId) {
+        return [];
+      }
+
+      const votes = await ctx.db.vote.findMany({
+        where: {
+          deviceId: deviceId,
+          nomination: {
+            categoryId: input.categoryId,
+          },
+        },
+        include: {
+          nomination: true,
+        },
+        orderBy: {
+          rank: "asc",
+        },
+      });
+
+      return votes;
     }),
 
   getCurrentVote: publicProcedure

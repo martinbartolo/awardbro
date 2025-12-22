@@ -1,4 +1,4 @@
-import { HelpCircle, ImageIcon, Layers } from "lucide-react";
+import { HelpCircle, ImageIcon, Layers, ListOrdered } from "lucide-react";
 import { type Metadata } from "next";
 import Link from "next/link";
 
@@ -13,6 +13,7 @@ import { SetActiveCategoryButton } from "~/app/components/set-active-category-bu
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { getScoreLabel } from "~/lib/utils";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -161,6 +162,15 @@ export default async function ManagePage({
                             Image
                           </Badge>
                         )}
+                        {category.type === "RANKING" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 bg-emerald-500/15 px-2.5 py-1 text-emerald-600 dark:text-emerald-400"
+                          >
+                            <ListOrdered className="h-3.5 w-3.5" />
+                            Ranking (Top {category.rankingTop})
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <CategoryActions categoryId={category.id} />
@@ -200,6 +210,16 @@ export default async function ManagePage({
                           </div>
                         </div>
                       )}
+                    {category.type === "RANKING" && category.rankingTop && (
+                      <div className="mt-2">
+                        <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
+                          Voters rank their top {category.rankingTop} choices.
+                          Points are awarded by position: 1st place ={" "}
+                          {category.rankingTop} points, 2nd ={" "}
+                          {category.rankingTop - 1} points, etc.
+                        </p>
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="mt-4">
                     <div className="mb-6">
@@ -243,7 +263,11 @@ export default async function ManagePage({
                               description={nomination.description ?? ""}
                             />
                             <div className="text-accent mt-2 text-sm">
-                              {nomination._count.votes} votes
+                              {nomination._count.votes}{" "}
+                              {getScoreLabel(
+                                category.type,
+                                nomination._count.votes,
+                              )}
                             </div>
                           </div>
                           <NominationActions

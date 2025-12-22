@@ -129,7 +129,11 @@ export function LiveVotingSession({
         >
           <div className="mb-8 text-center">
             <h1 className="text-4xl font-bold">{session.name}</h1>
-            <p className="text-muted-foreground mt-2">Cast your vote</p>
+            <p className="text-muted-foreground mt-2">
+              {activeCategory.type === "RANKING"
+                ? `Rank your top ${activeCategory.rankingTop} choices`
+                : "Cast your vote"}
+            </p>
             {hasVoted && (
               <p className="text-chart-2 mt-2">
                 You have already voted in this category
@@ -166,6 +170,7 @@ export function LiveVotingSession({
                   nominations={activeCategory.nominations}
                   categoryId={activeCategory.id}
                   categoryType={activeCategory.type}
+                  rankingTop={activeCategory.rankingTop}
                 />
               </CardContent>
             </Card>

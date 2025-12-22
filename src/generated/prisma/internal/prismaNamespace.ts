@@ -761,6 +761,7 @@ export const CategoryScalarFieldEnum = {
   revealed: 'revealed',
   isActive: 'isActive',
   type: 'type',
+  rankingTop: 'rankingTop',
   sessionId: 'sessionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -785,6 +786,7 @@ export const VoteScalarFieldEnum = {
   id: 'id',
   deviceId: 'deviceId',
   nominationId: 'nominationId',
+  rank: 'rank',
   createdAt: 'createdAt'
 } as const
 
@@ -881,6 +883,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Float'
+ */
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Float[]'
+ */
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
 
 /**

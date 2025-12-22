@@ -41,6 +41,7 @@ const categoryTypeDescriptions: Record<CategoryType, string> = {
   NORMAL: "Standard category with text-based nominations",
   IMAGE: "Category for image-based nominations with captions",
   AGGREGATE: "Combines votes from multiple source categories",
+  RANKING: "Voters rank their top X choices, points awarded by position",
 };
 
 export function AddCategoryForm({ sessionId }: { sessionId: string }) {
@@ -53,6 +54,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       description: "",
       type: "NORMAL",
       sourceCategories: [],
+      rankingTop: 3,
     },
   });
 
@@ -80,10 +82,19 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       return;
     }
 
+    if (
+      values.type === "RANKING" &&
+      (!values.rankingTop || values.rankingTop < 2)
+    ) {
+      toast.error("Please specify how many options to rank (at least 2)");
+      return;
+    }
+
     addCategory.mutate({
       ...values,
       sourceCategories:
         values.type === "AGGREGATE" ? values.sourceCategories : [],
+      rankingTop: values.type === "RANKING" ? values.rankingTop : undefined,
     });
   };
 
@@ -92,9 +103,14 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
     control: form.control,
     name: "sourceCategories",
   });
+  const rankingTop = useWatch({
+    control: form.control,
+    name: "rankingTop",
+  });
   const isSubmitDisabled =
     addCategory.isPending ||
-    (categoryType === "AGGREGATE" && sourceCategories.length === 0);
+    (categoryType === "AGGREGATE" && sourceCategories.length === 0) ||
+    (categoryType === "RANKING" && (!rankingTop || rankingTop < 2));
 
   return (
     <Card>
@@ -130,6 +146,10 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                               with captions. Perfect for photo contests.
                             </p>
                             <p>
+                              <strong>Ranking:</strong> Voters rank their top X
+                              choices. Points are awarded based on position.
+                            </p>
+                            <p>
                               <strong>Aggregate:</strong> Combines votes from
                               multiple categories. Voting is disabled.
                             </p>
@@ -144,6 +164,11 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                       if (value !== "AGGREGATE") {
                         form.setValue("sourceCategories", []);
                       }
+                      if (value !== "RANKING") {
+                        form.setValue("rankingTop", undefined);
+                      } else {
+                        form.setValue("rankingTop", 3);
+                      }
                     }}
                     defaultValue={field.value}
                   >
@@ -155,6 +180,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                     <SelectContent>
                       <SelectItem value="NORMAL">Normal</SelectItem>
                       <SelectItem value="IMAGE">Image</SelectItem>
+                      <SelectItem value="RANKING">Ranking</SelectItem>
                       <SelectItem value="AGGREGATE">Aggregate</SelectItem>
                     </SelectContent>
                   </Select>
@@ -197,6 +223,37 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                 </FormItem>
               )}
             />
+
+            {categoryType === "RANKING" && (
+              <FormField
+                control={form.control}
+                name="rankingTop"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How many to rank?</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={2}
+                        max={10}
+                        {...field}
+                        value={field.value ?? 3}
+                        onChange={e =>
+                          field.onChange(parseInt(e.target.value, 10) || 3)
+                        }
+                        placeholder="3"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Voters will rank their top {field.value ?? 3} choices. 1st
+                      place gets {field.value ?? 3} points, 2nd gets{" "}
+                      {(field.value ?? 3) - 1}, etc.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {categoryType === "AGGREGATE" &&
               categories &&

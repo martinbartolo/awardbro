@@ -31,12 +31,27 @@ export const categoryFormSchema = z
     description: z.string().max(500, "Description is too long").optional(),
     type: categoryTypeEnum,
     sourceCategories: z.array(z.string()),
+    rankingTop: z
+      .number()
+      .int()
+      .min(2, "Must rank at least 2 options")
+      .max(10, "Cannot rank more than 10 options")
+      .optional(),
   })
   .refine(
     data => data.type !== "AGGREGATE" || data.sourceCategories.length > 0,
     {
       path: ["sourceCategories"],
       message: "Aggregate categories must have at least one source category",
+    },
+  )
+  .refine(
+    data =>
+      data.type !== "RANKING" ||
+      (data.rankingTop !== undefined && data.rankingTop >= 2),
+    {
+      path: ["rankingTop"],
+      message: "Ranking categories must specify how many options to rank",
     },
   );
 
@@ -46,6 +61,19 @@ export const nominationFormSchema = z.object({
   description: z.string().max(500, "Description is too long").optional(),
 });
 
+export const rankingSubmissionSchema = z.object({
+  categoryId: z.string().min(1, "Category ID is required"),
+  rankings: z
+    .array(
+      z.object({
+        nominationId: z.string().min(1, "Nomination ID is required"),
+        rank: z.number().int().min(1, "Rank must be at least 1"),
+      }),
+    )
+    .min(1, "At least one ranking is required"),
+});
+
 export type SessionFormValues = z.infer<typeof sessionFormSchema>;
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export type NominationFormValues = z.infer<typeof nominationFormSchema>;
+export type RankingSubmissionValues = z.infer<typeof rankingSubmissionSchema>;
