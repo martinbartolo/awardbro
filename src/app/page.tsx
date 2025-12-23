@@ -45,7 +45,7 @@ export default function Page() {
               rel="noopener noreferrer"
             >
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Support</span>
+              Support
             </a>
           </Button>
         </div>
@@ -241,7 +241,7 @@ export default function Page() {
                 Help
               </Link>
               <a
-                href="https://ko-fi.com/martinbartolo"
+                href="https://ko-fi.com/1martin"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground text-sm transition-colors hover:text-pink-500"
