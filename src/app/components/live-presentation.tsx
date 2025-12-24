@@ -7,8 +7,10 @@ import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
 import { api, type RouterOutputs } from "~/trpc/react";
 
+import { AggregateInfo } from "./aggregate-info";
 import { LiveVoting } from "./live-voting";
 import { WinnerAnimation } from "./winner-animation";
 
@@ -147,6 +149,18 @@ export function LivePresentation({
                       {category.description}
                     </p>
                   )}
+                  {category.aggregateOf.length > 0 && (
+                    <div className="mb-8 flex flex-wrap items-center justify-center gap-1">
+                      <span className="text-muted-foreground text-sm">
+                        Counts towards:
+                      </span>
+                      {category.aggregateOf.map(aggregate => (
+                        <Badge key={aggregate.id} variant="secondary">
+                          {aggregate.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
                   {category.revealed ? (
                     <motion.div
@@ -189,6 +203,10 @@ export function LivePresentation({
                         ));
                       })()}
                     </motion.div>
+                  ) : category.type === "AGGREGATE" ? (
+                    <AggregateInfo
+                      sourceCategories={category.sourceCategories}
+                    />
                   ) : (
                     <LiveVoting
                       categoryId={category.id}

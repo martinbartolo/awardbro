@@ -94,9 +94,9 @@ export function CategoryActions({
         disabled={toggleHideVoteCounts.isPending}
       >
         {optimisticValue ? (
-          <Eye className="size-4" />
-        ) : (
           <EyeOff className="size-4" />
+        ) : (
+          <Eye className="size-4" />
         )}
       </Button>
 

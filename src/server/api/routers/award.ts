@@ -153,6 +153,9 @@ export const awardRouter = createTRPCRouter({
                 },
               },
               sourceCategories: true,
+              aggregateOf: {
+                select: { id: true, name: true },
+              },
             },
           },
         },
