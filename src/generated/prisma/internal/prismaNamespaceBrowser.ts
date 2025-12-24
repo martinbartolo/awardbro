@@ -94,6 +94,7 @@ export const CategoryScalarFieldEnum = {
   type: 'type',
   rankingTop: 'rankingTop',
   hideVoteCounts: 'hideVoteCounts',
+  winnerOnly: 'winnerOnly',
   sessionId: 'sessionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

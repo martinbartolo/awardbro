@@ -164,43 +164,106 @@ export function LivePresentation({
 
                   {category.revealed ? (
                     <motion.div
-                      className="grid grid-cols-1 gap-8"
+                      className={`grid grid-cols-1 gap-8 ${
+                        category.winnerOnly
+                          ? "min-h-[200px] place-items-center"
+                          : ""
+                      }`}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.3 }}
                     >
                       {(() => {
-                        const sortedNominations = category.nominations.sort(
-                          (a, b) => b._count.votes - a._count.votes,
-                        );
-                        const highestVoteCount =
-                          sortedNominations[0]?._count.votes;
+                        const sortedNominations = [
+                          ...category.nominations,
+                        ].sort((a, b) => b._count.votes - a._count.votes);
 
-                        return sortedNominations.map((nomination, index) => (
-                          <div
-                            key={nomination.id}
-                            className={`${
-                              nomination._count.votes === highestVoteCount
-                                ? "col-span-1 md:px-12"
-                                : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
-                            }`}
-                          >
-                            <WinnerAnimation
-                              nomination={nomination}
-                              index={index}
-                              isWinner={
-                                nomination._count.votes === highestVoteCount
-                              }
-                              isTied={
-                                sortedNominations.filter(
-                                  n => n._count.votes === highestVoteCount,
-                                ).length > 1
-                              }
-                              categoryType={category.type}
-                              hideVoteCounts={category.hideVoteCounts}
-                            />
-                          </div>
-                        ));
+                        const topNomination = sortedNominations[0];
+                        if (!topNomination) {
+                          return (
+                            <div className="text-muted-foreground w-full rounded-xl border border-dashed p-10 text-center text-xl">
+                              No nominations yet.
+                            </div>
+                          );
+                        }
+
+                        const totalScore = sortedNominations.reduce(
+                          (sum, nom) => sum + nom._count.votes,
+                          0,
+                        );
+                        const highestVoteCount = topNomination._count.votes;
+                        const winners = sortedNominations.filter(
+                          n => n._count.votes === highestVoteCount,
+                        );
+
+                        // Only crown a winner when at least one vote/point has been cast
+                        // (or there's only one nominee).
+                        const hasWinner =
+                          totalScore > 0 || sortedNominations.length === 1;
+                        const isTied = hasWinner && winners.length > 1;
+                        const isCompleteTie =
+                          hasWinner &&
+                          sortedNominations.length > 1 &&
+                          winners.length === sortedNominations.length;
+
+                        // Filter to winners only if winnerOnly is enabled
+                        const displayNominations = category.winnerOnly
+                          ? hasWinner
+                            ? winners
+                            : []
+                          : sortedNominations;
+
+                        return (
+                          <>
+                            {!hasWinner && (
+                              <div className="w-full rounded-xl border border-dashed p-10 text-center">
+                                <div className="text-foreground text-2xl font-semibold">
+                                  No votes yet
+                                </div>
+                                <div className="text-muted-foreground mt-2 text-lg">
+                                  Cast at least one vote to reveal a winner.
+                                </div>
+                              </div>
+                            )}
+
+                            {isCompleteTie && (
+                              <div className="w-full rounded-xl border border-dashed p-6 text-center">
+                                <div className="text-foreground text-lg font-semibold">
+                                  It&apos;s a tie!
+                                </div>
+                                <div className="text-muted-foreground mt-1 text-sm">
+                                  All nominees share the top score.
+                                </div>
+                              </div>
+                            )}
+
+                            {displayNominations.map((nomination, index) => {
+                              const isWinner =
+                                hasWinner &&
+                                nomination._count.votes === highestVoteCount;
+
+                              return (
+                                <div
+                                  key={nomination.id}
+                                  className={`${
+                                    isWinner
+                                      ? "col-span-1 w-full md:px-12"
+                                      : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
+                                  }`}
+                                >
+                                  <WinnerAnimation
+                                    nomination={nomination}
+                                    index={index}
+                                    isWinner={isWinner}
+                                    isTied={isTied}
+                                    categoryType={category.type}
+                                    hideVoteCounts={category.hideVoteCounts}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </>
+                        );
                       })()}
                     </motion.div>
                   ) : category.type === "AGGREGATE" ? (

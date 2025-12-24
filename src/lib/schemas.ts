@@ -38,6 +38,7 @@ export const categoryFormSchema = z
       .max(10, "Cannot rank more than 10 options")
       .optional(),
     hideVoteCounts: z.boolean().optional(),
+    winnerOnly: z.boolean().optional(),
   })
   .refine(
     data => data.type !== "AGGREGATE" || data.sourceCategories.length > 0,
