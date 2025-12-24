@@ -176,6 +176,7 @@ export default async function ManagePage({
                         <CategoryActions
                           categoryId={category.id}
                           hideVoteCounts={category.hideVoteCounts}
+                          winnerOnly={category.winnerOnly}
                         />
                         <SetActiveCategoryButton
                           categoryId={category.id}

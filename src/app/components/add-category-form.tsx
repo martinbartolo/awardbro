@@ -56,6 +56,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       sourceCategories: [],
       rankingTop: 3,
       hideVoteCounts: false,
+      winnerOnly: false,
     },
   });
 
@@ -68,7 +69,16 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
   const addCategory = api.award.addCategory.useMutation({
     onSuccess: async () => {
       toast.success("Category added successfully");
-      form.reset();
+      form.reset({
+        sessionId,
+        name: "",
+        description: "",
+        type: "NORMAL",
+        sourceCategories: [],
+        rankingTop: 3,
+        hideVoteCounts: false,
+        winnerOnly: false,
+      });
       router.refresh();
       await utils.award.getSessionCategories.invalidate({ sessionId });
     },
@@ -171,7 +181,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                         form.setValue("rankingTop", 3);
                       }
                     }}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -189,60 +199,6 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                     {categoryTypeDescriptions[field.value as CategoryType]}
                   </FormDescription>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Best Performance" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Describe what this category is about..."
-                      rows={3}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="hideVoteCounts"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="flex flex-col gap-1 leading-none">
-                    <FormLabel>Hide vote counts in presentation</FormLabel>
-                    <FormDescription>
-                      Only show rankings without revealing the actual vote
-                      numbers
-                    </FormDescription>
-                  </div>
                 </FormItem>
               )}
             />
@@ -277,6 +233,85 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                 )}
               />
             )}
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Best Performance" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      value={typeof field.value === "string" ? field.value : ""}
+                      placeholder="Describe what this category is about..."
+                      rows={3}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="hideVoteCounts"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="flex flex-col gap-1 leading-none">
+                    <FormLabel>Hide vote counts in presentation</FormLabel>
+                    <FormDescription>
+                      Only show rankings without revealing the actual vote
+                      numbers
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="winnerOnly"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="flex flex-col gap-1 leading-none">
+                    <FormLabel className="flex items-center gap-2">
+                      Winner only reveal
+                    </FormLabel>
+                    <FormDescription>
+                      Only show the winner when revealing results without
+                      revealing the runner-ups.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
 
             {categoryType === "AGGREGATE" &&
               categories &&

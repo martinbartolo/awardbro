@@ -153,6 +153,9 @@ export const awardRouter = createTRPCRouter({
                 },
               },
               sourceCategories: true,
+              aggregateOf: {
+                select: { id: true, name: true },
+              },
             },
           },
         },
@@ -298,6 +301,7 @@ export const awardRouter = createTRPCRouter({
             type: input.type as CategoryType,
             rankingTop: input.type === "RANKING" ? input.rankingTop : null,
             hideVoteCounts: input.hideVoteCounts ?? false,
+            winnerOnly: input.winnerOnly ?? false,
             sourceCategories:
               input.type === "AGGREGATE"
                 ? {
@@ -497,6 +501,27 @@ export const awardRouter = createTRPCRouter({
       return ctx.db.category.update({
         where: { id: input.categoryId },
         data: { hideVoteCounts: !category.hideVoteCounts },
+      });
+    }),
+
+  toggleWinnerOnly: publicProcedure
+    .input(z.object({ categoryId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const category = await ctx.db.category.findUnique({
+        where: { id: input.categoryId },
+        select: { winnerOnly: true },
+      });
+
+      if (!category) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Category not found",
+        });
+      }
+
+      return ctx.db.category.update({
+        where: { id: input.categoryId },
+        data: { winnerOnly: !category.winnerOnly },
       });
     }),
 

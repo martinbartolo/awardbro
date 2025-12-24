@@ -7,6 +7,7 @@ import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/react";
@@ -163,6 +164,22 @@ export function LiveVotingSession({
                   <p className="text-muted-foreground text-sm">
                     {activeCategory.description}
                   </p>
+                )}
+                {activeCategory.aggregateOf.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1">
+                    <span className="text-muted-foreground text-xs">
+                      Counts towards:
+                    </span>
+                    {activeCategory.aggregateOf.map(aggregate => (
+                      <Badge
+                        key={aggregate.id}
+                        variant="secondary"
+                        className="text-xs"
+                      >
+                        {aggregate.name}
+                      </Badge>
+                    ))}
+                  </div>
                 )}
               </CardHeader>
               <CardContent>

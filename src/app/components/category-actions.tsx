@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
+import { Crown, Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -23,22 +23,29 @@ import { api } from "~/trpc/react";
 type CategoryActionsProps = {
   categoryId: string;
   hideVoteCounts: boolean;
+  winnerOnly: boolean;
 };
 
 export function CategoryActions({
   categoryId,
   hideVoteCounts,
+  winnerOnly,
 }: CategoryActionsProps) {
   const router = useRouter();
   const utils = api.useUtils();
 
   // Optimistic local state for instant UI feedback
   const [optimisticValue, setOptimisticValue] = useState(hideVoteCounts);
+  const [optimisticWinnerOnly, setOptimisticWinnerOnly] = useState(winnerOnly);
 
   // Sync optimistic state when prop changes (e.g., after server refresh)
   useEffect(() => {
     setOptimisticValue(hideVoteCounts);
   }, [hideVoteCounts]);
+
+  useEffect(() => {
+    setOptimisticWinnerOnly(winnerOnly);
+  }, [winnerOnly]);
 
   const toggleHideVoteCounts = api.award.toggleHideVoteCounts.useMutation({
     onMutate: () => {
@@ -60,6 +67,26 @@ export function CategoryActions({
     onError: () => {
       // Revert optimistic update
       setOptimisticValue(hideVoteCounts);
+      toast.error("Failed to update setting");
+    },
+  });
+
+  const toggleWinnerOnly = api.award.toggleWinnerOnly.useMutation({
+    onMutate: () => {
+      setOptimisticWinnerOnly(prev => !prev);
+    },
+    onSuccess: data => {
+      setOptimisticWinnerOnly(data.winnerOnly);
+      void utils.award.getSessionBySlug.invalidate();
+      router.refresh();
+      toast.success(
+        data.winnerOnly
+          ? "Only winner will be shown on reveal"
+          : "All nominees will be shown on reveal",
+      );
+    },
+    onError: () => {
+      setOptimisticWinnerOnly(winnerOnly);
       toast.error("Failed to update setting");
     },
   });
@@ -94,10 +121,27 @@ export function CategoryActions({
         disabled={toggleHideVoteCounts.isPending}
       >
         {optimisticValue ? (
-          <Eye className="size-4" />
-        ) : (
           <EyeOff className="size-4" />
+        ) : (
+          <Eye className="size-4" />
         )}
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="iconSm"
+        tooltip={
+          optimisticWinnerOnly ? "Show all nominees" : "Show winner only"
+        }
+        aria-label={
+          optimisticWinnerOnly ? "Show all nominees" : "Show winner only"
+        }
+        onClick={() => toggleWinnerOnly.mutate({ categoryId })}
+        disabled={toggleWinnerOnly.isPending}
+      >
+        <Crown
+          className={`size-4 ${optimisticWinnerOnly ? "text-yellow-500" : ""}`}
+        />
       </Button>
 
       <AlertDialog>
