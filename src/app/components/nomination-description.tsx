@@ -9,12 +9,13 @@ const isImageUrl = (url: string) => {
 
 // Helper to transform URLs to direct image URLs where needed
 const getImageUrl = (url: string) => {
-  // Transform Google Drive share links to direct URLs
+  // Transform Google Drive share links to thumbnail URLs (bypasses hotlink blocking)
   if (url.includes("drive.google.com") && url.includes("/file/d/")) {
     const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
     const fileId = matches?.[1];
     if (!fileId) return "";
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    // Use thumbnail endpoint with large size - works for cross-origin embedding
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   }
   return url;
 };
