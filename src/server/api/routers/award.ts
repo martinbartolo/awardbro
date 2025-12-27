@@ -529,9 +529,12 @@ export const awardRouter = createTRPCRouter({
     .input(nominationFormSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        // First verify the category exists
+        // First verify the category exists and check if it's a source for any aggregate categories
         const category = await ctx.db.category.findUnique({
           where: { id: input.categoryId },
+          include: {
+            aggregateOf: true, // Get aggregate categories that use this as a source
+          },
         });
 
         if (!category) {
@@ -541,13 +544,39 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
-        return await ctx.db.nomination.create({
+        const nomination = await ctx.db.nomination.create({
           data: {
             categoryId: input.categoryId,
             name: input.name,
             description: input.description,
           },
         });
+
+        // Sync nomination to any aggregate categories that use this category as a source
+        if (category.aggregateOf.length > 0) {
+          for (const aggregateCategory of category.aggregateOf) {
+            // Check if nomination with this name already exists in the aggregate
+            const existingNomination = await ctx.db.nomination.findFirst({
+              where: {
+                categoryId: aggregateCategory.id,
+                name: input.name,
+              },
+            });
+
+            // Only create if it doesn't exist
+            if (!existingNomination) {
+              await ctx.db.nomination.create({
+                data: {
+                  categoryId: aggregateCategory.id,
+                  name: input.name,
+                  description: input.description,
+                },
+              });
+            }
+          }
+        }
+
+        return nomination;
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
