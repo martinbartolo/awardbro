@@ -292,7 +292,6 @@ export function LivePresentation({
                       })()}
                       categoryType={category.type}
                       rankingTop={category.rankingTop}
-                      hideVoteCounts={category.hideVoteCounts}
                     />
                   )}
                 </motion.div>
