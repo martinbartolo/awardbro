@@ -49,14 +49,16 @@ export default function HelpPage() {
       {/* Header */}
       <header className="bg-background/80 sticky top-0 z-50 border-b backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild variant="ghost" size="sm" className="shrink-0">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
-              Back to Home
+              <span className="hidden sm:inline">Back to Home</span>
             </Link>
           </Button>
-          <span className="text-lg font-bold">🎉 AwardBro Help</span>
-          <div className="w-24" />
+          <span className="truncate px-2 text-base font-bold sm:text-lg">
+            🎉 AwardBro Help
+          </span>
+          <div className="hidden w-24 sm:block" />
         </div>
       </header>
 
