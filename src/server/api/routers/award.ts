@@ -10,6 +10,7 @@ import {
   sessionFormSchema,
 } from "~/lib/schemas";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { assertCanManage, setManageCookie } from "~/server/auth/manage";
 
 // Helper function to calculate points for a ranking vote
 const calculatePoints = (rank: number, rankingTop: number): number => {
@@ -74,7 +75,7 @@ export const awardRouter = createTRPCRouter({
     .input(sessionFormSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        return await ctx.db.session.create({
+        const session = await ctx.db.session.create({
           data: {
             name: input.name,
             slug: input.slug,
@@ -82,7 +83,11 @@ export const awardRouter = createTRPCRouter({
               ? await bcrypt.hash(input.password, SALT_ROUNDS)
               : null,
           },
+          select: { id: true, name: true, slug: true },
         });
+        // The creator can manage the show straight away without re-entering the password
+        setManageCookie(ctx.resHeaders, session.id);
+        return session;
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
           if (error.code === "P2002") {
@@ -99,36 +104,6 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
-  getSession: publicProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const session = await ctx.db.session.findUnique({
-        where: { id: input.id },
-        include: {
-          categories: {
-            include: {
-              nominations: {
-                include: {
-                  _count: {
-                    select: { votes: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!session) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Session not found",
-        });
-      }
-
-      return session;
-    }),
-
   getSessionBySlug: publicProcedure
     .input(
       z.object({
@@ -139,6 +114,8 @@ export const awardRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
         where: { slug: input.slug },
+        // Never send the password hash to the client
+        omit: { password: true },
         include: {
           categories: {
             where: input.activeOnly ? { isActive: true } : undefined,
@@ -292,6 +269,7 @@ export const awardRouter = createTRPCRouter({
   addCategory: publicProcedure
     .input(categoryFormSchema)
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { sessionId: input.sessionId });
       try {
         const category = await ctx.db.category.create({
           data: {
@@ -465,6 +443,7 @@ export const awardRouter = createTRPCRouter({
   toggleRevealCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.id });
       const category = await ctx.db.category.findUnique({
         where: { id: input.id },
         select: { revealed: true },
@@ -486,6 +465,7 @@ export const awardRouter = createTRPCRouter({
   toggleHideVoteCounts: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.categoryId });
       const category = await ctx.db.category.findUnique({
         where: { id: input.categoryId },
         select: { hideVoteCounts: true },
@@ -507,6 +487,7 @@ export const awardRouter = createTRPCRouter({
   toggleWinnerOnly: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.categoryId });
       const category = await ctx.db.category.findUnique({
         where: { id: input.categoryId },
         select: { winnerOnly: true },
@@ -528,6 +509,7 @@ export const awardRouter = createTRPCRouter({
   addNomination: publicProcedure
     .input(nominationFormSchema)
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.categoryId });
       try {
         // First verify the category exists and check if it's a source for any aggregate categories
         const category = await ctx.db.category.findUnique({
@@ -589,6 +571,7 @@ export const awardRouter = createTRPCRouter({
   setActiveCategory: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.categoryId });
       // First, get the current category and its active state
       const category = await ctx.db.category.findUnique({
         where: { id: input.categoryId },
@@ -922,10 +905,9 @@ export const awardRouter = createTRPCRouter({
   deleteNomination: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { nominationId: input.id });
       try {
-        await ctx.db.vote.deleteMany({
-          where: { nominationId: input.id },
-        });
+        // Votes are removed by the onDelete: Cascade relation
         return await ctx.db.nomination.delete({
           where: { id: input.id },
         });
@@ -940,20 +922,9 @@ export const awardRouter = createTRPCRouter({
   deleteCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.id });
       try {
-        // Delete all votes for nominations in this category
-        await ctx.db.vote.deleteMany({
-          where: {
-            nomination: {
-              categoryId: input.id,
-            },
-          },
-        });
-        // Delete all nominations in this category
-        await ctx.db.nomination.deleteMany({
-          where: { categoryId: input.id },
-        });
-        // Delete the category
+        // Nominations and votes are removed by the onDelete: Cascade relations
         return await ctx.db.category.delete({
           where: { id: input.id },
         });
@@ -972,33 +943,13 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { sessionId: input.id });
       try {
-        // Delete all votes
-        await ctx.db.vote.deleteMany({
-          where: {
-            nomination: {
-              category: {
-                sessionId: input.id,
-              },
-            },
-          },
-        });
-        // Delete all nominations
-        await ctx.db.nomination.deleteMany({
-          where: {
-            category: {
-              sessionId: input.id,
-            },
-          },
-        });
-        // Delete all categories
-        await ctx.db.category.deleteMany({
-          where: { sessionId: input.id },
-        });
-        // Delete the session
-        return await ctx.db.session.delete({
+        // Categories, nominations and votes are removed by the onDelete: Cascade relations
+        await ctx.db.session.delete({
           where: { id: input.id },
         });
+        return { success: true };
       } catch {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -1010,6 +961,7 @@ export const awardRouter = createTRPCRouter({
   resetCategoryVotes: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.categoryId });
       try {
         return await ctx.db.vote.deleteMany({
           where: {
@@ -1029,6 +981,7 @@ export const awardRouter = createTRPCRouter({
   resetAllVotes: publicProcedure
     .input(z.object({ sessionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { sessionId: input.sessionId });
       try {
         return await ctx.db.vote.deleteMany({
           where: {
@@ -1107,6 +1060,7 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
+      setManageCookie(ctx.resHeaders, session.id);
       return { success: true };
     }),
 });

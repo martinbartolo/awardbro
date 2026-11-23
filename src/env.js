@@ -9,6 +9,8 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.url(),
     DATABASE_DIRECT_URL: z.url().optional(),
+    // Signs manage-access cookies. Generate with: openssl rand -base64 32
+    AUTH_SECRET: z.string().min(32),
   },
 
   /**
@@ -27,6 +29,7 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_DIRECT_URL: process.env.DATABASE_DIRECT_URL,
+    AUTH_SECRET: process.env.AUTH_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

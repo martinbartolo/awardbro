@@ -1,7 +1,8 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { useState } from "react";
 
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
@@ -17,24 +18,20 @@ import { Label } from "~/components/ui/label";
 import { api } from "~/trpc/react";
 
 type PasswordVerificationProps = {
-  children: ReactNode;
   slug: string;
 };
 
-export function PasswordVerification({
-  children,
-  slug,
-}: PasswordVerificationProps) {
+/**
+ * Shown on the manage page when the visitor has no manage-access cookie for this show.
+ * A correct password makes the server set the cookie; refreshing then renders the manage UI.
+ */
+export function PasswordVerification({ slug }: PasswordVerificationProps) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
-  const [isVerified, setIsVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const verifyAccess = api.award.verifyManageAccess.useMutation({
     onSuccess: () => {
-      setIsVerified(true);
-      // Store the verification in sessionStorage
-      sessionStorage.setItem(`manage-access-${slug}`, "true");
+      router.refresh();
     },
     onError: error => {
       toast.error(error.message);
@@ -42,41 +39,13 @@ export function PasswordVerification({
     },
   });
 
-  useEffect(() => {
-    // Check if this is initial access from session creation
-    const isInitialAccess = sessionStorage.getItem("initial-access") === slug;
-    if (isInitialAccess) {
-      setIsVerified(true);
-      sessionStorage.setItem(`manage-access-${slug}`, "true");
-      sessionStorage.removeItem("initial-access");
-    } else {
-      // Check if already verified in this session
-      const verified = sessionStorage.getItem(`manage-access-${slug}`);
-      if (verified === "true") {
-        setIsVerified(true);
-      }
-    }
-    setIsCheckingSession(false);
-  }, [slug]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsVerifying(true);
-    try {
-      await verifyAccess.mutateAsync({ slug, password });
-    } finally {
-      setIsVerifying(false);
-    }
+    verifyAccess.mutate({ slug, password });
   };
 
-  // Don't render anything until we've checked sessionStorage
-  if (isCheckingSession) {
-    return null;
-  }
-
-  if (isVerified) {
-    return <>{children}</>;
-  }
+  // Stay in the "verifying" state through the refresh so the form doesn't flash back
+  const isVerifying = verifyAccess.isPending || verifyAccess.isSuccess;
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
