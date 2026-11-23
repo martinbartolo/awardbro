@@ -16,6 +16,6 @@ Award show app: hosts build a show, voters vote from their phones, results are r
 - Branch from `dev` with the Linear branch name; PR into `dev` with `Fixes BAR-x`. Never push to `main` directly: it deploys to production.
 - Every route that changes a show calls `assertCanManage` (`src/server/auth/manage.ts`) before touching the database.
 - Never send `Session.password` to the client: use `omit` or an explicit `select`.
-- Schema changes go through `prisma migrate dev`, never `db push`.
+- Schema changes: create migrations with `pnpm db:migrate:dev` against a throwaway Neon branch (never the shared `dev` branch), never use `db push`, and never edit a merged migration.
 - Local dev and Preview use the Neon `dev` branch; only Production uses `main`. Never point local tools at production. Test risky or destructive changes on a throwaway Neon branch and delete it afterwards.
 - New env vars go in `src/env.js` and `.env.example` (no real values).
