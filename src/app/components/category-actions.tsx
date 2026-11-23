@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Crown, Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,21 @@ type CategoryActionsProps = {
   winnerOnly: boolean;
 };
 
+/**
+ * Local copy of a server value that can be changed optimistically, and that
+ * follows the server value whenever it changes (e.g. after router.refresh()).
+ * Adjusting state during render avoids the extra render of an effect.
+ */
+function useOptimisticFlag(serverValue: boolean) {
+  const [value, setValue] = useState(serverValue);
+  const [prevServerValue, setPrevServerValue] = useState(serverValue);
+  if (prevServerValue !== serverValue) {
+    setPrevServerValue(serverValue);
+    setValue(serverValue);
+  }
+  return [value, setValue] as const;
+}
+
 export function CategoryActions({
   categoryId,
   hideVoteCounts,
@@ -35,17 +50,10 @@ export function CategoryActions({
   const utils = api.useUtils();
 
   // Optimistic local state for instant UI feedback
-  const [optimisticValue, setOptimisticValue] = useState(hideVoteCounts);
-  const [optimisticWinnerOnly, setOptimisticWinnerOnly] = useState(winnerOnly);
-
-  // Sync optimistic state when prop changes (e.g., after server refresh)
-  useEffect(() => {
-    setOptimisticValue(hideVoteCounts);
-  }, [hideVoteCounts]);
-
-  useEffect(() => {
-    setOptimisticWinnerOnly(winnerOnly);
-  }, [winnerOnly]);
+  const [optimisticValue, setOptimisticValue] =
+    useOptimisticFlag(hideVoteCounts);
+  const [optimisticWinnerOnly, setOptimisticWinnerOnly] =
+    useOptimisticFlag(winnerOnly);
 
   const toggleHideVoteCounts = api.award.toggleHideVoteCounts.useMutation({
     onMutate: () => {

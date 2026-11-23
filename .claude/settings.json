@@ -1,0 +1,42 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(pnpm check)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm build)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm format:write)",
+      "Bash(pnpm outdated)",
+      "Bash(pnpm audit:*)",
+      "Bash(pnpm exec prettier:*)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(pnpm exec prisma validate)",
+      "Bash(pnpm exec prisma format)",
+      "Bash(pnpm exec prisma generate)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh repo view:*)",
+      "Bash(vercel whoami)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel env ls:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(vercel logs:*)",
+      "Bash(neonctl me)",
+      "Bash(neonctl projects list:*)",
+      "Bash(neonctl branches list:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm exec vitest:*)",
+      "Bash(pnpm exec next typegen)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
+    ]
+  }
+}

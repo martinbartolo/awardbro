@@ -40,7 +40,6 @@ export function CreateSessionForm() {
 
   const createSession = api.award.createSession.useMutation({
     onSuccess: data => {
-      sessionStorage.setItem("initial-access", data.slug);
       router.push(`/manage/${data.slug}`);
     },
     onError: error => {
@@ -53,11 +52,7 @@ export function CreateSessionForm() {
   });
 
   const onSubmit = (values: SessionFormValues) => {
-    createSession.mutate({
-      name: values.name,
-      slug: values.slug,
-      password: values.password ?? undefined,
-    });
+    createSession.mutate(values);
   };
 
   // Generate a URL-friendly slug from the name
@@ -133,6 +128,7 @@ export function CreateSessionForm() {
                       type="password"
                       placeholder="Password for management access"
                       autoCapitalize="off"
+                      autoComplete="new-password"
                     />
                   </FormControl>
                   <FormMessage />
@@ -143,8 +139,9 @@ export function CreateSessionForm() {
             <div className="bg-muted flex items-start gap-2 rounded-md p-3">
               <AlertCircle className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
               <p className="text-muted-foreground text-sm">
-                Make sure to save your management URL and password. You&apos;ll
-                need both to access your award show management later!
+                Save your management URL, and your password if you set one.
+                Without a password, anyone with the management URL can change
+                your award show.
               </p>
             </div>
 

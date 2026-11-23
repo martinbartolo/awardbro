@@ -1,0 +1,115 @@
+# Development
+
+How to work on AwardBro day to day. For how the app works, see [architecture.md](architecture.md).
+
+## Setup
+
+Requirements: Node 24 (matches Vercel), pnpm 10, and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
+
+```bash
+pnpm install
+vercel link --project awardbro   # once
+vercel env pull .env.local       # Development values: the Neon `dev` branch and a dev AUTH_SECRET
+pnpm dev
+```
+
+Local development uses the Neon `dev` branch, never production. Don't keep production credentials in `.env` or `.env.local`.
+
+## Commands
+
+| Command                             | Does                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                          | Dev server (Turbopack)                                                                                                         |
+| `pnpm check`                        | Next types, ESLint and TypeScript. Run before every commit. Needs `.env.local` (`vercel env pull`) or `SKIP_ENV_VALIDATION=1`. |
+| `pnpm test`                         | Unit tests (Vitest). `pnpm test:watch` while developing.                                                                       |
+| `pnpm build`                        | Production build. Run before opening a PR.                                                                                     |
+| `pnpm format:write`                 | Prettier                                                                                                                       |
+| `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below)                                                                 |
+| `pnpm db:studio`                    | Browse the `dev` database                                                                                                      |
+
+## Workflow
+
+### Planning
+
+All work lives in the Linear project **AwardBro** (team `BAR`).
+
+- **Backlog:** anything not yet committed to.
+- **Todo:** the next 3–5 unblocked issues.
+- **In Progress:** has a branch.
+- **Done:** merged into `dev`. Linear closes the issue automatically from `Fixes BAR-x`.
+
+When you find follow-up work while on an issue, file it as a new Backlog issue instead of widening the PR.
+
+Only mention an issue ID in a PR that actually works on that issue: Linear links every ID it sees and moves it to In Progress.
+
+### Making a change
+
+1. **Branch** from `dev` with the branch name Linear generates (e.g. `martin9oh9/bar-5-…`) and move the issue to In Progress.
+2. **Build it**, with tests for anything that has logic. Run `pnpm check` and `pnpm test` as you go.
+3. **Prepare the PR.** When the change is more than docs or config:
+   1. Run **`/simplify`** and apply what's worth keeping.
+   2. Run an **uncapped code review** (`/code-review high --max-findings all`) on the final diff. Fix the real findings; for each one you skip, give the reason in the PR.
+   3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
+   4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
+4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
+5. **Wait for the checks:** CI (lint, types, format, tests, migration replay) and the Vercel preview. Both are required.
+6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
+7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
+
+Commits and PRs never include AI attribution lines ("Generated with Claude Code", "Co-Authored-By: Claude", or similar).
+
+### Releasing (`dev` → `main`)
+
+Release when a useful set of changes is on `dev` and its preview has been checked. Avoid releasing right before a live show.
+
+1. **Check `dev`'s preview end to end:** create a show, add each category type, vote at phone size, present and reveal, and manage both with and without the password.
+2. **Open a release PR** from `dev` into `main`, titled `Release YYYY-MM-DD`. The description lists the Linear issues included and anything hosts will notice.
+3. **Check the PR:** CI is green, and if migrations are included, read them once more. They run against production during the build.
+4. **Merge with a merge commit** (not rebase), so `dev` and `main` share history.
+5. **After the deploy:**
+   - the Vercel build log shows migrations applied (or "No pending migrations")
+   - awardbro.com loads, and a show can be voted on and presented
+   - `vercel logs` shows no new errors for about 10 minutes
+6. **If something is wrong:** `vercel rollback` restores the previous production deployment straight away. Then fix forward on `dev`.
+
+   Rollback does **not** undo database migrations. That's why migrations must be backwards compatible: add columns and tables first, and only remove old ones in a later release.
+
+### Repository settings
+
+- Squash merges are disabled, so a PR's commits land on `dev` as they are.
+- Dependabot opens grouped dependency PRs against `dev` once a month.
+
+## Database
+
+- **Schema changes** go through migrations: edit `prisma/schema.prisma`, then create the migration with `pnpm db:migrate:dev --name <name>` **against a throwaway Neon branch** (see below). Never run it against the shared `dev` branch: if another PR's preview has added migrations there, Prisma offers to reset the database, which would wipe it for everyone.
+- Never use `prisma db push`. It changes the database without recording a migration, which is how the history drifted before (fixed in BAR-6).
+- **Migrations must replay on an empty database**, and a merged migration is never edited; add a new one instead.
+- `pnpm db:migrate` runs `prisma migrate deploy`, which only applies pending migrations. Vercel builds do this automatically.
+- **Migrations** run automatically during every Vercel build (`prisma migrate deploy` in `vercel.json`). A PR's preview build applies its migrations to the `dev` branch; merging to `main` applies them to production.
+- **The `dev` branch** is shared by local development and all previews. To start fresh from a copy of production:
+
+  ```bash
+  neonctl branches reset dev --parent
+  ```
+
+- **Testing something risky or destructive:** use a throwaway branch instead, then delete it.
+
+  ```bash
+  neonctl branches create --name test-bar-123
+  neonctl connection-string test-bar-123 --pooled   # → DATABASE_URL
+  neonctl connection-string test-bar-123            # → DATABASE_DIRECT_URL
+  # run the app or tests with those values, then:
+  neonctl branches delete test-bar-123
+  ```
+
+## Environments
+
+| Environment | Trigger                           | Database           |
+| ----------- | --------------------------------- | ------------------ |
+| Production  | Push to `main`                    | Neon `main` branch |
+| Preview     | Any other branch / PR             | Neon `dev` branch  |
+| Development | `pnpm dev` with `vercel env pull` | Neon `dev` branch  |
+
+Functions run in Frankfurt (`fra1`, set in `vercel.json`), next to the Neon database in `aws-eu-central-1`. Node is pinned to 24 (`.node-version` and `engines`), matching Vercel.
+
+Each environment has its own `DATABASE_URL`, `DATABASE_DIRECT_URL` and `AUTH_SECRET`. Env vars are managed with `vercel env`. Add new variables to `src/env.js` and `.env.example` too (never with real values).

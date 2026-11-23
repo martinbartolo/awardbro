@@ -44,3 +44,10 @@ yarn-error.log*
 
 # idea files
 .idea
+.vercel
+
+# claude code (personal settings)
+.claude/settings.local.json
+
+# prisma client (rebuilt by prisma generate on install)
+/src/generated/
