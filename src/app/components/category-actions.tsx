@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Crown, Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -38,14 +38,19 @@ export function CategoryActions({
   const [optimisticValue, setOptimisticValue] = useState(hideVoteCounts);
   const [optimisticWinnerOnly, setOptimisticWinnerOnly] = useState(winnerOnly);
 
-  // Sync optimistic state when prop changes (e.g., after server refresh)
-  useEffect(() => {
+  // Sync optimistic state when props change (e.g., after server refresh).
+  // Adjusting state during render avoids the extra render of an effect.
+  const [prevHideVoteCounts, setPrevHideVoteCounts] = useState(hideVoteCounts);
+  if (prevHideVoteCounts !== hideVoteCounts) {
+    setPrevHideVoteCounts(hideVoteCounts);
     setOptimisticValue(hideVoteCounts);
-  }, [hideVoteCounts]);
+  }
 
-  useEffect(() => {
+  const [prevWinnerOnly, setPrevWinnerOnly] = useState(winnerOnly);
+  if (prevWinnerOnly !== winnerOnly) {
+    setPrevWinnerOnly(winnerOnly);
     setOptimisticWinnerOnly(winnerOnly);
-  }, [winnerOnly]);
+  }
 
   const toggleHideVoteCounts = api.award.toggleHideVoteCounts.useMutation({
     onMutate: () => {
