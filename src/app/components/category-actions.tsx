@@ -26,6 +26,21 @@ type CategoryActionsProps = {
   winnerOnly: boolean;
 };
 
+/**
+ * Local copy of a server value that can be changed optimistically, and that
+ * follows the server value whenever it changes (e.g. after router.refresh()).
+ * Adjusting state during render avoids the extra render of an effect.
+ */
+function useOptimisticFlag(serverValue: boolean) {
+  const [value, setValue] = useState(serverValue);
+  const [prevServerValue, setPrevServerValue] = useState(serverValue);
+  if (prevServerValue !== serverValue) {
+    setPrevServerValue(serverValue);
+    setValue(serverValue);
+  }
+  return [value, setValue] as const;
+}
+
 export function CategoryActions({
   categoryId,
   hideVoteCounts,
@@ -35,22 +50,10 @@ export function CategoryActions({
   const utils = api.useUtils();
 
   // Optimistic local state for instant UI feedback
-  const [optimisticValue, setOptimisticValue] = useState(hideVoteCounts);
-  const [optimisticWinnerOnly, setOptimisticWinnerOnly] = useState(winnerOnly);
-
-  // Sync optimistic state when props change (e.g., after server refresh).
-  // Adjusting state during render avoids the extra render of an effect.
-  const [prevHideVoteCounts, setPrevHideVoteCounts] = useState(hideVoteCounts);
-  if (prevHideVoteCounts !== hideVoteCounts) {
-    setPrevHideVoteCounts(hideVoteCounts);
-    setOptimisticValue(hideVoteCounts);
-  }
-
-  const [prevWinnerOnly, setPrevWinnerOnly] = useState(winnerOnly);
-  if (prevWinnerOnly !== winnerOnly) {
-    setPrevWinnerOnly(winnerOnly);
-    setOptimisticWinnerOnly(winnerOnly);
-  }
+  const [optimisticValue, setOptimisticValue] =
+    useOptimisticFlag(hideVoteCounts);
+  const [optimisticWinnerOnly, setOptimisticWinnerOnly] =
+    useOptimisticFlag(winnerOnly);
 
   const toggleHideVoteCounts = api.award.toggleHideVoteCounts.useMutation({
     onMutate: () => {
