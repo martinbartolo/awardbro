@@ -6,7 +6,10 @@ import { createHydrationHelpers } from "@trpc/react-query/rsc";
 import { headers } from "next/headers";
 
 import { type AppRouter, createCaller } from "~/server/api/root";
-import { createTRPCContext } from "~/server/api/trpc";
+import {
+  createTRPCContext,
+  UnwritableResponseHeaders,
+} from "~/server/api/trpc";
 
 import { createQueryClient } from "./query-client";
 
@@ -20,7 +23,7 @@ const createContext = cache(async () => {
 
   return createTRPCContext({
     headers: heads,
-    resHeaders: new Headers(),
+    resHeaders: new UnwritableResponseHeaders(),
   });
 });
 
