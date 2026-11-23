@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "next build",
-    "check": "eslint . && tsc --noEmit",
+    "check": "pnpm typecheck && pnpm lint",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
@@ -21,7 +21,7 @@
     "postinstall": "prisma generate",
     "preview": "next build && next start",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
