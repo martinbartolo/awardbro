@@ -31,7 +31,13 @@
       "Bash(vercel logs:*)",
       "Bash(neonctl me)",
       "Bash(neonctl projects list:*)",
-      "Bash(neonctl branches list:*)"
+      "Bash(neonctl branches list:*)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm exec vitest:*)",
+      "Bash(pnpm exec next typegen)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ]
   }
 }
