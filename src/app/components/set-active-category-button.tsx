@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
 
 import { Ban, Presentation } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,27 +16,24 @@ export function SetActiveCategoryButton({
   categoryId: string;
   isActive: boolean;
 }) {
-  const [isUpdating, setIsUpdating] = useState(false);
   const router = useRouter();
+  // Keeps the button in "Updating..." until the refreshed page arrives, so it
+  // never briefly shows the old label
+  const [isRefreshing, startRefresh] = useTransition();
 
   const setActive = api.award.setActiveCategory.useMutation({
     onSuccess: () => {
-      router.refresh();
+      startRefresh(() => router.refresh());
     },
-    onError: () => {
-      toast.error("Error updating category status");
-    },
-    onSettled: () => {
-      setIsUpdating(false);
+    onError: error => {
+      toast.error(error.message || "Error updating category status");
     },
   });
+  const isUpdating = setActive.isPending || isRefreshing;
 
   return (
     <Button
-      onClick={() => {
-        setIsUpdating(true);
-        setActive.mutate({ categoryId });
-      }}
+      onClick={() => setActive.mutate({ categoryId, active: !isActive })}
       disabled={isUpdating}
       variant={isActive ? "destructive" : "outline"}
       size="sm"
