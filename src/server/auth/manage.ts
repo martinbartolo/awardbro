@@ -69,7 +69,9 @@ export const getCookie = (headers: Headers, name: string) => {
     const index = pair.indexOf("=");
     if (index === -1) continue;
     if (pair.slice(0, index).trim() === name) {
-      return decodeURIComponent(pair.slice(index + 1).trim());
+      // Manage tokens are URL-safe, so the raw value is used as is. Decoding would
+      // throw on a malformed value and turn a bad cookie into a 500.
+      return pair.slice(index + 1).trim();
     }
   }
   return undefined;
