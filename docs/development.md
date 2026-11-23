@@ -9,11 +9,11 @@ Requirements: Node 24 (matches Vercel), pnpm 10, and access to the Vercel projec
 ```bash
 pnpm install
 vercel link --project awardbro   # once
-vercel env pull .env.local       # DATABASE_URL, DATABASE_DIRECT_URL, AUTH_SECRET
+vercel env pull .env.local       # Development values: the Neon `dev` branch and a dev AUTH_SECRET
 pnpm dev
 ```
 
-> ⚠️ Until Linear **BAR-11** is done, the Development and Preview environments use the **production** database. Don't create test data with `pnpm dev`; use a Neon branch (below).
+Local development uses the Neon `dev` branch, never production. Don't keep production credentials in `.env` or `.env.local`.
 
 ## Commands
 
@@ -42,7 +42,14 @@ Commits and PRs never include AI attribution lines ("Generated with Claude Code"
 ## Database
 
 - **Schema changes** go through migrations: edit `prisma/schema.prisma`, then run `pnpm exec prisma migrate dev`. Don't use `db push`; it skips the migration history.
-- **Testing anything that writes:** use a throwaway Neon branch, then delete it.
+- **Migrations** run automatically during every Vercel build (`prisma migrate deploy` in `vercel.json`). A PR's preview build applies its migrations to the `dev` branch; merging to `main` applies them to production.
+- **The `dev` branch** is shared by local development and all previews. To start fresh from a copy of production:
+
+  ```bash
+  neonctl branches reset dev --parent
+  ```
+
+- **Testing something risky or destructive:** use a throwaway branch instead, then delete it.
 
   ```bash
   neonctl branches create --name test-bar-123
@@ -54,10 +61,12 @@ Commits and PRs never include AI attribution lines ("Generated with Claude Code"
 
 ## Environments
 
-| Environment | Trigger                           | Database                        |
-| ----------- | --------------------------------- | ------------------------------- |
-| Production  | Push to `main`                    | Neon main branch                |
-| Preview     | Any other branch / PR             | Neon main branch (until BAR-11) |
-| Development | `pnpm dev` with `vercel env pull` | Neon main branch (until BAR-11) |
+| Environment | Trigger                           | Database           |
+| ----------- | --------------------------------- | ------------------ |
+| Production  | Push to `main`                    | Neon `main` branch |
+| Preview     | Any other branch / PR             | Neon `dev` branch  |
+| Development | `pnpm dev` with `vercel env pull` | Neon `dev` branch  |
 
-Env vars are managed with `vercel env`. Add new variables to `src/env.js` and `.env.example` too (never with real values).
+Functions run in Frankfurt (`fra1`, set in `vercel.json`), next to the Neon database in `aws-eu-central-1`. Node is pinned to 24 (`.node-version` and `engines`), matching Vercel.
+
+Each environment has its own `DATABASE_URL`, `DATABASE_DIRECT_URL` and `AUTH_SECRET`. Env vars are managed with `vercel env`. Add new variables to `src/env.js` and `.env.example` too (never with real values).
