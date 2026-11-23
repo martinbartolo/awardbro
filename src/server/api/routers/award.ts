@@ -575,7 +575,7 @@ export const awardRouter = createTRPCRouter({
       // First, get the current category and its active state
       const category = await ctx.db.category.findUnique({
         where: { id: input.categoryId },
-        include: { session: { include: { categories: true } } },
+        select: { isActive: true, sessionId: true },
       });
 
       if (!category) {
@@ -593,16 +593,20 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // Otherwise, deactivate all categories in the session and activate this one
-      await ctx.db.category.updateMany({
-        where: { sessionId: category.session.id },
-        data: { isActive: false },
-      });
-
-      return ctx.db.category.update({
-        where: { id: input.categoryId },
-        data: { isActive: true },
-      });
+      // Otherwise, deactivate all categories in the session and activate this
+      // one. Doing both in one transaction keeps at most one category active:
+      // a concurrent call waits for this one's row locks, then deactivates it.
+      const [, activated] = await ctx.db.$transaction([
+        ctx.db.category.updateMany({
+          where: { sessionId: category.sessionId },
+          data: { isActive: false },
+        }),
+        ctx.db.category.update({
+          where: { id: input.categoryId },
+          data: { isActive: true },
+        }),
+      ]);
+      return activated;
     }),
 
   vote: publicProcedure
