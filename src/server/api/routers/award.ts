@@ -568,45 +568,55 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
+  // Sets the category to the state the host asked for, so repeating a click
+  // (or clicking on an out-of-date page) never flips it the other way
   setActiveCategory: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
+    .input(z.object({ categoryId: z.string(), active: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       await assertCanManage(ctx, { categoryId: input.categoryId });
-      // First, get the current category and its active state
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.categoryId },
-        select: { isActive: true, sessionId: true },
+      const notFound = new TRPCError({
+        code: "NOT_FOUND",
+        message: "Category not found",
       });
 
-      if (!category) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
-        });
-      }
+      try {
+        if (!input.active) {
+          return await ctx.db.category.update({
+            where: { id: input.categoryId },
+            data: { isActive: false },
+          });
+        }
 
-      // If the category is currently active, just deactivate it
-      if (category.isActive) {
-        return ctx.db.category.update({
+        const category = await ctx.db.category.findUnique({
           where: { id: input.categoryId },
-          data: { isActive: false },
+          select: { sessionId: true },
         });
-      }
+        if (!category) throw notFound;
 
-      // Otherwise, deactivate all categories in the session and activate this
-      // one. Doing both in one transaction keeps at most one category active:
-      // a concurrent call waits for this one's row locks, then deactivates it.
-      const [, activated] = await ctx.db.$transaction([
-        ctx.db.category.updateMany({
-          where: { sessionId: category.sessionId },
-          data: { isActive: false },
-        }),
-        ctx.db.category.update({
-          where: { id: input.categoryId },
-          data: { isActive: true },
-        }),
-      ]);
-      return activated;
+        // Deactivate all categories in the session and activate this one.
+        // Doing both in one transaction keeps at most one category active: a
+        // concurrent call waits for this one's row locks, then deactivates it.
+        const [, activated] = await ctx.db.$transaction([
+          ctx.db.category.updateMany({
+            where: { sessionId: category.sessionId },
+            data: { isActive: false },
+          }),
+          ctx.db.category.update({
+            where: { id: input.categoryId },
+            data: { isActive: true },
+          }),
+        ]);
+        return activated;
+      } catch (error) {
+        // The category was deleted after the access check
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2025"
+        ) {
+          throw notFound;
+        }
+        throw error;
+      }
     }),
 
   vote: publicProcedure
