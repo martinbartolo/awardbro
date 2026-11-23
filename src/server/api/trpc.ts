@@ -24,7 +24,11 @@ import { db } from "~/server/db";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = (opts: { headers: Headers }) => {
+export const createTRPCContext = (opts: {
+  headers: Headers;
+  /** Response headers, used to set cookies. Calls from Server Components get a throwaway object. */
+  resHeaders: Headers;
+}) => {
   return {
     db,
     ...opts,

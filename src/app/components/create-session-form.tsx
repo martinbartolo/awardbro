@@ -40,7 +40,6 @@ export function CreateSessionForm() {
 
   const createSession = api.award.createSession.useMutation({
     onSuccess: data => {
-      sessionStorage.setItem("initial-access", data.slug);
       router.push(`/manage/${data.slug}`);
     },
     onError: error => {
