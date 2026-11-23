@@ -17,10 +17,15 @@ export const sessionFormSchema = z.object({
       /^[a-z0-9-]+$/,
       "Slug can only contain lowercase letters, numbers, and hyphens",
     ),
+  // The form sends "" when the field is left empty, which means no password
   password: z
-    .string()
-    .min(4, "Password must be at least 4 characters")
-    .max(100, "Password is too long")
+    .literal("")
+    .or(
+      z
+        .string()
+        .min(4, "Password must be at least 4 characters")
+        .max(100, "Password is too long"),
+    )
     .optional(),
 });
 

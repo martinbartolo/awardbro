@@ -121,3 +121,19 @@ describe("streamed mutations from an out-of-date page", () => {
     expect(db.session.findUnique).not.toHaveBeenCalled();
   });
 });
+
+describe("createSession", () => {
+  it("creates an open show when the password is left empty", async () => {
+    const { client } = createClient();
+
+    await client.award.createSession.mutate({
+      name: SESSION.name,
+      slug: SESSION.slug,
+      password: "",
+    });
+
+    expect(db.session.create.mock.calls[0]?.[0]).toMatchObject({
+      data: { password: null },
+    });
+  });
+});
