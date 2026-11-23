@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 
 import { X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
-import { cn, getOrdinal } from "~/lib/utils";
+import { cn, getOrdinal, isSameRanking } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
@@ -34,8 +33,7 @@ export function RankingInterface({
 }) {
   // Track user modifications separately - null means use server data
   const [userRankings, setUserRankings] = useState<Ranking[] | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
+  const utils = api.useUtils();
 
   // Get existing rankings
   const { data: currentRankings } = api.award.getCurrentRankings.useQuery(
@@ -69,20 +67,23 @@ export function RankingInterface({
   };
 
   const submitRanking = api.award.submitRanking.useMutation({
-    onSuccess: () => {
-      router.refresh();
+    onSuccess: async (_data, { rankings: submitted }) => {
       toast.success("Rankings submitted successfully!");
-      setUserRankings(null); // Reset to sync with server
+      void utils.award.hasVoted.invalidate({ categoryId });
+      // Load the submitted ranking before dropping the local one, so the
+      // form never looks empty in between (the queries only poll every 5 s).
+      // If loading it fails, keep the local ranking until the next poll.
+      await utils.award.getCurrentRankings.invalidate({ categoryId });
+      const saved = utils.award.getCurrentRankings.getData({ categoryId });
+      if (saved && isSameRanking(saved, submitted)) setUserRankings(null);
     },
     onError: error => {
       toast.error(
         error.message || "Error submitting rankings. Please try again.",
       );
     },
-    onSettled: () => {
-      setIsSubmitting(false);
-    },
   });
+  const isSubmitting = submitRanking.isPending;
 
   const handleAddRanking = (nominationId: string) => {
     if (rankings.length >= rankingTop) return;
@@ -107,7 +108,6 @@ export function RankingInterface({
       toast.error(`Please rank exactly ${rankingTop} nominations`);
       return;
     }
-    setIsSubmitting(true);
     submitRanking.mutate({ categoryId, rankings });
   };
 

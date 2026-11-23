@@ -28,6 +28,20 @@ export function calculatePoints(rank: number, rankingTop: number): number {
   return rankingTop - rank + 1;
 }
 
+type Ranking = { nominationId: string; rank: number | null };
+
+/**
+ * Whether two rankings place the same nominations at the same ranks, in any order
+ */
+export function isSameRanking(a: Ranking[], b: Ranking[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every(x =>
+      b.some(y => y.nominationId === x.nominationId && y.rank === x.rank),
+    )
+  );
+}
+
 /**
  * Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
  */
