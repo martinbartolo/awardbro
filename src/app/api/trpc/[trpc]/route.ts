@@ -15,12 +15,32 @@ const createContext = (req: NextRequest, resHeaders: Headers) => {
   });
 };
 
+/**
+ * A streamed response sends its headers before the procedures run, so anything they write to
+ * the response headers would be lost silently. Fail loudly instead; the client sends mutations
+ * without streaming (`src/trpc/links.ts`).
+ */
+class StreamedResponseHeaders extends Headers {
+  append(): never {
+    throw new Error("Can't set response headers on a streamed tRPC call");
+  }
+  set(): never {
+    throw new Error("Can't set response headers on a streamed tRPC call");
+  }
+}
+
 const handler = (req: NextRequest) =>
   fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
-    createContext: ({ resHeaders }) => createContext(req, resHeaders),
+    createContext: ({ resHeaders, info }) =>
+      createContext(
+        req,
+        info.accept === "application/jsonl"
+          ? new StreamedResponseHeaders()
+          : resHeaders,
+      ),
     onError:
       process.env.NODE_ENV === "development"
         ? ({ path, error }) => {
