@@ -86,9 +86,7 @@ export const canManage = (
   isValidManageToken(session.id, getCookieValue(cookieName(session.id)));
 
 type ManageTarget =
-  | { sessionId: string }
-  | { categoryId: string }
-  | { nominationId: string };
+  { sessionId: string } | { categoryId: string } | { nominationId: string };
 
 /**
  * Throws unless the request is allowed to manage the session that owns the target.
