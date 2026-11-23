@@ -1,38 +1,21 @@
 # AwardBro
 
-Interactive award show app: hosts create a show with categories and nominations, voters vote from their phones, and results are revealed on a big screen.
+Award show app: hosts build a show, voters vote from their phones, results are revealed on a big screen. Next.js 16 + tRPC + Prisma on Vercel and Neon.
 
-**Stack:** Next.js 16 (App Router) · tRPC 11 · Prisma 7 (Neon adapter) · Tailwind 4 · shadcn/ui. Hosted on Vercel, Postgres on Neon.
+- How it works (data model, scoring, auth): @docs/architecture.md
+- Setup, workflow, database and environments: @docs/development.md
 
 ## Commands
 
-- `pnpm dev` runs the dev server (Turbopack).
-- `pnpm check` runs ESLint and `tsc`. Run it before every commit.
-- `pnpm build` makes a production build. Run it before opening a PR.
-- `pnpm format:write` runs Prettier.
-- `pnpm exec prisma …` runs Prisma (no global install). Migrations use `DATABASE_DIRECT_URL` via `prisma.config.ts`; the app uses the pooled `DATABASE_URL`.
-- `vercel` and `neonctl` CLIs are linked to this project (Vercel `bartolo/awardbro`, Neon `fancy-glitter-44565313`).
+- `pnpm check` (lint + types) before every commit; `pnpm build` before every PR.
+- Prisma has no global install: use `pnpm exec prisma …`.
 
-## Workflow
+## Rules
 
-- Work is tracked in Linear, project **AwardBro** (team `BAR`). New issues go in Backlog. Todo holds the next 3–5 unblocked issues.
-- Branch from `dev` using the branch name Linear generates (e.g. `martin9oh9/bar-5-…`). Move the issue to In Progress when starting.
-- Open PRs into `dev`, with `Fixes BAR-x` in the description. `dev` is merged into `main` to release.
-- Pushing to `main` deploys to production (awardbro.com). Every other branch gets a Vercel preview.
-- **No AI attribution anywhere.** Commit messages, PR titles, PR descriptions and comments must never include "Generated with Claude Code", "Co-Authored-By: Claude" or similar lines.
-
-## Database safety
-
-- **Local dev and Vercel Preview currently use the production database** (until Linear BAR-11 is done). Don't write test data against them.
-- To test anything that writes, create a throwaway Neon branch (`neonctl branches create --name test-<issue>`), point `DATABASE_URL` / `DATABASE_DIRECT_URL` at it, and delete the branch afterwards.
-- Change the schema with `prisma migrate dev`, never `db push`.
-
-## Code rules
-
-- tRPC router: `src/server/api/routers/award.ts`.
-- Every route that changes a show must call `assertCanManage(ctx, …)` from `src/server/auth/manage.ts` first. Shows without a password are open to anyone with the link, by design.
-- Never return `Session.password` (bcrypt hash) to the client. Use `omit: { password: true }` or an explicit `select`.
-- Voters are identified by the httpOnly `device_id` cookie set in `src/proxy.ts`.
-- Env vars are validated in `src/env.js`. Add new ones there and to `.env.example`, never real values.
-- Nomination images are URLs in `description`; Google Drive links are converted to thumbnail URLs.
-- Category types: `NORMAL`, `IMAGE`, `RANKING` (points = rankingTop − rank + 1), and `AGGREGATE` (sums source categories by nomination name). All are kept.
+- **No AI attribution** in commits, PR titles, PR descriptions or comments. No "Generated with Claude Code", no "Co-Authored-By: Claude".
+- Branch from `dev` with the Linear branch name; PR into `dev` with `Fixes BAR-x`. Never push to `main` directly: it deploys to production.
+- Every route that changes a show calls `assertCanManage` (`src/server/auth/manage.ts`) before touching the database.
+- Never send `Session.password` to the client: use `omit` or an explicit `select`.
+- Schema changes go through `prisma migrate dev`, never `db push`.
+- Local dev and Preview use the production database until BAR-11. Test writes on a throwaway Neon branch and delete it afterwards.
+- New env vars go in `src/env.js` and `.env.example` (no real values).
