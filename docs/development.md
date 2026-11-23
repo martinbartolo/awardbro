@@ -38,6 +38,8 @@ All work lives in the Linear project **AwardBro** (team `BAR`).
 - **In Progress:** has a branch.
 - **Done:** merged into `dev`. Linear closes the issue automatically from `Fixes BAR-x`.
 
+When you find follow-up work while on an issue, file it as a new Backlog issue instead of widening the PR.
+
 Only mention an issue ID in a PR that actually works on that issue: Linear links every ID it sees and moves it to In Progress.
 
 ### Making a change
