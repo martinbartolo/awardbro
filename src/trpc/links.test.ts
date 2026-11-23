@@ -46,6 +46,7 @@ const createClient = (
 };
 
 beforeEach(() => {
+  vi.clearAllMocks();
   db.session.create.mockResolvedValue(SESSION);
   db.session.findMany.mockResolvedValue([]);
   db.session.findUnique.mockResolvedValue({
@@ -88,18 +89,35 @@ describe("manage cookie over the client links", () => {
 
     expect(streamed).toEqual([true]);
   });
+});
 
-  it("fails loudly instead of dropping a cookie set on a streamed call", async () => {
-    const { client, setCookies } = createClient(fetch =>
+describe("streamed mutations from an out-of-date page", () => {
+  const createStreamingClient = () =>
+    createClient(fetch =>
       httpBatchStreamLink({ transformer: SuperJSON, url: TRPC_URL, fetch }),
     );
+
+  it("are rejected before creating a show", async () => {
+    const { client } = createStreamingClient();
+
+    await expect(
+      client.award.createSession.mutate({
+        name: SESSION.name,
+        slug: SESSION.slug,
+      }),
+    ).rejects.toThrow("Please reload it");
+    expect(db.session.create).not.toHaveBeenCalled();
+  });
+
+  it("are rejected before checking the password", async () => {
+    const { client } = createStreamingClient();
 
     await expect(
       client.award.verifyManageAccess.mutate({
         slug: SESSION.slug,
         password: PASSWORD,
       }),
-    ).rejects.toThrow("Can't set response headers on a streamed tRPC call");
-    expect(setCookies).toEqual([]);
+    ).rejects.toThrow("Please reload it");
+    expect(db.session.findUnique).not.toHaveBeenCalled();
   });
 });

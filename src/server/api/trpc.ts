@@ -24,9 +24,23 @@ import { db } from "~/server/db";
  *
  * @see https://trpc.io/docs/server/context
  */
+/**
+ * Response headers for calls that can't send any: streamed calls send their headers before the
+ * procedures run, and calls from Server Components have no response. Writing throws, so a cookie
+ * set there fails loudly instead of being lost.
+ */
+export class UnwritableResponseHeaders extends Headers {
+  append(): never {
+    throw new Error("Response headers can't be set on this call");
+  }
+  set(): never {
+    throw new Error("Response headers can't be set on this call");
+  }
+}
+
 export const createTRPCContext = (opts: {
   headers: Headers;
-  /** Response headers, used to set cookies. Calls from Server Components get a throwaway object. */
+  /** Response headers, used to set cookies. See `UnwritableResponseHeaders` for calls without them. */
   resHeaders: Headers;
 }) => {
   return {
