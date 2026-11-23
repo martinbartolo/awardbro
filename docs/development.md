@@ -17,27 +17,65 @@ Local development uses the Neon `dev` branch, never production. Don't keep produ
 
 ## Commands
 
-| Command                             | Does                                                           |
-| ----------------------------------- | -------------------------------------------------------------- |
-| `pnpm dev`                          | Dev server (Turbopack)                                         |
-| `pnpm check`                        | ESLint + TypeScript. Run before every commit.                  |
-| `pnpm build`                        | Production build. Run before opening a PR.                     |
-| `pnpm format:write`                 | Prettier                                                       |
-| `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below) |
-| `pnpm db:studio`                    | Browse the `dev` database                                      |
+| Command                             | Does                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                          | Dev server (Turbopack)                                                                                                         |
+| `pnpm check`                        | Next types, ESLint and TypeScript. Run before every commit. Needs `.env.local` (`vercel env pull`) or `SKIP_ENV_VALIDATION=1`. |
+| `pnpm test`                         | Unit tests (Vitest). `pnpm test:watch` while developing.                                                                       |
+| `pnpm build`                        | Production build. Run before opening a PR.                                                                                     |
+| `pnpm format:write`                 | Prettier                                                                                                                       |
+| `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below)                                                                 |
+| `pnpm db:studio`                    | Browse the `dev` database                                                                                                      |
 
 ## Workflow
 
-1. **Linear.** All work lives in the Linear project **AwardBro** (team `BAR`).
-   - **Backlog:** anything not yet committed to.
-   - **Todo:** the next 3–5 unblocked issues.
-   - **In Progress:** has a branch.
-   - **Done:** merged.
-2. **Branch** from `dev`, using the branch name Linear generates (e.g. `martin9oh9/bar-5-…`). This links the branch to the issue.
-3. **PR into `dev`** with `Fixes BAR-x` in the description. Vercel builds a preview for every PR.
-4. **Release** by merging `dev` into `main`. Pushing to `main` deploys to production (awardbro.com).
+### Planning
+
+All work lives in the Linear project **AwardBro** (team `BAR`).
+
+- **Backlog:** anything not yet committed to.
+- **Todo:** the next 3–5 unblocked issues.
+- **In Progress:** has a branch.
+- **Done:** merged into `dev`. Linear closes the issue automatically from `Fixes BAR-x`.
+
+Only mention an issue ID in a PR that actually works on that issue: Linear links every ID it sees and moves it to In Progress.
+
+### Making a change
+
+1. **Branch** from `dev` with the branch name Linear generates (e.g. `martin9oh9/bar-5-…`) and move the issue to In Progress.
+2. **Build it**, with tests for anything that has logic. Run `pnpm check` and `pnpm test` as you go.
+3. **Prepare the PR.** When the change is more than docs or config:
+   1. Run **`/simplify`** and apply what's worth keeping.
+   2. Run an **uncapped code review** (`/code-review high --max-findings all`) on the final diff. Fix the real findings; for each one you skip, give the reason in the PR.
+   3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
+   4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
+4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
+5. **Wait for the checks:** CI (lint, types, format, tests, migration replay) and the Vercel preview. Both are required.
+6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
+7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
 Commits and PRs never include AI attribution lines ("Generated with Claude Code", "Co-Authored-By: Claude", or similar).
+
+### Releasing (`dev` → `main`)
+
+Release when a useful set of changes is on `dev` and its preview has been checked. Avoid releasing right before a live show.
+
+1. **Check `dev`'s preview end to end:** create a show, add each category type, vote at phone size, present and reveal, and manage both with and without the password.
+2. **Open a release PR** from `dev` into `main`, titled `Release YYYY-MM-DD`. The description lists the Linear issues included and anything hosts will notice.
+3. **Check the PR:** CI is green, and if migrations are included, read them once more. They run against production during the build.
+4. **Merge with a merge commit** (not rebase), so `dev` and `main` share history.
+5. **After the deploy:**
+   - the Vercel build log shows migrations applied (or "No pending migrations")
+   - awardbro.com loads, and a show can be voted on and presented
+   - `vercel logs` shows no new errors for about 10 minutes
+6. **If something is wrong:** `vercel rollback` restores the previous production deployment straight away. Then fix forward on `dev`.
+
+   Rollback does **not** undo database migrations. That's why migrations must be backwards compatible: add columns and tables first, and only remove old ones in a later release.
+
+### Repository settings
+
+- Squash merges are disabled, so a PR's commits land on `dev` as they are.
+- Dependabot opens grouped dependency PRs against `dev` once a month.
 
 ## Database
 

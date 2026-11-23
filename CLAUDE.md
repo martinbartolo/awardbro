@@ -7,8 +7,18 @@ Award show app: hosts build a show, voters vote from their phones, results are r
 
 ## Commands
 
-- `pnpm check` (lint + types) before every commit; `pnpm build` before every PR.
+- `pnpm check` (types + lint) and `pnpm test` before every commit; `pnpm build` before every PR.
 - Prisma has no global install: use `pnpm exec prisma …`.
+
+## Workflow for every change
+
+Follow "Making a change" in docs/development.md. In short, before opening a PR that changes more than docs or config:
+
+1. `/simplify`, then an uncapped review (`/code-review high --max-findings all`) on the final diff. Fix real findings; give the reason for each skipped one in the PR.
+2. `/security-review` when auth, cookies, user input or database queries are touched.
+3. Split the work into logical commits. Feature PRs are **rebase-merged**; release PRs (`dev` → `main`) use a merge commit.
+4. Add or update tests for anything with logic. Check UI changes on the Vercel preview in a browser.
+5. Keep Linear in step: move the issue to In Progress when starting, and add new issues for any follow-up work you find.
 
 ## Rules
 
