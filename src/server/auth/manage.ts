@@ -18,9 +18,9 @@ import { db } from "~/server/db";
  */
 
 const COOKIE_PREFIX = "manage_";
-const MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
+export const MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
-const cookieName = (sessionId: string) => `${COOKIE_PREFIX}${sessionId}`;
+export const cookieName = (sessionId: string) => `${COOKIE_PREFIX}${sessionId}`;
 
 const sign = (sessionId: string, expiresAt: number) =>
   createHmac("sha256", env.AUTH_SECRET)
