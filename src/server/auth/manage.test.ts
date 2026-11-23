@@ -110,4 +110,15 @@ describe("cookies", () => {
     expect(getCookie(headers, "missing")).toBeUndefined();
     expect(getCookie(new Headers(), "manage_x")).toBeUndefined();
   });
+
+  it("treats a malformed cookie value as invalid instead of throwing", () => {
+    const headers = new Headers({
+      cookie: `${cookieName(SESSION_ID)}=%E0%A4%A`,
+    });
+    const session = { id: SESSION_ID, password: "bcrypt-hash" };
+    expect(() =>
+      canManage(session, name => getCookie(headers, name)),
+    ).not.toThrow();
+    expect(canManage(session, name => getCookie(headers, name))).toBe(false);
+  });
 });
