@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
+import { estimateVoters } from "~/lib/scoring";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
@@ -273,23 +274,10 @@ export function LivePresentation({
                   ) : (
                     <LiveVoting
                       categoryId={category.id}
-                      initialVoteCount={(() => {
-                        const rawTotal = category.nominations.reduce(
-                          (sum, nom) => sum + nom._count.votes,
-                          0,
-                        );
-                        // For ranking categories, estimate voter count from points
-                        if (
-                          category.type === "RANKING" &&
-                          category.rankingTop
-                        ) {
-                          const pointsPerVoter =
-                            (category.rankingTop * (category.rankingTop + 1)) /
-                            2;
-                          return Math.round(rawTotal / pointsPerVoter);
-                        }
-                        return rawTotal;
-                      })()}
+                      initialVoteCount={estimateVoters(
+                        category,
+                        category.nominations,
+                      )}
                       categoryType={category.type}
                       rankingTop={category.rankingTop}
                     />

@@ -9,6 +9,7 @@ import {
   rankingSubmissionSchema,
   sessionFormSchema,
 } from "~/lib/schemas";
+import { scoreNomination } from "~/lib/scoring";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   assertCanManage,
@@ -17,9 +18,59 @@ import {
 } from "~/server/auth/manage";
 import { type db } from "~/server/db";
 
-// Helper function to calculate points for a ranking vote
-const calculatePoints = (rank: number, rankingTop: number): number => {
-  return rankingTop - rank + 1;
+/**
+ * What to load with each nomination to score it: its vote count, and the ranks of its ranked
+ * votes. Votes in other categories have no rank, so they aren't loaded.
+ */
+const scoringFields = {
+  _count: { select: { votes: true } },
+  votes: { where: { rank: { not: null } }, select: { rank: true } },
+} as const;
+
+/**
+ * A category's nominations with their scores in `_count.votes` (votes, or points in ranking and
+ * aggregate categories), and without their votes, so individual votes are never sent.
+ */
+const withScores = async <
+  N extends {
+    name: string;
+    _count: { votes: number };
+    votes: { rank: number | null }[];
+  },
+>(
+  client: typeof db,
+  category: {
+    type: CategoryType;
+    rankingTop: number | null;
+    sourceCategories: { id: string }[];
+    nominations: N[];
+  },
+) => {
+  const sourceNominations =
+    category.type === "AGGREGATE"
+      ? await client.nomination.findMany({
+          where: {
+            name: { in: category.nominations.map(n => n.name) },
+            categoryId: { in: category.sourceCategories.map(c => c.id) },
+          },
+          select: {
+            name: true,
+            ...scoringFields,
+            category: { select: { type: true, rankingTop: true } },
+          },
+        })
+      : [];
+
+  return category.nominations.map(({ votes, ...nomination }) => ({
+    ...nomination,
+    _count: {
+      votes: scoreNomination(
+        category,
+        { ...nomination, votes },
+        sourceNominations,
+      ),
+    },
+  }));
 };
 
 const DEVICE_ID_COOKIE = "device_id";
@@ -234,11 +285,7 @@ export const awardRouter = createTRPCRouter({
             include: {
               nominations: {
                 orderBy: { createdAt: "asc" },
-                include: {
-                  _count: {
-                    select: { votes: true },
-                  },
-                },
+                include: scoringFields,
               },
               sourceCategories: true,
               aggregateOf: {
@@ -256,109 +303,14 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // Process categories that need vote/point calculation
-      const categoriesWithCalculatedVotes = await Promise.all(
-        session.categories.map(async category => {
-          // For RANKING categories, calculate points instead of simple vote count
-          if (category.type === "RANKING" && category.rankingTop) {
-            const nominationsWithPoints = await Promise.all(
-              category.nominations.map(async nomination => {
-                const votes = await ctx.db.vote.findMany({
-                  where: { nominationId: nomination.id },
-                });
-
-                // Sum up points for each vote based on rank
-                const totalPoints = votes.reduce((sum, vote) => {
-                  if (vote.rank) {
-                    return (
-                      sum + calculatePoints(vote.rank, category.rankingTop!)
-                    );
-                  }
-                  return sum;
-                }, 0);
-
-                return {
-                  ...nomination,
-                  _count: {
-                    votes: totalPoints,
-                  },
-                };
-              }),
-            );
-
-            return {
-              ...category,
-              nominations: nominationsWithPoints,
-            };
-          }
-
-          // For AGGREGATE categories, sum up votes/points from source categories
-          if (category.type === "AGGREGATE") {
-            const nominationsWithTotalVotes = await Promise.all(
-              category.nominations.map(async nomination => {
-                // Find matching nominations in source categories
-                const sourceNominations = await ctx.db.nomination.findMany({
-                  where: {
-                    name: nomination.name,
-                    categoryId: {
-                      in: category.sourceCategories.map(c => c.id),
-                    },
-                  },
-                  include: {
-                    votes: true,
-                    category: {
-                      select: {
-                        type: true,
-                        rankingTop: true,
-                      },
-                    },
-                  },
-                });
-
-                // Sum up all points for this nomination across source categories
-                let totalPoints = 0;
-                for (const nom of sourceNominations) {
-                  if (
-                    nom.category.type === "RANKING" &&
-                    nom.category.rankingTop
-                  ) {
-                    // Calculate points for ranking categories
-                    for (const vote of nom.votes) {
-                      if (vote.rank) {
-                        totalPoints += calculatePoints(
-                          vote.rank,
-                          nom.category.rankingTop,
-                        );
-                      }
-                    }
-                  } else {
-                    // For normal/image categories, each vote = 1 point
-                    totalPoints += nom.votes.length;
-                  }
-                }
-
-                return {
-                  ...nomination,
-                  _count: {
-                    votes: totalPoints,
-                  },
-                };
-              }),
-            );
-
-            return {
-              ...category,
-              nominations: nominationsWithTotalVotes,
-            };
-          }
-
-          return category;
-        }),
-      );
-
       return {
         ...session,
-        categories: categoriesWithCalculatedVotes,
+        categories: await Promise.all(
+          session.categories.map(async category => ({
+            ...category,
+            nominations: await withScores(ctx.db, category),
+          })),
+        ),
       };
     }),
 
@@ -441,14 +393,7 @@ export const awardRouter = createTRPCRouter({
       const category = await ctx.db.category.findUnique({
         where: { id: input.id },
         include: {
-          nominations: {
-            include: {
-              _count: {
-                select: { votes: true },
-              },
-              votes: true,
-            },
-          },
+          nominations: { include: scoringFields },
           sourceCategories: true,
         },
       });
@@ -460,94 +405,9 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // For RANKING categories, calculate points instead of vote count
-      if (category.type === "RANKING" && category.rankingTop) {
-        const nominationsWithPoints = category.nominations.map(nomination => {
-          const totalPoints = nomination.votes.reduce((sum, vote) => {
-            if (vote.rank) {
-              return sum + calculatePoints(vote.rank, category.rankingTop!);
-            }
-            return sum;
-          }, 0);
-
-          return {
-            ...nomination,
-            votes: undefined, // Don't expose individual votes
-            _count: {
-              votes: totalPoints,
-            },
-          };
-        });
-
-        return {
-          ...category,
-          nominations: nominationsWithPoints,
-        };
-      }
-
-      // If this is an aggregate category, sum up votes/points from source categories
-      if (category.type === "AGGREGATE") {
-        const nominationsWithTotalVotes = await Promise.all(
-          category.nominations.map(async nomination => {
-            // Find matching nominations in source categories
-            const sourceNominations = await ctx.db.nomination.findMany({
-              where: {
-                name: nomination.name,
-                categoryId: {
-                  in: category.sourceCategories.map(c => c.id),
-                },
-              },
-              include: {
-                votes: true,
-                category: {
-                  select: {
-                    type: true,
-                    rankingTop: true,
-                  },
-                },
-              },
-            });
-
-            // Sum up all points for this nomination across source categories
-            let totalPoints = 0;
-            for (const nom of sourceNominations) {
-              if (nom.category.type === "RANKING" && nom.category.rankingTop) {
-                for (const vote of nom.votes) {
-                  if (vote.rank) {
-                    totalPoints += calculatePoints(
-                      vote.rank,
-                      nom.category.rankingTop,
-                    );
-                  }
-                }
-              } else {
-                totalPoints += nom.votes.length;
-              }
-            }
-
-            return {
-              ...nomination,
-              votes: undefined,
-              _count: {
-                votes: totalPoints,
-              },
-            };
-          }),
-        );
-
-        return {
-          ...category,
-          nominations: nominationsWithTotalVotes,
-        };
-      }
-
-      // For normal categories, strip votes from response
       return {
         ...category,
-        nominations: category.nominations.map(n => ({
-          ...n,
-          votes: undefined,
-        })),
+        nominations: await withScores(ctx.db, category),
       };
     }),
 

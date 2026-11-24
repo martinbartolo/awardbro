@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { type CategoryType } from "~/generated/prisma/enums";
+import { estimateVoters } from "~/lib/scoring";
 import { api } from "~/trpc/react";
 
 type LiveVotingProps = {
@@ -59,18 +60,13 @@ export function LiveVoting({
   // Derive error limit exceeded from failureCount (no setState needed)
   const hasExceededErrorLimit = isError && failureCount >= MAX_RETRIES;
 
-  // Calculate totalVotes directly from data (derived state)
-  // For ranking categories, _count.votes contains points - we need to estimate voters
-  const rawTotal = data
-    ? data.nominations.reduce((sum, nom) => sum + nom._count.votes, 0)
+  // Ranking categories score points, so this estimates the number of voters
+  const totalVotes = data
+    ? estimateVoters(
+        { type: categoryType, rankingTop: rankingTop ?? null },
+        data.nominations,
+      )
     : initialVoteCount;
-
-  // For ranking categories, estimate voter count from points
-  // Each voter contributes sum of 1+2+...+rankingTop points = rankingTop*(rankingTop+1)/2
-  const totalVotes =
-    categoryType === "RANKING" && rankingTop
-      ? Math.round(rawTotal / ((rankingTop * (rankingTop + 1)) / 2))
-      : rawTotal;
 
   // Calculate the vote difference for animation
   const voteDiff = totalVotes - prevVotes;
