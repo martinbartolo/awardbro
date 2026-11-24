@@ -11,11 +11,9 @@ import {
 } from "~/lib/schemas";
 import { scoreNomination } from "~/lib/scoring";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import {
-  assertCanManage,
-  getCookie,
-  setManageCookie,
-} from "~/server/auth/manage";
+import { assertCanManage } from "~/server/auth/manage";
+import { setManageCookie } from "~/server/auth/manage-token";
+import { DEVICE_ID_COOKIE, getCookie } from "~/server/cookies";
 import { type db } from "~/server/db";
 
 /**
@@ -73,7 +71,6 @@ const withScores = async <
   }));
 };
 
-const DEVICE_ID_COOKIE = "device_id";
 const SALT_ROUNDS = 10;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
