@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import confetti from "canvas-confetti";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 
 import { type CategoryType } from "~/generated/prisma/enums";
 import { getScoreLabel } from "~/lib/utils";

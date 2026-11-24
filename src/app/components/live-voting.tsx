@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { AnimatePresence, motion } from "framer-motion";
 import { CircleExclamationPoint } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";

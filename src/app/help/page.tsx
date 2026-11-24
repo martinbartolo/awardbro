@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   CircleCheck,
@@ -18,6 +17,7 @@ import {
   Users,
   Vote,
 } from "lucide-react";
+import { motion } from "motion/react";
 import Link from "next/link";
 
 import { Badge } from "~/components/ui/badge";
