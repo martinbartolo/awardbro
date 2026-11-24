@@ -4,7 +4,7 @@ How to work on AwardBro day to day. For how the app works, see [architecture.md]
 
 ## Setup
 
-Requirements: Node 26 (matches Vercel), pnpm 10, and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
+Requirements: Node 26 (matches Vercel), pnpm 12 (pinned in `packageManager`; pnpm switches to it automatically), and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
 
 ```bash
 pnpm install
@@ -79,6 +79,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 
 - Squash merges are disabled, so a PR's commits land on `dev` as they are.
 - Dependabot opens grouped dependency PRs against `dev` once a month.
+- pnpm refuses package versions published less than a day ago (`minimumReleaseAge`, its default since pnpm 11), to keep a freshly compromised release out. Dependabot waits a day before proposing a version, to match. If an install fails on it, wait, or use the previous release.
 
 ## Database
 
