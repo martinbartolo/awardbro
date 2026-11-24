@@ -13,6 +13,9 @@ updates:
       # Matches the Node runtime (.node-version, engines); raise it with the runtime
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
+      # typescript-eslint supports TypeScript below 6.1; raise this when it supports newer
+      - dependency-name: typescript
+        versions: [">=6.1.0"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
