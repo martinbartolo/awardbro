@@ -2,12 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import {
-  animate,
-  useInView,
-  useMotionValue,
-  useTransform,
-} from "framer-motion";
+import { animate, useInView, useMotionValue, useTransform } from "motion/react";
 
 export function AnimatedCounter({
   target,

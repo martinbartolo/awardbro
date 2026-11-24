@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
   CirclePlus,
   CircleQuestionMark,
@@ -13,6 +12,7 @@ import {
   Vote,
   Zap,
 } from "lucide-react";
+import { motion } from "motion/react";
 import Link from "next/link";
 
 import { AnimatedCounter } from "~/components/ui/animated-counter";
