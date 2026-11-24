@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HelpCircle } from "lucide-react";
+import { CircleQuestionMark } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -141,7 +141,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                     <TooltipProvider>
                       <Tooltip delayDuration={0}>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="text-muted-foreground h-4 w-4" />
+                          <CircleQuestionMark className="text-muted-foreground h-4 w-4" />
                         </TooltipTrigger>
                         <TooltipContent
                           side="right"

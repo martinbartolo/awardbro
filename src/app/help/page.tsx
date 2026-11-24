@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
-  CheckCircle2,
+  CircleCheck,
   Eye,
   FolderPlus,
   Link2,
@@ -320,7 +320,7 @@ export default function HelpPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3 rounded-lg border p-4">
-                    <CheckCircle2 className="text-accent mt-0.5 h-5 w-5 shrink-0" />
+                    <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                     <div>
                       <h4 className="font-medium">
                         Pro Tip: Aggregate Categories
@@ -573,14 +573,14 @@ export default function HelpPage() {
                 <CardContent>
                   <ul className="space-y-3">
                     <li className="flex items-start gap-3">
-                      <CheckCircle2 className="text-accent mt-0.5 h-5 w-5 shrink-0" />
+                      <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                       <span className="text-sm">
                         <strong>Build suspense:</strong> Wait a moment before
                         clicking reveal - let the anticipation build!
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <CheckCircle2 className="text-accent mt-0.5 h-5 w-5 shrink-0" />
+                      <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                       <span className="text-sm">
                         <strong>Two devices:</strong> Use one device to manage
                         (your laptop) and another for presentation (connected to
@@ -588,7 +588,7 @@ export default function HelpPage() {
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <CheckCircle2 className="text-accent mt-0.5 h-5 w-5 shrink-0" />
+                      <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                       <span className="text-sm">
                         <strong>Test beforehand:</strong> Do a quick run-through
                         before the actual event to make sure everything works

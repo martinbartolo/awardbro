@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Crown, Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
+import { Crown, Eye, EyeOff, RotateCcw, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -191,7 +191,7 @@ export function CategoryActions({
             tooltip="Delete category"
             aria-label="Delete category"
           >
-            <Trash2 className="size-4" />
+            <Trash className="size-4" />
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>

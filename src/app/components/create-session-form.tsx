@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TRPCClientError } from "@trpc/client";
-import { AlertCircle } from "lucide-react";
+import { CircleExclamationPoint } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -137,7 +137,7 @@ export function CreateSessionForm() {
             />
 
             <div className="bg-muted flex items-start gap-2 rounded-md p-3">
-              <AlertCircle className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+              <CircleExclamationPoint className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
               <p className="text-muted-foreground text-sm">
                 Save your management URL, and your password if you set one.
                 Without a password, anyone with the management URL can change
