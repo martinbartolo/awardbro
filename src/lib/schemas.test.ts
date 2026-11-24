@@ -124,6 +124,27 @@ describe("categoryFormSchema", () => {
     ).toBe(true);
   });
 
+  it("accepts up to 100 sources", () => {
+    const aggregate = { ...category, type: "AGGREGATE" };
+    const sources = (n: number) =>
+      Array.from({ length: n }, (_, i) => `category-${i}`);
+
+    expect(
+      categoryFormSchema.safeParse({
+        ...aggregate,
+        sourceCategories: sources(100),
+      }).success,
+    ).toBe(true);
+    expect(
+      errorPaths(
+        categoryFormSchema.safeParse({
+          ...aggregate,
+          sourceCategories: sources(101),
+        }),
+      ),
+    ).toEqual(["sourceCategories"]);
+  });
+
   it("rejects an unknown category type", () => {
     expect(
       errorPaths(categoryFormSchema.safeParse({ ...category, type: "POLL" })),
