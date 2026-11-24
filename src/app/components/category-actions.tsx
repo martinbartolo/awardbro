@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Crown, Eye, EyeOff, RotateCcw, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -18,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 type CategoryActionsProps = {
   categoryId: string;
@@ -47,7 +48,8 @@ export function CategoryActions({
   winnerOnly,
 }: CategoryActionsProps) {
   const router = useRouter();
-  const utils = api.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
   // Optimistic local state for instant UI feedback
   const [optimisticValue, setOptimisticValue] =
@@ -55,68 +57,80 @@ export function CategoryActions({
   const [optimisticWinnerOnly, setOptimisticWinnerOnly] =
     useOptimisticFlag(winnerOnly);
 
-  const toggleHideVoteCounts = api.award.toggleHideVoteCounts.useMutation({
-    onMutate: () => {
-      // Optimistically update local state
-      setOptimisticValue(prev => !prev);
-    },
-    onSuccess: data => {
-      // Sync with server response
-      setOptimisticValue(data.hideVoteCounts);
-      // Invalidate to update presentation view live
-      void utils.award.getSessionBySlug.invalidate();
-      router.refresh();
-      toast.success(
-        data.hideVoteCounts
-          ? "Vote counts will be hidden in presentation"
-          : "Vote counts will be visible in presentation",
-      );
-    },
-    onError: () => {
-      // Revert optimistic update
-      setOptimisticValue(hideVoteCounts);
-      toast.error("Failed to update setting");
-    },
-  });
+  const toggleHideVoteCounts = useMutation(
+    trpc.award.toggleHideVoteCounts.mutationOptions({
+      onMutate: () => {
+        // Optimistically update local state
+        setOptimisticValue(prev => !prev);
+      },
+      onSuccess: data => {
+        // Sync with server response
+        setOptimisticValue(data.hideVoteCounts);
+        // Invalidate to update presentation view live
+        void queryClient.invalidateQueries(
+          trpc.award.getSessionBySlug.pathFilter(),
+        );
+        router.refresh();
+        toast.success(
+          data.hideVoteCounts
+            ? "Vote counts will be hidden in presentation"
+            : "Vote counts will be visible in presentation",
+        );
+      },
+      onError: () => {
+        // Revert optimistic update
+        setOptimisticValue(hideVoteCounts);
+        toast.error("Failed to update setting");
+      },
+    }),
+  );
 
-  const toggleWinnerOnly = api.award.toggleWinnerOnly.useMutation({
-    onMutate: () => {
-      setOptimisticWinnerOnly(prev => !prev);
-    },
-    onSuccess: data => {
-      setOptimisticWinnerOnly(data.winnerOnly);
-      void utils.award.getSessionBySlug.invalidate();
-      router.refresh();
-      toast.success(
-        data.winnerOnly
-          ? "Only winner will be shown on reveal"
-          : "All nominees will be shown on reveal",
-      );
-    },
-    onError: () => {
-      setOptimisticWinnerOnly(winnerOnly);
-      toast.error("Failed to update setting");
-    },
-  });
+  const toggleWinnerOnly = useMutation(
+    trpc.award.toggleWinnerOnly.mutationOptions({
+      onMutate: () => {
+        setOptimisticWinnerOnly(prev => !prev);
+      },
+      onSuccess: data => {
+        setOptimisticWinnerOnly(data.winnerOnly);
+        void queryClient.invalidateQueries(
+          trpc.award.getSessionBySlug.pathFilter(),
+        );
+        router.refresh();
+        toast.success(
+          data.winnerOnly
+            ? "Only winner will be shown on reveal"
+            : "All nominees will be shown on reveal",
+        );
+      },
+      onError: () => {
+        setOptimisticWinnerOnly(winnerOnly);
+        toast.error("Failed to update setting");
+      },
+    }),
+  );
 
-  const deleteCategory = api.award.deleteCategory.useMutation({
-    onSuccess: () => {
-      router.refresh();
-    },
-    onError: () => {
-      toast.error("Failed to delete category");
-    },
-  });
+  const deleteCategory = useMutation(
+    trpc.award.deleteCategory.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+      },
+      onError: () => {
+        toast.error("Failed to delete category");
+      },
+    }),
+  );
 
-  const resetCategoryVotes = api.award.resetCategoryVotes.useMutation({
-    onSuccess: () => {
-      router.refresh();
-      toast.success("Category votes have been reset");
-    },
-    onError: () => {
-      toast.error("Failed to reset category votes");
-    },
-  });
+  const resetCategoryVotes = useMutation(
+    trpc.award.resetCategoryVotes.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+        toast.success("Category votes have been reset");
+      },
+      onError: () => {
+        toast.error("Failed to reset category votes");
+      },
+    }),
+  );
 
   return (
     <div className="flex gap-1">

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -9,8 +10,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/react";
+import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { VotingInterface } from "./voting-interface";
 
@@ -41,17 +41,20 @@ export function LiveVotingSession({
   slug,
   initialHasVoted,
 }: LiveVotingSessionProps) {
+  const trpc = useTRPC();
   const {
     data: session,
     error: sessionError,
     isError: isSessionError,
-  } = api.award.getSessionBySlug.useQuery(
-    { slug, activeOnly: true },
-    {
-      refetchInterval: 5000,
-      initialData: initialSession,
-      retry: 3,
-    },
+  } = useQuery(
+    trpc.award.getSessionBySlug.queryOptions(
+      { slug, activeOnly: true },
+      {
+        refetchInterval: 5000,
+        initialData: initialSession,
+        retry: 3,
+      },
+    ),
   );
 
   const activeCategory = session.categories[0];
@@ -60,14 +63,16 @@ export function LiveVotingSession({
     data: hasVoted = initialHasVoted,
     error: voteError,
     isError: isVoteError,
-  } = api.award.hasVoted.useQuery(
-    { categoryId: activeCategory?.id ?? "" },
-    {
-      refetchInterval: 5000,
-      initialData: initialHasVoted,
-      retry: 3,
-      enabled: !!activeCategory,
-    },
+  } = useQuery(
+    trpc.award.hasVoted.queryOptions(
+      { categoryId: activeCategory?.id ?? "" },
+      {
+        refetchInterval: 5000,
+        initialData: initialHasVoted,
+        retry: 3,
+        enabled: !!activeCategory,
+      },
+    ),
   );
 
   useEffect(() => {

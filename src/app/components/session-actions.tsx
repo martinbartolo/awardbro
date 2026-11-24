@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Copy, CopyIcon, RotateCcw, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 type SessionActionsProps = {
   slug: string;
@@ -27,25 +28,30 @@ type SessionActionsProps = {
 export function SessionActions({ slug, sessionId }: SessionActionsProps) {
   const router = useRouter();
 
-  const deleteSession = api.award.deleteSession.useMutation({
-    onSuccess: () => {
-      router.push("/");
-      toast.success("Award show deleted successfully");
-    },
-    onError: () => {
-      toast.error("Failed to delete award show");
-    },
-  });
+  const trpc = useTRPC();
+  const deleteSession = useMutation(
+    trpc.award.deleteSession.mutationOptions({
+      onSuccess: () => {
+        router.push("/");
+        toast.success("Award show deleted successfully");
+      },
+      onError: () => {
+        toast.error("Failed to delete award show");
+      },
+    }),
+  );
 
-  const resetAllVotes = api.award.resetAllVotes.useMutation({
-    onSuccess: () => {
-      router.refresh();
-      toast.success("All votes have been reset");
-    },
-    onError: () => {
-      toast.error("Failed to reset votes");
-    },
-  });
+  const resetAllVotes = useMutation(
+    trpc.award.resetAllVotes.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+        toast.success("All votes have been reset");
+      },
+      onError: () => {
+        toast.error("Failed to reset votes");
+      },
+    }),
+  );
 
   const copyVotingUrl = () => {
     const votingUrl = `${window.location.origin}/vote/${slug}`;

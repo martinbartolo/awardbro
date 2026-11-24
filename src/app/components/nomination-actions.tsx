@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,7 +17,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 type NominationActionsProps = {
   nominationId: string;
@@ -29,14 +30,17 @@ export function NominationActions({
 }: NominationActionsProps) {
   const router = useRouter();
 
-  const deleteNomination = api.award.deleteNomination.useMutation({
-    onSuccess: () => {
-      router.refresh();
-    },
-    onError: () => {
-      toast.error("Failed to delete nomination");
-    },
-  });
+  const trpc = useTRPC();
+  const deleteNomination = useMutation(
+    trpc.award.deleteNomination.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+      },
+      onError: () => {
+        toast.error("Failed to delete nomination");
+      },
+    }),
+  );
 
   return (
     <AlertDialog>

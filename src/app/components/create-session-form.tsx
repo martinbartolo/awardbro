@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { CircleExclamationPoint } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ import {
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
 import { sessionFormSchema, type SessionFormValues } from "~/lib/schemas";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 export function CreateSessionForm() {
   const router = useRouter();
@@ -38,18 +39,21 @@ export function CreateSessionForm() {
     },
   });
 
-  const createSession = api.award.createSession.useMutation({
-    onSuccess: data => {
-      router.push(`/manage/${data.slug}`);
-    },
-    onError: error => {
-      if (error instanceof TRPCClientError) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to create award show. Please try again.");
-      }
-    },
-  });
+  const trpc = useTRPC();
+  const createSession = useMutation(
+    trpc.award.createSession.mutationOptions({
+      onSuccess: data => {
+        router.push(`/manage/${data.slug}`);
+      },
+      onError: error => {
+        if (error instanceof TRPCClientError) {
+          toast.error(error.message);
+        } else {
+          toast.error("Failed to create award show. Please try again.");
+        }
+      },
+    }),
+  );
 
   const onSubmit = (values: SessionFormValues) => {
     createSession.mutate(values);
