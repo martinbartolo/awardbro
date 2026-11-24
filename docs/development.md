@@ -4,7 +4,7 @@ How to work on AwardBro day to day. For how the app works, see [architecture.md]
 
 ## Setup
 
-Requirements: Node 24 (matches Vercel), pnpm 10, and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
+Requirements: Node 26 (matches Vercel), pnpm 10, and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
 
 ```bash
 pnpm install
@@ -128,6 +128,6 @@ The app's client uses Neon's serverless driver, which can't reach a plain Postgr
 | Preview     | Any other branch / PR             | Neon `dev` branch  |
 | Development | `pnpm dev` with `vercel env pull` | Neon `dev` branch  |
 
-Functions run in Frankfurt (`fra1`, set in `vercel.json`), next to the Neon database in `aws-eu-central-1`. Node is pinned to 24 (`.node-version` and `engines`), matching Vercel.
+Functions run in Frankfurt (`fra1`, set in `vercel.json`), next to the Neon database in `aws-eu-central-1`. Node is pinned to 26 (`.node-version` and `engines`), matching Vercel. Dependabot skips major updates of `@types/node`; raise them together with the runtime.
 
 Each environment has its own `DATABASE_URL`, `DATABASE_DIRECT_URL` and `AUTH_SECRET`. Env vars are managed with `vercel env`. Add new variables to `src/env.js` and `.env.example` too (never with real values).
