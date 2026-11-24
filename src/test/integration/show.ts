@@ -6,7 +6,7 @@ import { appRouter } from "~/server/api/root";
 import { testDb } from "./db";
 import { type Visitor, visitor } from "./visitor";
 
-const FILMS = ["Dune", "Barbie", "Oppenheimer"];
+export const FILMS = ["Dune", "Barbie", "Oppenheimer"];
 
 /**
  * A show as a host builds it: a normal category, a top-2 ranking category (each with three
@@ -52,7 +52,7 @@ export async function createShow(host: Visitor, { password = "" } = {}) {
       n => n.name === name,
     )!;
 
-  return { show, normal, ranking, aggregate, film };
+  return { show, normal, ranking, aggregate, film, addCategory };
 }
 
 export type Show = Awaited<ReturnType<typeof createShow>>;

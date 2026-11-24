@@ -38,6 +38,7 @@ Deleting a session cascades to its categories, nominations and votes (`onDelete:
 Notes:
 
 - Changing a vote in a normal or image category replaces the voter's previous vote. Re-submitting a ranking replaces the whole ranking.
+- An aggregate's sources must be categories of the same show, and can't be aggregates themselves.
 - An aggregate category copies nominations from its sources when it's created. Nominations added to a source later are copied to the aggregate automatically.
 - Scores are computed when they're read (`getSessionBySlug`, `getCategory`), not stored.
 
