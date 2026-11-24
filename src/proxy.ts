@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
-const DEVICE_ID_COOKIE = "device_id";
+import { DEVICE_ID_COOKIE } from "~/server/cookies";
+
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
 
 export function proxy(request: NextRequest) {

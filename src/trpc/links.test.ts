@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "~/app/api/trpc/[trpc]/route";
 import { type AppRouter } from "~/server/api/root";
-import { cookieName } from "~/server/auth/manage";
+import { cookieName } from "~/server/auth/manage-token";
 
 import { httpLinks } from "./links";
 
