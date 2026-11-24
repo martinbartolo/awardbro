@@ -499,58 +499,60 @@ export const awardRouter = createTRPCRouter({
   addNomination: publicProcedure
     .input(nominationFormSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.categoryId });
+      const session = await assertCanManage(ctx, {
+        categoryId: input.categoryId,
+      });
       try {
-        // First verify the category exists and check if it's a source for any aggregate categories
-        const category = await ctx.db.category.findUnique({
-          where: { id: input.categoryId },
-          include: {
-            aggregateOf: true, // Get aggregate categories that use this as a source
-          },
-        });
+        // One transaction holding the show's lock, so creating an aggregate of this category
+        // at the same moment can't copy the nomination twice or miss it (see addCategory)
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const category = await tx.category.findUnique({
+              where: { id: input.categoryId },
+              include: { aggregateOf: { select: { id: true } } },
+            });
+            if (!category) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Category not found",
+              });
+            }
 
-        if (!category) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Category not found",
-          });
-        }
-
-        const nomination = await ctx.db.nomination.create({
-          data: {
-            categoryId: input.categoryId,
-            name: input.name,
-            description: input.description,
-          },
-        });
-
-        // Sync nomination to any aggregate categories that use this category as a source
-        if (category.aggregateOf.length > 0) {
-          for (const aggregateCategory of category.aggregateOf) {
-            // Check if nomination with this name already exists in the aggregate
-            const existingNomination = await ctx.db.nomination.findFirst({
-              where: {
-                categoryId: aggregateCategory.id,
+            const nomination = await tx.nomination.create({
+              data: {
+                categoryId: input.categoryId,
                 name: input.name,
+                description: input.description,
               },
             });
 
-            // Only create if it doesn't exist
-            if (!existingNomination) {
-              await ctx.db.nomination.create({
-                data: {
-                  categoryId: aggregateCategory.id,
-                  name: input.name,
-                  description: input.description,
-                },
+            // Copy it to the aggregates that use this category, unless one already has that name
+            const aggregateIds = category.aggregateOf.map(a => a.id);
+            if (aggregateIds.length) {
+              const haveName = await tx.nomination.findMany({
+                where: { categoryId: { in: aggregateIds }, name: input.name },
+                select: { categoryId: true },
+              });
+              const skip = new Set(haveName.map(n => n.categoryId));
+              await tx.nomination.createMany({
+                data: aggregateIds
+                  .filter(id => !skip.has(id))
+                  .map(categoryId => ({
+                    categoryId,
+                    name: input.name,
+                    description: input.description,
+                  })),
               });
             }
-          }
-        }
 
-        return nomination;
+            return nomination;
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
+        if (isBusy(error)) throw hostBusy();
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create nomination",

@@ -106,6 +106,26 @@ describe("an aggregate category", () => {
     });
     expect(nominations.map(n => n.name).sort()).toEqual([...FILMS].sort());
   });
+
+  /** How many nominations with this name the category has */
+  const copies = (categoryId: string, name: string) =>
+    testDb.nomination.count({ where: { categoryId, name } });
+
+  it("gets one copy of a nomination added to any of its sources", async () => {
+    const host = visitor();
+    const show = await createShow(host);
+
+    await host.api.addNomination({
+      categoryId: show.normal.id,
+      name: "Poor Things",
+    });
+    await host.api.addNomination({
+      categoryId: show.ranking.id,
+      name: "Poor Things",
+    });
+
+    expect(await copies(show.aggregate.id, "Poor Things")).toBe(1);
+  });
 });
 
 describe("deleting", () => {
