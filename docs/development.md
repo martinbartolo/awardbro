@@ -22,6 +22,7 @@ Local development uses the Neon `dev` branch, never production. Don't keep produ
 | `pnpm dev`                          | Dev server (Turbopack)                                                                                                         |
 | `pnpm check`                        | Next types, ESLint and TypeScript. Run before every commit. Needs `.env.local` (`vercel env pull`) or `SKIP_ENV_VALIDATION=1`. |
 | `pnpm test`                         | Unit tests (Vitest). `pnpm test:watch` while developing.                                                                       |
+| `pnpm test:integration`             | Integration tests: the tRPC API against a real Postgres database. Needs `TEST_DATABASE_URL`, see below.                        |
 | `pnpm build`                        | Production build. Run before opening a PR.                                                                                     |
 | `pnpm format:write`                 | Prettier                                                                                                                       |
 | `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below)                                                                 |
@@ -52,7 +53,7 @@ Only mention an issue ID in a PR that actually works on that issue: Linear links
    3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
    4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
 4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
-5. **Wait for the checks:** CI (lint, types, format, tests, migration replay) and the Vercel preview. Both are required.
+5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay and integration tests) and the Vercel preview. Both are required.
 6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
 7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
@@ -101,6 +102,23 @@ Release when a useful set of changes is on `dev` and its preview has been checke
   # run the app or tests with those values, then:
   neonctl branches delete test-bar-123
   ```
+
+## Integration tests
+
+`pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service on every PR.
+
+To protect real data, the tests only run against a database whose name ends in `_test`, given by `TEST_DATABASE_URL` in the shell (it isn't read from `.env.local`). `dev` and production are both called `neondb`, so they are refused. Locally, use any Postgres, or a throwaway Neon branch with its own empty database:
+
+```bash
+neonctl branches create --name test-bar-123 --parent dev
+neonctl databases create --branch test-bar-123 --name awardbro_test
+TEST_DATABASE_URL="$(neonctl connection-string test-bar-123 --database-name awardbro_test)" pnpm test:integration
+neonctl branches delete test-bar-123
+```
+
+Against Neon from outside Frankfurt a full run takes a few minutes, since every call is a round trip. In CI it's much faster.
+
+The app's client uses Neon's serverless driver, which can't reach a plain Postgres server, so the tests swap in the standard `pg` driver (`src/test/integration/db.ts`). The router code and its queries are the same.
 
 ## Environments
 
