@@ -22,6 +22,7 @@
     "preview": "next build && next start",
     "start": "next start",
     "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:watch": "vitest",
     "typecheck": "next typegen && tsc --noEmit"
   },
@@ -64,10 +65,12 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@next/eslint-plugin-next": "16.4.6",
+    "@prisma/adapter-pg": "^7.10.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/canvas-confetti": "^1.9.0",
     "@types/eslint": "^9.6.1",
     "@types/node": "^25.0.3",
+    "@types/pg": "^8.23.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "^9.39.2",
@@ -80,6 +83,7 @@
     "eslint-plugin-prettier": "^5.5.7",
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^16.5.0",
+    "pg": "^8.23.1",
     "postcss": "^8.5.33",
     "prettier": "^3.10.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
