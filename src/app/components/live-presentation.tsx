@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { estimateVoters } from "~/lib/scoring";
-import { api, type RouterOutputs } from "~/trpc/react";
+import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
 import { LiveVoting } from "./live-voting";
@@ -54,17 +55,20 @@ export function LivePresentation({
   initialSession,
   slug,
 }: LivePresentationProps) {
+  const trpc = useTRPC();
   const {
     data: session,
     error: sessionError,
     isError: isSessionError,
-  } = api.award.getSessionBySlug.useQuery(
-    { slug, activeOnly: true },
-    {
-      refetchInterval: 5000,
-      initialData: initialSession,
-      retry: 3,
-    },
+  } = useQuery(
+    trpc.award.getSessionBySlug.queryOptions(
+      { slug, activeOnly: true },
+      {
+        refetchInterval: 5000,
+        initialData: initialSession,
+        retry: 3,
+      },
+    ),
   );
 
   useEffect(() => {

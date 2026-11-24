@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { cn } from "~/lib/utils";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
 import { RankingInterface } from "./ranking-interface";
@@ -33,15 +34,18 @@ export function VotingInterface({
   const isRanking = categoryType === "RANKING";
   // Track only the user's explicit selection (null = no manual selection yet)
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
-  const utils = api.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
   // Get the current vote (only for normal/image categories)
-  const { data: currentVote } = api.award.getCurrentVote.useQuery(
-    { categoryId },
-    {
-      refetchInterval: 5000,
-      enabled: !isAggregate && !isRanking,
-    },
+  const { data: currentVote } = useQuery(
+    trpc.award.getCurrentVote.queryOptions(
+      { categoryId },
+      {
+        refetchInterval: 5000,
+        enabled: !isAggregate && !isRanking,
+      },
+    ),
   );
 
   // Derive effective selection: user's choice takes precedence, fall back to current vote
@@ -53,21 +57,29 @@ export function VotingInterface({
     ? nominations.find(n => n.id === selectedNominationId)
     : null;
 
-  const vote = api.award.vote.useMutation({
-    onSuccess: async (_data, { nominationId }) => {
-      toast.success("Vote cast successfully!");
-      void utils.award.hasVoted.invalidate({ categoryId });
-      // Load the submitted vote before dropping the local selection, so the
-      // form never looks empty in between (the queries only poll every 5 s).
-      // If loading it fails, keep the selection until the next poll.
-      await utils.award.getCurrentVote.invalidate({ categoryId });
-      const saved = utils.award.getCurrentVote.getData({ categoryId });
-      if (saved?.nominationId === nominationId) setUserSelectedId(null);
-    },
-    onError: error => {
-      toast.error(error.message || "Error casting vote. Please try again.");
-    },
-  });
+  const vote = useMutation(
+    trpc.award.vote.mutationOptions({
+      onSuccess: async (_data, { nominationId }) => {
+        toast.success("Vote cast successfully!");
+        void queryClient.invalidateQueries(
+          trpc.award.hasVoted.queryFilter({ categoryId }),
+        );
+        // Load the submitted vote before dropping the local selection, so the
+        // form never looks empty in between (the queries only poll every 5 s).
+        // If loading it fails, keep the selection until the next poll.
+        await queryClient.invalidateQueries(
+          trpc.award.getCurrentVote.queryFilter({ categoryId }),
+        );
+        const saved = queryClient.getQueryData(
+          trpc.award.getCurrentVote.queryKey({ categoryId }),
+        );
+        if (saved?.nominationId === nominationId) setUserSelectedId(null);
+      },
+      onError: error => {
+        toast.error(error.message || "Error casting vote. Please try again.");
+      },
+    }),
+  );
   const isVoting = vote.isPending;
 
   const handleVote = () => {

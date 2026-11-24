@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
 import { cn, getOrdinal, isSameRanking } from "~/lib/utils";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
 
@@ -33,14 +34,15 @@ export function RankingInterface({
 }) {
   // Track user modifications separately - null means use server data
   const [userRankings, setUserRankings] = useState<Ranking[] | null>(null);
-  const utils = api.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
   // Get existing rankings
-  const { data: currentRankings } = api.award.getCurrentRankings.useQuery(
-    { categoryId },
-    {
-      refetchInterval: 5000,
-    },
+  const { data: currentRankings } = useQuery(
+    trpc.award.getCurrentRankings.queryOptions(
+      { categoryId },
+      { refetchInterval: 5000 },
+    ),
   );
 
   // Derive rankings from server data or user modifications
@@ -66,23 +68,31 @@ export function RankingInterface({
     setUserRankings(newRankings);
   };
 
-  const submitRanking = api.award.submitRanking.useMutation({
-    onSuccess: async (_data, { rankings: submitted }) => {
-      toast.success("Rankings submitted successfully!");
-      void utils.award.hasVoted.invalidate({ categoryId });
-      // Load the submitted ranking before dropping the local one, so the
-      // form never looks empty in between (the queries only poll every 5 s).
-      // If loading it fails, keep the local ranking until the next poll.
-      await utils.award.getCurrentRankings.invalidate({ categoryId });
-      const saved = utils.award.getCurrentRankings.getData({ categoryId });
-      if (saved && isSameRanking(saved, submitted)) setUserRankings(null);
-    },
-    onError: error => {
-      toast.error(
-        error.message || "Error submitting rankings. Please try again.",
-      );
-    },
-  });
+  const submitRanking = useMutation(
+    trpc.award.submitRanking.mutationOptions({
+      onSuccess: async (_data, { rankings: submitted }) => {
+        toast.success("Rankings submitted successfully!");
+        void queryClient.invalidateQueries(
+          trpc.award.hasVoted.queryFilter({ categoryId }),
+        );
+        // Load the submitted ranking before dropping the local one, so the
+        // form never looks empty in between (the queries only poll every 5 s).
+        // If loading it fails, keep the local ranking until the next poll.
+        await queryClient.invalidateQueries(
+          trpc.award.getCurrentRankings.queryFilter({ categoryId }),
+        );
+        const saved = queryClient.getQueryData(
+          trpc.award.getCurrentRankings.queryKey({ categoryId }),
+        );
+        if (saved && isSameRanking(saved, submitted)) setUserRankings(null);
+      },
+      onError: error => {
+        toast.error(
+          error.message || "Error submitting rankings. Please try again.",
+        );
+      },
+    }),
+  );
   const isSubmitting = submitRanking.isPending;
 
   const handleAddRanking = (nominationId: string) => {

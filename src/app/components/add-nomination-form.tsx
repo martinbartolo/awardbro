@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -20,7 +21,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { isValidImageUrl } from "~/lib/images";
 import { nominationFormSchema, type NominationFormValues } from "~/lib/schemas";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 type AddNominationFormProps = {
   categoryId: string;
@@ -41,20 +42,23 @@ export function AddNominationForm({
     },
   });
 
-  const addNomination = api.award.addNomination.useMutation({
-    onSuccess: () => {
-      toast.success("Nomination added successfully");
-      form.reset();
-      router.refresh();
-    },
-    onError: error => {
-      if (error instanceof TRPCClientError) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to add nomination. Please try again.");
-      }
-    },
-  });
+  const trpc = useTRPC();
+  const addNomination = useMutation(
+    trpc.award.addNomination.mutationOptions({
+      onSuccess: () => {
+        toast.success("Nomination added successfully");
+        form.reset();
+        router.refresh();
+      },
+      onError: error => {
+        if (error instanceof TRPCClientError) {
+          toast.error(error.message);
+        } else {
+          toast.error("Failed to add nomination. Please try again.");
+        }
+      },
+    }),
+  );
 
   const isImageCategory = categoryType === "IMAGE";
 

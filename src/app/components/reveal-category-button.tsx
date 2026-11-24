@@ -1,11 +1,12 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { Award, Ban } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 export function RevealCategoryButton({
   categoryId,
@@ -15,16 +16,19 @@ export function RevealCategoryButton({
   revealed: boolean;
 }) {
   const router = useRouter();
-  const toggleReveal = api.award.toggleRevealCategory.useMutation({
-    onSuccess: () => {
-      router.refresh();
-    },
-    onError: () => {
-      toast.error(
-        revealed ? "Failed to hide winner" : "Failed to reveal winner",
-      );
-    },
-  });
+  const trpc = useTRPC();
+  const toggleReveal = useMutation(
+    trpc.award.toggleRevealCategory.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+      },
+      onError: () => {
+        toast.error(
+          revealed ? "Failed to hide winner" : "Failed to reveal winner",
+        );
+      },
+    }),
+  );
 
   return (
     <Button

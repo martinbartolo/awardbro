@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { estimateVoters } from "~/lib/scoring";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 type LiveVotingProps = {
   categoryId: string;
@@ -48,13 +49,16 @@ export function LiveVoting({
   const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const lastToastTimeRef = useRef(0);
 
-  const { data, error, isError, failureCount } = api.award.getCategory.useQuery(
-    { id: categoryId },
-    {
-      refetchInterval: 1000,
-      staleTime: 0,
-      retry: MAX_RETRIES,
-    },
+  const trpc = useTRPC();
+  const { data, error, isError, failureCount } = useQuery(
+    trpc.award.getCategory.queryOptions(
+      { id: categoryId },
+      {
+        refetchInterval: 1000,
+        staleTime: 0,
+        retry: MAX_RETRIES,
+      },
+    ),
   );
 
   // Derive error limit exceeded from failureCount (no setState needed)

@@ -2,12 +2,13 @@
 
 import { useTransition } from "react";
 
+import { useMutation } from "@tanstack/react-query";
 import { Ban, Presentation } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 export function SetActiveCategoryButton({
   categoryId,
@@ -21,14 +22,17 @@ export function SetActiveCategoryButton({
   // never briefly shows the old label
   const [isRefreshing, startRefresh] = useTransition();
 
-  const setActive = api.award.setActiveCategory.useMutation({
-    onSuccess: () => {
-      startRefresh(() => router.refresh());
-    },
-    onError: error => {
-      toast.error(error.message || "Error updating category status");
-    },
-  });
+  const trpc = useTRPC();
+  const setActive = useMutation(
+    trpc.award.setActiveCategory.mutationOptions({
+      onSuccess: () => {
+        startRefresh(() => router.refresh());
+      },
+      onError: error => {
+        toast.error(error.message || "Error updating category status");
+      },
+    }),
+  );
   const isUpdating = setActive.isPending || isRefreshing;
 
   return (
