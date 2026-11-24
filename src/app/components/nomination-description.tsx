@@ -1,31 +1,16 @@
-// Helper to check if a URL looks like an image
-const isImageUrl = (url: string) => {
-  // Check for common image extensions
-  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url)) return true;
-  // Google Drive share links
-  if (url.includes("drive.google.com") && url.includes("/file/d/")) return true;
-  return false;
-};
-
-// Helper to transform URLs to direct image URLs where needed
-const getImageUrl = (url: string) => {
-  // Transform Google Drive share links to thumbnail URLs (bypasses hotlink blocking)
-  if (url.includes("drive.google.com") && url.includes("/file/d/")) {
-    const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
-    const fileId = matches?.[1];
-    if (!fileId) return "";
-    // Use thumbnail endpoint with large size - works for cross-origin embedding
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
-  }
-  return url;
-};
+import { getImageUrl, isImageUrl } from "~/lib/images";
+import { cn } from "~/lib/utils";
 
 export function NominationDescription({
   description,
   className = "",
+  imageClassName = "relative mt-2 h-72 sm:h-80 md:h-96 lg:h-112",
 }: {
   description: string | null;
+  /** Classes for the text */
   className?: string;
+  /** Classes for the image's box, such as its height */
+  imageClassName?: string;
 }) {
   if (!description) return null;
 
@@ -40,7 +25,9 @@ export function NominationDescription({
 
   // Using native img tag for user-provided images (fetched client-side, no SSRF risk)
   return (
-    <div className="relative mt-2 flex h-72 w-full items-center justify-center sm:h-80 md:h-96 lg:h-112">
+    <div
+      className={cn("flex w-full items-center justify-center", imageClassName)}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageUrl}
