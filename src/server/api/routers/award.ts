@@ -10,7 +10,12 @@ import {
   sessionFormSchema,
 } from "~/lib/schemas";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { assertCanManage, setManageCookie } from "~/server/auth/manage";
+import {
+  assertCanManage,
+  getCookie,
+  setManageCookie,
+} from "~/server/auth/manage";
+import { type db } from "~/server/db";
 
 // Helper function to calculate points for a ranking vote
 const calculatePoints = (rank: number, rankingTop: number): number => {
@@ -67,6 +72,112 @@ const recordLoginAttempt = (identifier: string, success: boolean) => {
       count: 1,
       lastAttempt: now,
     });
+  }
+};
+
+/*
+ * Each show has an advisory lock that keeps votes and host actions apart.
+ * Saving a vote takes it shared, so voters don't block each other. Host
+ * actions that change what can be voted on or delete votes (switching or
+ * stopping a category, resets, deletes) take it exclusively: they wait for
+ * votes already being saved, and votes arriving meanwhile wait for them.
+ * Postgres queues these locks fairly, so a stream of votes can't starve the
+ * host. The key is a bigint, which keeps it apart from the two-int device lock.
+ */
+
+/** Takes the show's lock exclusively. Put it first in a batch transaction. */
+const lockShow = (client: typeof db, sessionId: string) =>
+  client.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${sessionId}, 0))`;
+
+/** No connection or lock in time (P2028), or a transaction conflict (P2034) */
+const isBusy = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  (error.code === "P2028" || error.code === "P2034");
+
+const hostBusy = () =>
+  new TRPCError({
+    code: "TOO_MANY_REQUESTS",
+    message: "Couldn't save that change just now. Please try again.",
+  });
+
+/** Runs one host write in a transaction holding the show's lock exclusively. */
+const withShowLocked = async <T>(
+  client: typeof db,
+  sessionId: string,
+  query: Prisma.PrismaPromise<T>,
+): Promise<T> => {
+  try {
+    const [, result] = await client.$transaction([
+      lockShow(client, sessionId),
+      query,
+    ]);
+    return result;
+  } catch (error) {
+    if (isBusy(error)) throw hostBusy();
+    throw error;
+  }
+};
+
+const VOTE_NOT_ACTIVE = "Voting is not currently active for this category";
+
+/**
+ * Saves a voter's vote or ranking in one transaction that holds the show's
+ * lock shared (see above) and a lock on the device and category, so
+ * simultaneous requests from the same device take turns. It then checks the
+ * category is still open and the nominations still exist, and replaces the
+ * device's previous vote, so a failure leaves the previous vote in place.
+ */
+const saveVote = async <T>(
+  client: typeof db,
+  target: {
+    deviceId: string;
+    sessionId: string;
+    categoryId: string;
+    nominationIds: string[];
+  },
+  write: (tx: Prisma.TransactionClient) => Promise<T>,
+) => {
+  const { deviceId, sessionId, categoryId, nominationIds } = target;
+  try {
+    return await client.$transaction(
+      async tx => {
+        // Show lock first, then the device lock, always in this order
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0))`;
+        const [category] = await tx.$queryRaw<{ isActive: boolean }[]>`
+          SELECT c."isActive"
+          FROM pg_advisory_xact_lock(hashtext(${deviceId}), hashtext(${categoryId})),
+            "Category" c
+          WHERE c."id" = ${categoryId}`;
+        if (!category?.isActive) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: VOTE_NOT_ACTIVE,
+          });
+        }
+        const found = await tx.nomination.count({
+          where: { id: { in: nominationIds }, categoryId },
+        });
+        if (found !== nominationIds.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A nomination was removed. Please reload the page.",
+          });
+        }
+        await tx.vote.deleteMany({
+          where: { deviceId, nomination: { categoryId } },
+        });
+        return write(tx);
+      },
+      { maxWait: 5000, timeout: 10000 },
+    );
+  } catch (error) {
+    if (isBusy(error)) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Couldn't save your vote just now. Please try again.",
+      });
+    }
+    throw error;
   }
 };
 
@@ -443,7 +554,7 @@ export const awardRouter = createTRPCRouter({
   toggleRevealCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.id });
+      const session = await assertCanManage(ctx, { categoryId: input.id });
       const category = await ctx.db.category.findUnique({
         where: { id: input.id },
         select: { revealed: true },
@@ -456,10 +567,16 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      return ctx.db.category.update({
-        where: { id: input.id },
-        data: { revealed: !category.revealed },
-      });
+      // Holding the show's lock, so the results don't change after the reveal
+      // as votes being saved land
+      return withShowLocked(
+        ctx.db,
+        session.id,
+        ctx.db.category.update({
+          where: { id: input.id },
+          data: { revealed: !category.revealed },
+        }),
+      );
     }),
 
   toggleHideVoteCounts: publicProcedure
@@ -568,41 +685,56 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
+  // Sets the category to the state the host asked for, so repeating a click
+  // (or clicking on an out-of-date page) never flips it the other way
   setActiveCategory: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
+    .input(z.object({ categoryId: z.string(), active: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.categoryId });
-      // First, get the current category and its active state
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.categoryId },
-        include: { session: { include: { categories: true } } },
+      const session = await assertCanManage(ctx, {
+        categoryId: input.categoryId,
       });
 
-      if (!category) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
-        });
+      try {
+        if (!input.active) {
+          return await withShowLocked(
+            ctx.db,
+            session.id,
+            ctx.db.category.update({
+              where: { id: input.categoryId },
+              data: { isActive: false },
+            }),
+          );
+        }
+
+        // Deactivate all categories in the show and activate this one, holding
+        // the show's lock, so at most one category is ever active and votes
+        // being saved finish first
+        const [, , activated] = await ctx.db.$transaction([
+          lockShow(ctx.db, session.id),
+          ctx.db.category.updateMany({
+            where: { sessionId: session.id },
+            data: { isActive: false },
+          }),
+          ctx.db.category.update({
+            where: { id: input.categoryId },
+            data: { isActive: true },
+          }),
+        ]);
+        return activated;
+      } catch (error) {
+        // The category was deleted after the access check
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2025"
+        ) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Category not found",
+          });
+        }
+        if (isBusy(error)) throw hostBusy();
+        throw error;
       }
-
-      // If the category is currently active, just deactivate it
-      if (category.isActive) {
-        return ctx.db.category.update({
-          where: { id: input.categoryId },
-          data: { isActive: false },
-        });
-      }
-
-      // Otherwise, deactivate all categories in the session and activate this one
-      await ctx.db.category.updateMany({
-        where: { sessionId: category.session.id },
-        data: { isActive: false },
-      });
-
-      return ctx.db.category.update({
-        where: { id: input.categoryId },
-        data: { isActive: true },
-      });
     }),
 
   vote: publicProcedure
@@ -613,11 +745,7 @@ export const awardRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const deviceId = ctx.headers
-          .get("cookie")
-          ?.split(";")
-          .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
-          ?.split("=")[1];
+        const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
 
         if (!deviceId) {
           throw new TRPCError({
@@ -628,8 +756,11 @@ export const awardRouter = createTRPCRouter({
 
         const nomination = await ctx.db.nomination.findUnique({
           where: { id: input.nominationId },
-          include: {
-            category: true,
+          select: {
+            categoryId: true,
+            category: {
+              select: { type: true, isActive: true, sessionId: true },
+            },
           },
         });
 
@@ -654,35 +785,27 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
+        // Fail fast; saveVote checks again while holding the locks
         if (!nomination.category.isActive) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Voting is not currently active for this category",
+            message: VOTE_NOT_ACTIVE,
           });
         }
 
-        // Handle regular category voting
-        const existingVote = await ctx.db.vote.findFirst({
-          where: {
-            deviceId: deviceId,
-            nomination: {
-              categoryId: nomination.categoryId,
-            },
-          },
-        });
-
-        if (existingVote) {
-          await ctx.db.vote.delete({
-            where: { id: existingVote.id },
-          });
-        }
-
-        return await ctx.db.vote.create({
-          data: {
+        return await saveVote(
+          ctx.db,
+          {
             deviceId,
-            nominationId: input.nominationId,
+            sessionId: nomination.category.sessionId,
+            categoryId: nomination.categoryId,
+            nominationIds: [input.nominationId],
           },
-        });
+          tx =>
+            tx.vote.create({
+              data: { deviceId, nominationId: input.nominationId },
+            }),
+        );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
@@ -696,11 +819,7 @@ export const awardRouter = createTRPCRouter({
     .input(rankingSubmissionSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const deviceId = ctx.headers
-          .get("cookie")
-          ?.split(";")
-          .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
-          ?.split("=")[1];
+        const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
 
         if (!deviceId) {
           throw new TRPCError({
@@ -712,8 +831,12 @@ export const awardRouter = createTRPCRouter({
         // Get the category and validate it's a ranking category
         const category = await ctx.db.category.findUnique({
           where: { id: input.categoryId },
-          include: {
-            nominations: true,
+          select: {
+            type: true,
+            rankingTop: true,
+            isActive: true,
+            sessionId: true,
+            nominations: { select: { id: true } },
           },
         });
 
@@ -731,10 +854,12 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
+        // Fail fast, before validating a stale form; saveVote checks again
+        // while holding the locks
         if (!category.isActive) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Voting is not currently active for this category",
+            message: VOTE_NOT_ACTIVE,
           });
         }
 
@@ -789,26 +914,23 @@ export const awardRouter = createTRPCRouter({
           });
         }
 
-        // Delete existing rankings for this device/category
-        await ctx.db.vote.deleteMany({
-          where: {
-            deviceId: deviceId,
-            nomination: {
-              categoryId: input.categoryId,
-            },
-          },
-        });
-
-        // Create new ranking votes
-        const votes = await ctx.db.vote.createManyAndReturn({
-          data: input.rankings.map(ranking => ({
+        return await saveVote(
+          ctx.db,
+          {
             deviceId,
-            nominationId: ranking.nominationId,
-            rank: ranking.rank,
-          })),
-        });
-
-        return votes;
+            sessionId: category.sessionId,
+            categoryId: input.categoryId,
+            nominationIds: input.rankings.map(r => r.nominationId),
+          },
+          tx =>
+            tx.vote.createManyAndReturn({
+              data: input.rankings.map(ranking => ({
+                deviceId,
+                nominationId: ranking.nominationId,
+                rank: ranking.rank,
+              })),
+            }),
+        );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
@@ -821,11 +943,7 @@ export const awardRouter = createTRPCRouter({
   getCurrentRankings: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const deviceId = ctx.headers
-        .get("cookie")
-        ?.split(";")
-        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
-        ?.split("=")[1];
+      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
 
       if (!deviceId) {
         return [];
@@ -852,11 +970,7 @@ export const awardRouter = createTRPCRouter({
   getCurrentVote: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const deviceId = ctx.headers
-        .get("cookie")
-        ?.split(";")
-        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
-        ?.split("=")[1];
+      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
 
       if (!deviceId) {
         return null;
@@ -880,11 +994,7 @@ export const awardRouter = createTRPCRouter({
   hasVoted: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const deviceId = ctx.headers
-        .get("cookie")
-        ?.split(";")
-        .find(c => c.trim().startsWith(DEVICE_ID_COOKIE + "="))
-        ?.split("=")[1];
+      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
 
       if (!deviceId) {
         return false;
@@ -905,13 +1015,16 @@ export const awardRouter = createTRPCRouter({
   deleteNomination: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { nominationId: input.id });
+      const session = await assertCanManage(ctx, { nominationId: input.id });
       try {
         // Votes are removed by the onDelete: Cascade relation
-        return await ctx.db.nomination.delete({
-          where: { id: input.id },
-        });
-      } catch {
+        return await withShowLocked(
+          ctx.db,
+          session.id,
+          ctx.db.nomination.delete({ where: { id: input.id } }),
+        );
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete nomination",
@@ -922,13 +1035,16 @@ export const awardRouter = createTRPCRouter({
   deleteCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.id });
+      const session = await assertCanManage(ctx, { categoryId: input.id });
       try {
         // Nominations and votes are removed by the onDelete: Cascade relations
-        return await ctx.db.category.delete({
-          where: { id: input.id },
-        });
-      } catch {
+        return await withShowLocked(
+          ctx.db,
+          session.id,
+          ctx.db.category.delete({ where: { id: input.id } }),
+        );
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete category",
@@ -946,11 +1062,14 @@ export const awardRouter = createTRPCRouter({
       await assertCanManage(ctx, { sessionId: input.id });
       try {
         // Categories, nominations and votes are removed by the onDelete: Cascade relations
-        await ctx.db.session.delete({
-          where: { id: input.id },
-        });
+        await withShowLocked(
+          ctx.db,
+          input.id,
+          ctx.db.session.delete({ where: { id: input.id } }),
+        );
         return { success: true };
-      } catch {
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete session",
@@ -961,16 +1080,19 @@ export const awardRouter = createTRPCRouter({
   resetCategoryVotes: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.categoryId });
+      const session = await assertCanManage(ctx, {
+        categoryId: input.categoryId,
+      });
       try {
-        return await ctx.db.vote.deleteMany({
-          where: {
-            nomination: {
-              categoryId: input.categoryId,
-            },
-          },
-        });
-      } catch {
+        return await withShowLocked(
+          ctx.db,
+          session.id,
+          ctx.db.vote.deleteMany({
+            where: { nomination: { categoryId: input.categoryId } },
+          }),
+        );
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to reset category votes",
@@ -983,16 +1105,15 @@ export const awardRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await assertCanManage(ctx, { sessionId: input.sessionId });
       try {
-        return await ctx.db.vote.deleteMany({
-          where: {
-            nomination: {
-              category: {
-                sessionId: input.sessionId,
-              },
-            },
-          },
-        });
-      } catch {
+        return await withShowLocked(
+          ctx.db,
+          input.sessionId,
+          ctx.db.vote.deleteMany({
+            where: { nomination: { category: { sessionId: input.sessionId } } },
+          }),
+        );
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to reset all votes",

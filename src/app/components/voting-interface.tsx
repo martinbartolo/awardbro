@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { Check } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
@@ -34,8 +33,7 @@ export function VotingInterface({
   const isRanking = categoryType === "RANKING";
   // Track only the user's explicit selection (null = no manual selection yet)
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
-  const [isVoting, setIsVoting] = useState(false);
-  const router = useRouter();
+  const utils = api.useUtils();
 
   // Get the current vote (only for normal/image categories)
   const { data: currentVote } = api.award.getCurrentVote.useQuery(
@@ -56,26 +54,27 @@ export function VotingInterface({
     : null;
 
   const vote = api.award.vote.useMutation({
-    onSuccess: () => {
-      router.refresh();
+    onSuccess: async (_data, { nominationId }) => {
       toast.success("Vote cast successfully!");
-      // Reset user selection after successful vote so it syncs with server
-      setUserSelectedId(null);
+      void utils.award.hasVoted.invalidate({ categoryId });
+      // Load the submitted vote before dropping the local selection, so the
+      // form never looks empty in between (the queries only poll every 5 s).
+      // If loading it fails, keep the selection until the next poll.
+      await utils.award.getCurrentVote.invalidate({ categoryId });
+      const saved = utils.award.getCurrentVote.getData({ categoryId });
+      if (saved?.nominationId === nominationId) setUserSelectedId(null);
     },
     onError: error => {
       toast.error(error.message || "Error casting vote. Please try again.");
     },
-    onSettled: () => {
-      setIsVoting(false);
-    },
   });
+  const isVoting = vote.isPending;
 
   const handleVote = () => {
     if (!selectedNominationId) {
       toast.error("Please select a nomination first");
       return;
     }
-    setIsVoting(true);
     vote.mutate({ nominationId: selectedNominationId });
   };
 
