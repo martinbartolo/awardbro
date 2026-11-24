@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { CircleExclamationPoint } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
@@ -83,7 +83,7 @@ export function LivePresentation({
         variants={containerVariants}
       >
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <CircleExclamationPoint className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {sessionError.message || "Failed to load presentation"}

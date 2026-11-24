@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Copy, CopyIcon, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowRight, Copy, CopyIcon, RotateCcw, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -114,7 +114,7 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
               tooltip="Delete Award Show"
               aria-label="Delete Award Show"
             >
-              <Trash2 className="size-4" />
+              <Trash className="size-4" />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>

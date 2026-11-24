@@ -1,4 +1,9 @@
-import { HelpCircle, ImageIcon, Layers, ListOrdered } from "lucide-react";
+import {
+  CircleQuestionMark,
+  ImageIcon,
+  Layers,
+  ListOrdered,
+} from "lucide-react";
 import { type Metadata } from "next";
 import Link from "next/link";
 
@@ -71,7 +76,7 @@ export default async function ManagePage({
               </div>
               <Button asChild variant="ghost" size="sm" className="shrink-0">
                 <Link href="/help" target="_blank">
-                  <HelpCircle className="h-4 w-4" />
+                  <CircleQuestionMark className="h-4 w-4" />
                   Help
                 </Link>
               </Button>
