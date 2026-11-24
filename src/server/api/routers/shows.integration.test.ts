@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import { testDb } from "~/test/integration/db";
 import {
   awardPaths,
+  createShow,
+  FILMS,
   procedureNames,
   type Show,
   showState,
   votedShow,
 } from "~/test/integration/show";
-import { type Visitor, visitor } from "~/test/integration/visitor";
+import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 
 /** Every query, called on a show the way its pages do */
 const queries = {
@@ -63,6 +65,46 @@ describe("the password hash", () => {
     for (const response of [created, access]) {
       expect(JSON.stringify(response)).not.toMatch(/password|\$2[aby]\$/);
     }
+  });
+});
+
+describe("an aggregate category", () => {
+  const addAggregate = (show: Show, sourceCategories: string[]) =>
+    show.addCategory({ name: "Overall", type: "AGGREGATE", sourceCategories });
+
+  it("can't use another show's category, an aggregate, or a missing category as a source, and changes neither show", async () => {
+    const [show, other] = await Promise.all([
+      createShow(visitor()),
+      createShow(visitor()),
+    ]);
+    const states = () =>
+      Promise.all([showState(show.show.id), showState(other.show.id)]);
+    const before = await states();
+
+    await Promise.all(
+      [
+        [other.normal.id],
+        [show.normal.id, other.ranking.id],
+        [show.aggregate.id],
+        [show.normal.id, "missing"],
+      ].map(sources => expectError(addAggregate(show, sources), "BAD_REQUEST")),
+    );
+
+    expect(await states()).toEqual(before);
+  });
+
+  it("accepts the same source listed twice", async () => {
+    const show = await createShow(visitor());
+
+    const aggregate = await addAggregate(show, [
+      show.normal.id,
+      show.normal.id,
+    ]);
+
+    const nominations = await testDb.nomination.findMany({
+      where: { categoryId: aggregate.id },
+    });
+    expect(nominations.map(n => n.name).sort()).toEqual([...FILMS].sort());
   });
 });
 

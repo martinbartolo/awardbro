@@ -134,7 +134,7 @@ const recordLoginAttempt = (identifier: string, success: boolean) => {
  */
 
 /** Takes the show's lock exclusively. Put it first in a batch transaction. */
-const lockShow = (client: typeof db, sessionId: string) =>
+const lockShow = (client: Prisma.TransactionClient, sessionId: string) =>
   client.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${sessionId}, 0))`;
 
 /** No connection or lock in time (P2028), or a transaction conflict (P2034) */
@@ -330,53 +330,69 @@ export const awardRouter = createTRPCRouter({
     .input(categoryFormSchema)
     .mutation(async ({ ctx, input }) => {
       await assertCanManage(ctx, { sessionId: input.sessionId });
+      const sourceIds =
+        input.type === "AGGREGATE" ? [...new Set(input.sourceCategories)] : [];
       try {
-        const category = await ctx.db.category.create({
-          data: {
-            sessionId: input.sessionId,
-            name: input.name,
-            description: input.description,
-            type: input.type as CategoryType,
-            rankingTop: input.type === "RANKING" ? input.rankingTop : null,
-            hideVoteCounts: input.hideVoteCounts ?? false,
-            winnerOnly: input.winnerOnly ?? false,
-            sourceCategories:
-              input.type === "AGGREGATE"
-                ? {
-                    connect: input.sourceCategories.map(id => ({ id })),
-                  }
-                : undefined,
-          },
-        });
+        // One transaction, so an aggregate is created with all its nominations or not at all
+        return await ctx.db.$transaction(
+          async tx => {
+            if (sourceIds.length) {
+              // The show's lock keeps a source from being deleted between the check and the link
+              await lockShow(tx, input.sessionId);
+              const validSources = await tx.category.count({
+                where: {
+                  id: { in: sourceIds },
+                  sessionId: input.sessionId,
+                  type: { not: "AGGREGATE" },
+                },
+              });
+              if (validSources !== sourceIds.length) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message:
+                    "Source categories must be non-aggregate categories in this show",
+                });
+              }
+            }
 
-        // If this is an aggregate category, copy nominations from source categories
-        if (input.type === "AGGREGATE" && input.sourceCategories.length) {
-          const sourceNominations = await ctx.db.nomination.findMany({
-            where: {
-              categoryId: {
-                in: input.sourceCategories,
+            const category = await tx.category.create({
+              data: {
+                sessionId: input.sessionId,
+                name: input.name,
+                description: input.description,
+                type: input.type as CategoryType,
+                rankingTop: input.type === "RANKING" ? input.rankingTop : null,
+                hideVoteCounts: input.hideVoteCounts ?? false,
+                winnerOnly: input.winnerOnly ?? false,
+                sourceCategories: sourceIds.length
+                  ? { connect: sourceIds.map(id => ({ id })) }
+                  : undefined,
               },
-            },
-            distinct: ["name"],
-            select: {
-              name: true,
-              description: true,
-            },
-          });
+            });
 
-          // Create nominations in the aggregate category
-          await ctx.db.nomination.createMany({
-            data: sourceNominations.map(nom => ({
-              name: nom.name,
-              description: nom.description,
-              categoryId: category.id,
-            })),
-          });
-        }
+            // An aggregate starts with a copy of its sources' nominations, one per name
+            if (sourceIds.length) {
+              const sourceNominations = await tx.nomination.findMany({
+                where: { categoryId: { in: sourceIds } },
+                distinct: ["name"],
+                select: { name: true, description: true },
+              });
+              await tx.nomination.createMany({
+                data: sourceNominations.map(nom => ({
+                  name: nom.name,
+                  description: nom.description,
+                  categoryId: category.id,
+                })),
+              });
+            }
 
-        return category;
+            return category;
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
+        if (isBusy(error)) throw hostBusy();
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create category",
