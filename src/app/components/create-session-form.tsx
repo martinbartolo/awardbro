@@ -1,8 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
-import { AlertCircle } from "lucide-react";
+import { CircleExclamationPoint } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -25,7 +26,7 @@ import {
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
 import { sessionFormSchema, type SessionFormValues } from "~/lib/schemas";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 export function CreateSessionForm() {
   const router = useRouter();
@@ -38,18 +39,21 @@ export function CreateSessionForm() {
     },
   });
 
-  const createSession = api.award.createSession.useMutation({
-    onSuccess: data => {
-      router.push(`/manage/${data.slug}`);
-    },
-    onError: error => {
-      if (error instanceof TRPCClientError) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to create award show. Please try again.");
-      }
-    },
-  });
+  const trpc = useTRPC();
+  const createSession = useMutation(
+    trpc.award.createSession.mutationOptions({
+      onSuccess: data => {
+        router.push(`/manage/${data.slug}`);
+      },
+      onError: error => {
+        if (error instanceof TRPCClientError) {
+          toast.error(error.message);
+        } else {
+          toast.error("Failed to create award show. Please try again.");
+        }
+      },
+    }),
+  );
 
   const onSubmit = (values: SessionFormValues) => {
     createSession.mutate(values);
@@ -137,7 +141,7 @@ export function CreateSessionForm() {
             />
 
             <div className="bg-muted flex items-start gap-2 rounded-md p-3">
-              <AlertCircle className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+              <CircleExclamationPoint className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
               <p className="text-muted-foreground text-sm">
                 Save your management URL, and your password if you set one.
                 Without a password, anyone with the management URL can change

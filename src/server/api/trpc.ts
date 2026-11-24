@@ -100,8 +100,9 @@ export const createTRPCRouter = t.router;
 const timingMiddleware = t.middleware(async ({ next, path }) => {
   const start = Date.now();
 
-  if (t._config.isDev) {
-    // artificial delay in dev
+  // Artificial delay in development, to surface loading states. Not in tests (Vitest sets
+  // NODE_ENV=test), where it would add 100–500 ms to every call.
+  if (t._config.isDev && process.env.NODE_ENV !== "test") {
     const waitMs = Math.floor(Math.random() * 400) + 100;
     await new Promise(resolve => setTimeout(resolve, waitMs));
   }

@@ -1,4 +1,9 @@
-import { HelpCircle, ImageIcon, Layers, ListOrdered } from "lucide-react";
+import {
+  CircleQuestionMark,
+  ImageIcon,
+  Layers,
+  ListOrdered,
+} from "lucide-react";
 import { type Metadata } from "next";
 import Link from "next/link";
 
@@ -6,6 +11,7 @@ import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
 import { CategoryActions } from "~/app/components/category-actions";
 import { NominationActions } from "~/app/components/nomination-actions";
+import { NominationDescription } from "~/app/components/nomination-description";
 import { PasswordVerification } from "~/app/components/password-verification";
 import { RevealCategoryButton } from "~/app/components/reveal-category-button";
 import { SessionActions } from "~/app/components/session-actions";
@@ -29,60 +35,6 @@ export const metadata: Metadata = {
       follow: false,
     },
   },
-};
-
-// Helper to check if a URL looks like an image
-const isImageUrl = (url: string) => {
-  // Check for common image extensions
-  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url)) return true;
-  // Google Drive share links
-  if (url.includes("drive.google.com") && url.includes("/file/d/")) return true;
-  return false;
-};
-
-// Helper to transform URLs to direct image URLs where needed
-const getImageUrl = (url: string) => {
-  // Transform Google Drive share links to thumbnail URLs (bypasses hotlink blocking)
-  if (url.includes("drive.google.com") && url.includes("/file/d/")) {
-    const matches = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(url);
-    const fileId = matches?.[1];
-    if (!fileId) return "";
-    // Use thumbnail endpoint with large size - works for cross-origin embedding
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
-  }
-  return url;
-};
-
-const NominationDescription = ({ description }: { description: string }) => {
-  if (!description) return null;
-
-  if (!isImageUrl(description)) {
-    return (
-      <div className="text-muted-foreground mt-1 text-sm">{description}</div>
-    );
-  }
-
-  const imageUrl = getImageUrl(description);
-  if (!imageUrl) {
-    return (
-      <div className="text-muted-foreground mt-1 text-sm">
-        Invalid image URL provided
-      </div>
-    );
-  }
-
-  // Using native img tag for user-provided images (fetched client-side, no SSRF risk)
-  return (
-    <div className="mt-1 flex h-48 w-full items-center justify-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={imageUrl}
-        alt="Nomination"
-        className="max-h-full max-w-full rounded-md object-contain"
-        loading="lazy"
-      />
-    </div>
-  );
 };
 
 export default async function ManagePage({
@@ -124,7 +76,7 @@ export default async function ManagePage({
               </div>
               <Button asChild variant="ghost" size="sm" className="shrink-0">
                 <Link href="/help" target="_blank">
-                  <HelpCircle className="h-4 w-4" />
+                  <CircleQuestionMark className="h-4 w-4" />
                   Help
                 </Link>
               </Button>
@@ -275,7 +227,9 @@ export default async function ManagePage({
                             {nomination.name}
                           </div>
                           <NominationDescription
-                            description={nomination.description ?? ""}
+                            description={nomination.description}
+                            className="text-muted-foreground mt-1 text-sm"
+                            imageClassName="mt-1 h-48"
                           />
                           <div className="text-accent mt-2 text-sm">
                             {nomination._count.votes}{" "}

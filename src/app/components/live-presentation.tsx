@@ -2,13 +2,15 @@
 
 import { useEffect } from "react";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CircleExclamationPoint } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
-import { api, type RouterOutputs } from "~/trpc/react";
+import { estimateVoters } from "~/lib/scoring";
+import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
 import { LiveVoting } from "./live-voting";
@@ -53,17 +55,20 @@ export function LivePresentation({
   initialSession,
   slug,
 }: LivePresentationProps) {
+  const trpc = useTRPC();
   const {
     data: session,
     error: sessionError,
     isError: isSessionError,
-  } = api.award.getSessionBySlug.useQuery(
-    { slug, activeOnly: true },
-    {
-      refetchInterval: 5000,
-      initialData: initialSession,
-      retry: 3,
-    },
+  } = useQuery(
+    trpc.award.getSessionBySlug.queryOptions(
+      { slug, activeOnly: true },
+      {
+        refetchInterval: 5000,
+        initialData: initialSession,
+        retry: 3,
+      },
+    ),
   );
 
   useEffect(() => {
@@ -82,7 +87,7 @@ export function LivePresentation({
         variants={containerVariants}
       >
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <CircleExclamationPoint className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {sessionError.message || "Failed to load presentation"}
@@ -273,23 +278,10 @@ export function LivePresentation({
                   ) : (
                     <LiveVoting
                       categoryId={category.id}
-                      initialVoteCount={(() => {
-                        const rawTotal = category.nominations.reduce(
-                          (sum, nom) => sum + nom._count.votes,
-                          0,
-                        );
-                        // For ranking categories, estimate voter count from points
-                        if (
-                          category.type === "RANKING" &&
-                          category.rankingTop
-                        ) {
-                          const pointsPerVoter =
-                            (category.rankingTop * (category.rankingTop + 1)) /
-                            2;
-                          return Math.round(rawTotal / pointsPerVoter);
-                        }
-                        return rawTotal;
-                      })()}
+                      initialVoteCount={estimateVoters(
+                        category,
+                        category.nominations,
+                      )}
                       categoryType={category.type}
                       rankingTop={category.rankingTop}
                     />

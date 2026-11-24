@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CircleExclamationPoint } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { type CategoryType } from "~/generated/prisma/enums";
-import { api } from "~/trpc/react";
+import { estimateVoters } from "~/lib/scoring";
+import { useTRPC } from "~/trpc/react";
 
 type LiveVotingProps = {
   categoryId: string;
@@ -47,30 +49,28 @@ export function LiveVoting({
   const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const lastToastTimeRef = useRef(0);
 
-  const { data, error, isError, failureCount } = api.award.getCategory.useQuery(
-    { id: categoryId },
-    {
-      refetchInterval: 1000,
-      staleTime: 0,
-      retry: MAX_RETRIES,
-    },
+  const trpc = useTRPC();
+  const { data, error, isError, failureCount } = useQuery(
+    trpc.award.getCategory.queryOptions(
+      { id: categoryId },
+      {
+        refetchInterval: 1000,
+        staleTime: 0,
+        retry: MAX_RETRIES,
+      },
+    ),
   );
 
   // Derive error limit exceeded from failureCount (no setState needed)
   const hasExceededErrorLimit = isError && failureCount >= MAX_RETRIES;
 
-  // Calculate totalVotes directly from data (derived state)
-  // For ranking categories, _count.votes contains points - we need to estimate voters
-  const rawTotal = data
-    ? data.nominations.reduce((sum, nom) => sum + nom._count.votes, 0)
+  // Ranking categories score points, so this estimates the number of voters
+  const totalVotes = data
+    ? estimateVoters(
+        { type: categoryType, rankingTop: rankingTop ?? null },
+        data.nominations,
+      )
     : initialVoteCount;
-
-  // For ranking categories, estimate voter count from points
-  // Each voter contributes sum of 1+2+...+rankingTop points = rankingTop*(rankingTop+1)/2
-  const totalVotes =
-    categoryType === "RANKING" && rankingTop
-      ? Math.round(rawTotal / ((rankingTop * (rankingTop + 1)) / 2))
-      : rawTotal;
 
   // Calculate the vote difference for animation
   const voteDiff = totalVotes - prevVotes;
@@ -112,7 +112,7 @@ export function LiveVoting({
         exit="exit"
       >
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <CircleExclamationPoint className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {error.message}

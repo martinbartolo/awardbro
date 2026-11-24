@@ -20,14 +20,6 @@ export function getScoreLabel(
   return count === 1 ? "vote" : "votes";
 }
 
-/**
- * Calculate points for a ranking vote based on position
- * Uses inverse linear scoring: 1st place = rankingTop pts, 2nd = rankingTop-1, etc.
- */
-export function calculatePoints(rank: number, rankingTop: number): number {
-  return rankingTop - rank + 1;
-}
-
 type Ranking = { nominationId: string; rank: number | null };
 
 /**

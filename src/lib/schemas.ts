@@ -35,7 +35,9 @@ export const categoryFormSchema = z
     name: z.string().min(1, "Name is required").max(100, "Name is too long"),
     description: z.string().max(500, "Description is too long").optional(),
     type: categoryTypeEnum,
-    sourceCategories: z.array(z.string()),
+    sourceCategories: z
+      .array(z.string())
+      .max(100, "Too many source categories"),
     rankingTop: z
       .number()
       .int()

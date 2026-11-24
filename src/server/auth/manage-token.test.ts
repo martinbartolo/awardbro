@@ -1,17 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getCookie } from "~/server/cookies";
+
 import {
   canManage,
   cookieName,
   createManageToken,
-  getCookie,
   isValidManageToken,
   MAX_AGE_SECONDS,
   setManageCookie,
-} from "./manage";
-
-// manage.ts imports the database client for its server helpers; these tests don't use it
-vi.mock("~/server/db", () => ({ db: {} }));
+} from "./manage-token";
 
 const SESSION_ID = "session-a";
 
@@ -99,16 +97,6 @@ describe("cookies", () => {
         getCookie(request, name),
       ),
     ).toBe(true);
-  });
-
-  it("reads a cookie by exact name", () => {
-    const headers = new Headers({
-      cookie: "device_id=abc; manage_x=1.sig; manage_xy=2.sig",
-    });
-    expect(getCookie(headers, "manage_x")).toBe("1.sig");
-    expect(getCookie(headers, "device_id")).toBe("abc");
-    expect(getCookie(headers, "missing")).toBeUndefined();
-    expect(getCookie(new Headers(), "manage_x")).toBeUndefined();
   });
 
   it("treats a malformed cookie value as invalid instead of throwing", () => {

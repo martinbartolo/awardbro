@@ -4,7 +4,7 @@ How to work on AwardBro day to day. For how the app works, see [architecture.md]
 
 ## Setup
 
-Requirements: Node 24 (matches Vercel), pnpm 10, and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
+Requirements: Node 26 (matches Vercel), pnpm 12 (pinned in `packageManager`; pnpm switches to it automatically), and access to the Vercel project `bartolo/awardbro` and the Neon project `awardbro` (`fancy-glitter-44565313`).
 
 ```bash
 pnpm install
@@ -22,6 +22,7 @@ Local development uses the Neon `dev` branch, never production. Don't keep produ
 | `pnpm dev`                          | Dev server (Turbopack)                                                                                                         |
 | `pnpm check`                        | Next types, ESLint and TypeScript. Run before every commit. Needs `.env.local` (`vercel env pull`) or `SKIP_ENV_VALIDATION=1`. |
 | `pnpm test`                         | Unit tests (Vitest). `pnpm test:watch` while developing.                                                                       |
+| `pnpm test:integration`             | Integration tests: the tRPC API against a real Postgres database. Needs `TEST_DATABASE_URL`, see below.                        |
 | `pnpm build`                        | Production build. Run before opening a PR.                                                                                     |
 | `pnpm format:write`                 | Prettier                                                                                                                       |
 | `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below)                                                                 |
@@ -52,7 +53,7 @@ Only mention an issue ID in a PR that actually works on that issue: Linear links
    3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
    4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
 4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
-5. **Wait for the checks:** CI (lint, types, format, tests, migration replay) and the Vercel preview. Both are required.
+5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay and integration tests) and the Vercel preview. Both are required.
 6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
 7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
@@ -78,6 +79,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 
 - Squash merges are disabled, so a PR's commits land on `dev` as they are.
 - Dependabot opens grouped dependency PRs against `dev` once a month.
+- pnpm refuses package versions published less than a day ago (`minimumReleaseAge`, its default since pnpm 11), to keep a freshly compromised release out. Dependabot waits a day before proposing a version, to match. If an install fails on it, wait, or use the previous release.
 
 ## Database
 
@@ -102,6 +104,23 @@ Release when a useful set of changes is on `dev` and its preview has been checke
   neonctl branches delete test-bar-123
   ```
 
+## Integration tests
+
+`pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service on every PR.
+
+To protect real data, the tests only run against a database whose name ends in `_test`, given by `TEST_DATABASE_URL` in the shell (it isn't read from `.env.local`). `dev` and production are both called `neondb`, so they are refused. Locally, use any Postgres, or a throwaway Neon branch with its own empty database:
+
+```bash
+neonctl branches create --name test-bar-123 --parent dev
+neonctl databases create --branch test-bar-123 --name awardbro_test
+TEST_DATABASE_URL="$(neonctl connection-string test-bar-123 --database-name awardbro_test)" pnpm test:integration
+neonctl branches delete test-bar-123
+```
+
+A full run takes about 20 seconds in CI. Against Neon from further away it takes a few minutes, since every call is a round trip to Frankfurt.
+
+The app's client uses Neon's serverless driver, which can't reach a plain Postgres server, so the tests swap in the standard `pg` driver (`src/test/integration/db.ts`). The router code and its queries are the same.
+
 ## Environments
 
 | Environment | Trigger                           | Database           |
@@ -110,6 +129,6 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 | Preview     | Any other branch / PR             | Neon `dev` branch  |
 | Development | `pnpm dev` with `vercel env pull` | Neon `dev` branch  |
 
-Functions run in Frankfurt (`fra1`, set in `vercel.json`), next to the Neon database in `aws-eu-central-1`. Node is pinned to 24 (`.node-version` and `engines`), matching Vercel.
+Functions run in Frankfurt (`fra1`, set in `vercel.json`), next to the Neon database in `aws-eu-central-1`. Node is pinned to 26 (`.node-version` and `engines`), matching Vercel. Dependabot skips major updates of `@types/node`; raise them together with the runtime.
 
 Each environment has its own `DATABASE_URL`, `DATABASE_DIRECT_URL` and `AUTH_SECRET`. Env vars are managed with `vercel env`. Add new variables to `src/env.js` and `.env.example` too (never with real values).

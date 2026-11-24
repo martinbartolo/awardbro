@@ -1,7 +1,8 @@
 import js from "@eslint/js";
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import configPrettier from "eslint-config-prettier";
-import importPlugin from "eslint-plugin-import";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
+import importPlugin from "eslint-plugin-import-x";
 import prettierPlugin from "eslint-plugin-prettier";
 import unusedImports from "eslint-plugin-unused-imports";
 import globals from "globals";
@@ -112,11 +113,9 @@ export default [
     files: ["**/*.{ts,tsx,js,jsx}"],
     plugins: { i: importPlugin },
     settings: {
-      "import/resolver": {
-        typescript: {
-          alwaysTryTypes: true,
-        },
-      },
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver({ alwaysTryTypes: true }),
+      ],
       react: { version: "detect" },
     },
     rules: {
@@ -148,6 +147,18 @@ export default [
         },
       ],
       "i/no-unresolved": ["error", { ignore: ["^geist/"] }],
+    },
+  },
+
+  // eslint-config-next turns on no-anonymous-default-export from eslint-plugin-import, which
+  // crashes on ESLint 10 when a rule reports. The same rule runs from import-x instead, for
+  // every file type next's config covers.
+  {
+    files: ["**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"],
+    plugins: { i: importPlugin },
+    rules: {
+      "import/no-anonymous-default-export": "off",
+      "i/no-anonymous-default-export": "warn",
     },
   },
 

@@ -9,20 +9,68 @@ import {
   rankingSubmissionSchema,
   sessionFormSchema,
 } from "~/lib/schemas";
+import { scoreNomination } from "~/lib/scoring";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import {
-  assertCanManage,
-  getCookie,
-  setManageCookie,
-} from "~/server/auth/manage";
+import { assertCanManage } from "~/server/auth/manage";
+import { setManageCookie } from "~/server/auth/manage-token";
+import { DEVICE_ID_COOKIE, getCookie } from "~/server/cookies";
 import { type db } from "~/server/db";
 
-// Helper function to calculate points for a ranking vote
-const calculatePoints = (rank: number, rankingTop: number): number => {
-  return rankingTop - rank + 1;
+/**
+ * What to load with each nomination to score it: its vote count, and the ranks of its ranked
+ * votes. Votes in other categories have no rank, so they aren't loaded.
+ */
+const scoringFields = {
+  _count: { select: { votes: true } },
+  votes: { where: { rank: { not: null } }, select: { rank: true } },
+} as const;
+
+/**
+ * A category's nominations with their scores in `_count.votes` (votes, or points in ranking and
+ * aggregate categories), and without their votes, so individual votes are never sent.
+ */
+const withScores = async <
+  N extends {
+    name: string;
+    _count: { votes: number };
+    votes: { rank: number | null }[];
+  },
+>(
+  client: typeof db,
+  category: {
+    type: CategoryType;
+    rankingTop: number | null;
+    sourceCategories: { id: string }[];
+    nominations: N[];
+  },
+) => {
+  const sourceNominations =
+    category.type === "AGGREGATE"
+      ? await client.nomination.findMany({
+          where: {
+            name: { in: category.nominations.map(n => n.name) },
+            categoryId: { in: category.sourceCategories.map(c => c.id) },
+          },
+          select: {
+            name: true,
+            ...scoringFields,
+            category: { select: { type: true, rankingTop: true } },
+          },
+        })
+      : [];
+
+  return category.nominations.map(({ votes, ...nomination }) => ({
+    ...nomination,
+    _count: {
+      votes: scoreNomination(
+        category,
+        { ...nomination, votes },
+        sourceNominations,
+      ),
+    },
+  }));
 };
 
-const DEVICE_ID_COOKIE = "device_id";
 const SALT_ROUNDS = 10;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -86,7 +134,7 @@ const recordLoginAttempt = (identifier: string, success: boolean) => {
  */
 
 /** Takes the show's lock exclusively. Put it first in a batch transaction. */
-const lockShow = (client: typeof db, sessionId: string) =>
+const lockShow = (client: Prisma.TransactionClient, sessionId: string) =>
   client.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${sessionId}, 0))`;
 
 /** No connection or lock in time (P2028), or a transaction conflict (P2034) */
@@ -234,11 +282,7 @@ export const awardRouter = createTRPCRouter({
             include: {
               nominations: {
                 orderBy: { createdAt: "asc" },
-                include: {
-                  _count: {
-                    select: { votes: true },
-                  },
-                },
+                include: scoringFields,
               },
               sourceCategories: true,
               aggregateOf: {
@@ -256,109 +300,14 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // Process categories that need vote/point calculation
-      const categoriesWithCalculatedVotes = await Promise.all(
-        session.categories.map(async category => {
-          // For RANKING categories, calculate points instead of simple vote count
-          if (category.type === "RANKING" && category.rankingTop) {
-            const nominationsWithPoints = await Promise.all(
-              category.nominations.map(async nomination => {
-                const votes = await ctx.db.vote.findMany({
-                  where: { nominationId: nomination.id },
-                });
-
-                // Sum up points for each vote based on rank
-                const totalPoints = votes.reduce((sum, vote) => {
-                  if (vote.rank) {
-                    return (
-                      sum + calculatePoints(vote.rank, category.rankingTop!)
-                    );
-                  }
-                  return sum;
-                }, 0);
-
-                return {
-                  ...nomination,
-                  _count: {
-                    votes: totalPoints,
-                  },
-                };
-              }),
-            );
-
-            return {
-              ...category,
-              nominations: nominationsWithPoints,
-            };
-          }
-
-          // For AGGREGATE categories, sum up votes/points from source categories
-          if (category.type === "AGGREGATE") {
-            const nominationsWithTotalVotes = await Promise.all(
-              category.nominations.map(async nomination => {
-                // Find matching nominations in source categories
-                const sourceNominations = await ctx.db.nomination.findMany({
-                  where: {
-                    name: nomination.name,
-                    categoryId: {
-                      in: category.sourceCategories.map(c => c.id),
-                    },
-                  },
-                  include: {
-                    votes: true,
-                    category: {
-                      select: {
-                        type: true,
-                        rankingTop: true,
-                      },
-                    },
-                  },
-                });
-
-                // Sum up all points for this nomination across source categories
-                let totalPoints = 0;
-                for (const nom of sourceNominations) {
-                  if (
-                    nom.category.type === "RANKING" &&
-                    nom.category.rankingTop
-                  ) {
-                    // Calculate points for ranking categories
-                    for (const vote of nom.votes) {
-                      if (vote.rank) {
-                        totalPoints += calculatePoints(
-                          vote.rank,
-                          nom.category.rankingTop,
-                        );
-                      }
-                    }
-                  } else {
-                    // For normal/image categories, each vote = 1 point
-                    totalPoints += nom.votes.length;
-                  }
-                }
-
-                return {
-                  ...nomination,
-                  _count: {
-                    votes: totalPoints,
-                  },
-                };
-              }),
-            );
-
-            return {
-              ...category,
-              nominations: nominationsWithTotalVotes,
-            };
-          }
-
-          return category;
-        }),
-      );
-
       return {
         ...session,
-        categories: categoriesWithCalculatedVotes,
+        categories: await Promise.all(
+          session.categories.map(async category => ({
+            ...category,
+            nominations: await withScores(ctx.db, category),
+          })),
+        ),
       };
     }),
 
@@ -381,53 +330,69 @@ export const awardRouter = createTRPCRouter({
     .input(categoryFormSchema)
     .mutation(async ({ ctx, input }) => {
       await assertCanManage(ctx, { sessionId: input.sessionId });
+      const sourceIds =
+        input.type === "AGGREGATE" ? [...new Set(input.sourceCategories)] : [];
       try {
-        const category = await ctx.db.category.create({
-          data: {
-            sessionId: input.sessionId,
-            name: input.name,
-            description: input.description,
-            type: input.type as CategoryType,
-            rankingTop: input.type === "RANKING" ? input.rankingTop : null,
-            hideVoteCounts: input.hideVoteCounts ?? false,
-            winnerOnly: input.winnerOnly ?? false,
-            sourceCategories:
-              input.type === "AGGREGATE"
-                ? {
-                    connect: input.sourceCategories.map(id => ({ id })),
-                  }
-                : undefined,
-          },
-        });
+        // One transaction, so an aggregate is created with all its nominations or not at all
+        return await ctx.db.$transaction(
+          async tx => {
+            if (sourceIds.length) {
+              // The show's lock keeps a source from being deleted between the check and the link
+              await lockShow(tx, input.sessionId);
+              const validSources = await tx.category.count({
+                where: {
+                  id: { in: sourceIds },
+                  sessionId: input.sessionId,
+                  type: { not: "AGGREGATE" },
+                },
+              });
+              if (validSources !== sourceIds.length) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message:
+                    "Source categories must be non-aggregate categories in this show",
+                });
+              }
+            }
 
-        // If this is an aggregate category, copy nominations from source categories
-        if (input.type === "AGGREGATE" && input.sourceCategories.length) {
-          const sourceNominations = await ctx.db.nomination.findMany({
-            where: {
-              categoryId: {
-                in: input.sourceCategories,
+            const category = await tx.category.create({
+              data: {
+                sessionId: input.sessionId,
+                name: input.name,
+                description: input.description,
+                type: input.type as CategoryType,
+                rankingTop: input.type === "RANKING" ? input.rankingTop : null,
+                hideVoteCounts: input.hideVoteCounts ?? false,
+                winnerOnly: input.winnerOnly ?? false,
+                sourceCategories: sourceIds.length
+                  ? { connect: sourceIds.map(id => ({ id })) }
+                  : undefined,
               },
-            },
-            distinct: ["name"],
-            select: {
-              name: true,
-              description: true,
-            },
-          });
+            });
 
-          // Create nominations in the aggregate category
-          await ctx.db.nomination.createMany({
-            data: sourceNominations.map(nom => ({
-              name: nom.name,
-              description: nom.description,
-              categoryId: category.id,
-            })),
-          });
-        }
+            // An aggregate starts with a copy of its sources' nominations, one per name
+            if (sourceIds.length) {
+              const sourceNominations = await tx.nomination.findMany({
+                where: { categoryId: { in: sourceIds } },
+                distinct: ["name"],
+                select: { name: true, description: true },
+              });
+              await tx.nomination.createMany({
+                data: sourceNominations.map(nom => ({
+                  name: nom.name,
+                  description: nom.description,
+                  categoryId: category.id,
+                })),
+              });
+            }
 
-        return category;
+            return category;
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
+        if (isBusy(error)) throw hostBusy();
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create category",
@@ -441,14 +406,7 @@ export const awardRouter = createTRPCRouter({
       const category = await ctx.db.category.findUnique({
         where: { id: input.id },
         include: {
-          nominations: {
-            include: {
-              _count: {
-                select: { votes: true },
-              },
-              votes: true,
-            },
-          },
+          nominations: { include: scoringFields },
           sourceCategories: true,
         },
       });
@@ -460,94 +418,9 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      // For RANKING categories, calculate points instead of vote count
-      if (category.type === "RANKING" && category.rankingTop) {
-        const nominationsWithPoints = category.nominations.map(nomination => {
-          const totalPoints = nomination.votes.reduce((sum, vote) => {
-            if (vote.rank) {
-              return sum + calculatePoints(vote.rank, category.rankingTop!);
-            }
-            return sum;
-          }, 0);
-
-          return {
-            ...nomination,
-            votes: undefined, // Don't expose individual votes
-            _count: {
-              votes: totalPoints,
-            },
-          };
-        });
-
-        return {
-          ...category,
-          nominations: nominationsWithPoints,
-        };
-      }
-
-      // If this is an aggregate category, sum up votes/points from source categories
-      if (category.type === "AGGREGATE") {
-        const nominationsWithTotalVotes = await Promise.all(
-          category.nominations.map(async nomination => {
-            // Find matching nominations in source categories
-            const sourceNominations = await ctx.db.nomination.findMany({
-              where: {
-                name: nomination.name,
-                categoryId: {
-                  in: category.sourceCategories.map(c => c.id),
-                },
-              },
-              include: {
-                votes: true,
-                category: {
-                  select: {
-                    type: true,
-                    rankingTop: true,
-                  },
-                },
-              },
-            });
-
-            // Sum up all points for this nomination across source categories
-            let totalPoints = 0;
-            for (const nom of sourceNominations) {
-              if (nom.category.type === "RANKING" && nom.category.rankingTop) {
-                for (const vote of nom.votes) {
-                  if (vote.rank) {
-                    totalPoints += calculatePoints(
-                      vote.rank,
-                      nom.category.rankingTop,
-                    );
-                  }
-                }
-              } else {
-                totalPoints += nom.votes.length;
-              }
-            }
-
-            return {
-              ...nomination,
-              votes: undefined,
-              _count: {
-                votes: totalPoints,
-              },
-            };
-          }),
-        );
-
-        return {
-          ...category,
-          nominations: nominationsWithTotalVotes,
-        };
-      }
-
-      // For normal categories, strip votes from response
       return {
         ...category,
-        nominations: category.nominations.map(n => ({
-          ...n,
-          votes: undefined,
-        })),
+        nominations: await withScores(ctx.db, category),
       };
     }),
 
@@ -626,58 +499,60 @@ export const awardRouter = createTRPCRouter({
   addNomination: publicProcedure
     .input(nominationFormSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.categoryId });
+      const session = await assertCanManage(ctx, {
+        categoryId: input.categoryId,
+      });
       try {
-        // First verify the category exists and check if it's a source for any aggregate categories
-        const category = await ctx.db.category.findUnique({
-          where: { id: input.categoryId },
-          include: {
-            aggregateOf: true, // Get aggregate categories that use this as a source
-          },
-        });
+        // One transaction holding the show's lock, so creating an aggregate of this category
+        // at the same moment can't copy the nomination twice or miss it (see addCategory)
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const category = await tx.category.findUnique({
+              where: { id: input.categoryId },
+              include: { aggregateOf: { select: { id: true } } },
+            });
+            if (!category) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Category not found",
+              });
+            }
 
-        if (!category) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Category not found",
-          });
-        }
-
-        const nomination = await ctx.db.nomination.create({
-          data: {
-            categoryId: input.categoryId,
-            name: input.name,
-            description: input.description,
-          },
-        });
-
-        // Sync nomination to any aggregate categories that use this category as a source
-        if (category.aggregateOf.length > 0) {
-          for (const aggregateCategory of category.aggregateOf) {
-            // Check if nomination with this name already exists in the aggregate
-            const existingNomination = await ctx.db.nomination.findFirst({
-              where: {
-                categoryId: aggregateCategory.id,
+            const nomination = await tx.nomination.create({
+              data: {
+                categoryId: input.categoryId,
                 name: input.name,
+                description: input.description,
               },
             });
 
-            // Only create if it doesn't exist
-            if (!existingNomination) {
-              await ctx.db.nomination.create({
-                data: {
-                  categoryId: aggregateCategory.id,
-                  name: input.name,
-                  description: input.description,
-                },
+            // Copy it to the aggregates that use this category, unless one already has that name
+            const aggregateIds = category.aggregateOf.map(a => a.id);
+            if (aggregateIds.length) {
+              const haveName = await tx.nomination.findMany({
+                where: { categoryId: { in: aggregateIds }, name: input.name },
+                select: { categoryId: true },
+              });
+              const skip = new Set(haveName.map(n => n.categoryId));
+              await tx.nomination.createMany({
+                data: aggregateIds
+                  .filter(id => !skip.has(id))
+                  .map(categoryId => ({
+                    categoryId,
+                    name: input.name,
+                    description: input.description,
+                  })),
               });
             }
-          }
-        }
 
-        return nomination;
+            return nomination;
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
+        if (isBusy(error)) throw hostBusy();
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create nomination",

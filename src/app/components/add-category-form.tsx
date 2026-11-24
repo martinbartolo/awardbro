@@ -1,7 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HelpCircle } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleQuestionMark } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -35,7 +36,7 @@ import {
 } from "~/components/ui/tooltip";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { categoryFormSchema, type CategoryFormValues } from "~/lib/schemas";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 const categoryTypeDescriptions: Record<CategoryType, string> = {
   NORMAL: "Standard category with text-based nominations",
@@ -60,32 +61,38 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
     },
   });
 
-  const { data: categories } = api.award.getSessionCategories.useQuery({
-    sessionId,
-  });
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: categories } = useQuery(
+    trpc.award.getSessionCategories.queryOptions({
+      sessionId,
+    }),
+  );
 
-  const utils = api.useUtils();
-
-  const addCategory = api.award.addCategory.useMutation({
-    onSuccess: async () => {
-      toast.success("Category added successfully");
-      form.reset({
-        sessionId,
-        name: "",
-        description: "",
-        type: "NORMAL",
-        sourceCategories: [],
-        rankingTop: 3,
-        hideVoteCounts: false,
-        winnerOnly: false,
-      });
-      router.refresh();
-      await utils.award.getSessionCategories.invalidate({ sessionId });
-    },
-    onError: error => {
-      toast.error(error.message);
-    },
-  });
+  const addCategory = useMutation(
+    trpc.award.addCategory.mutationOptions({
+      onSuccess: async () => {
+        toast.success("Category added successfully");
+        form.reset({
+          sessionId,
+          name: "",
+          description: "",
+          type: "NORMAL",
+          sourceCategories: [],
+          rankingTop: 3,
+          hideVoteCounts: false,
+          winnerOnly: false,
+        });
+        router.refresh();
+        await queryClient.invalidateQueries(
+          trpc.award.getSessionCategories.queryFilter({ sessionId }),
+        );
+      },
+      onError: error => {
+        toast.error(error.message);
+      },
+    }),
+  );
 
   const onSubmit = (values: CategoryFormValues) => {
     if (values.type === "AGGREGATE" && values.sourceCategories.length === 0) {
@@ -141,7 +148,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                     <TooltipProvider>
                       <Tooltip delayDuration={0}>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="text-muted-foreground h-4 w-4" />
+                          <CircleQuestionMark className="text-muted-foreground h-4 w-4" />
                         </TooltipTrigger>
                         <TooltipContent
                           side="right"

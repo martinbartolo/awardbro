@@ -38,6 +38,7 @@ Deleting a session cascades to its categories, nominations and votes (`onDelete:
 Notes:
 
 - Changing a vote in a normal or image category replaces the voter's previous vote. Re-submitting a ranking replaces the whole ranking.
+- An aggregate's sources must be categories of the same show, and can't be aggregates themselves.
 - An aggregate category copies nominations from its sources when it's created. Nominations added to a source later are copied to the aggregate automatically.
 - Scores are computed when they're read (`getSessionBySlug`, `getCategory`), not stored.
 
@@ -45,17 +46,17 @@ Notes:
 
 1. The host sets a category **active**. That deactivates every other category in the show.
 2. Voters see and vote in the active category only. The server rejects votes in inactive categories.
-3. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: setting or stopping the active category, reveal, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `withShowLocked` in `award.ts`). Add new actions to this list if they close voting, change results or delete votes.
+3. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: setting or stopping the active category, reveal, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `withShowLocked` in `award.ts`). Add new actions to this list if they close voting, change results or delete votes. Adding a nomination and creating an aggregate category take it too, so a nomination added while an aggregate of its category is being created is copied into the aggregate exactly once.
 4. The host **reveals** the category. The present page then shows results, respecting `hideVoteCounts` (ranks without numbers) and `winnerOnly` (only first place).
 
 ## Identity and access
 
 **Voters** have no accounts. `src/proxy.ts` gives every visitor to `/vote/*` and `/api/*` a random, httpOnly `device_id` cookie that lasts a year. Votes are tied to it.
 
-**Hosts** prove access per show (`src/server/auth/manage.ts`):
+**Hosts** prove access per show. The signed token and cookie logic is in `src/server/auth/manage-token.ts`; the checks against the database (`assertCanManage`, `hasManageAccess`) are in `src/server/auth/manage.ts`:
 
 - Creating a show, or entering its password, sets a cookie `manage_<sessionId>`. It holds an expiry and an HMAC-SHA256 signature made with `AUTH_SECRET`, and lasts 30 days. The client sends mutations without streaming (`src/trpc/links.ts`): a streamed response sends its headers before the procedure runs, so the cookie would be lost.
-- Every write route calls `assertCanManage` first. It finds the show that owns the target (session, category or nomination) and checks the cookie.
+- Every write route calls `assertCanManage` first. It finds the show that owns the target (session, category or nomination) and checks the cookie. `manage-access.integration.test.ts` checks this for every mutation, and fails when a new mutation isn't listed there.
 - The manage page calls `hasManageAccess` on the server and renders only the password form until access is granted.
 - Shows created **without** a password are open: anyone with the link can manage them.
 - After 5 wrong passwords for a slug, further attempts are blocked for 15 minutes. The counter is in memory, so it only applies per server instance.

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -15,7 +16,7 @@ import {
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { api } from "~/trpc/react";
+import { useTRPC } from "~/trpc/react";
 
 type PasswordVerificationProps = {
   slug: string;
@@ -29,15 +30,18 @@ export function PasswordVerification({ slug }: PasswordVerificationProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
 
-  const verifyAccess = api.award.verifyManageAccess.useMutation({
-    onSuccess: () => {
-      router.refresh();
-    },
-    onError: error => {
-      toast.error(error.message);
-      setPassword("");
-    },
-  });
+  const trpc = useTRPC();
+  const verifyAccess = useMutation(
+    trpc.award.verifyManageAccess.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+      },
+      onError: error => {
+        toast.error(error.message);
+        setPassword("");
+      },
+    }),
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

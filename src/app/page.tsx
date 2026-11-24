@@ -1,11 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
+  CirclePlus,
+  CircleQuestionMark,
   Heart,
-  HelpCircle,
   Lock,
-  PlusCircle,
   Presentation,
   Search,
   Timer,
@@ -13,6 +12,7 @@ import {
   Vote,
   Zap,
 } from "lucide-react";
+import { motion } from "motion/react";
 import Link from "next/link";
 
 import { AnimatedCounter } from "~/components/ui/animated-counter";
@@ -88,7 +88,7 @@ export default function Page() {
           >
             <Button asChild size="lg" className="h-12 px-8">
               <Link href="/create">
-                Create Award Show <PlusCircle className="h-5 w-5" />
+                Create Award Show <CirclePlus className="h-5 w-5" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="h-12 px-8">
@@ -203,7 +203,7 @@ export default function Page() {
           >
             <Button asChild variant="outline" size="lg">
               <Link href="/help">
-                <HelpCircle className="h-5 w-5" />
+                <CircleQuestionMark className="h-5 w-5" />
                 Read the Full Guide
               </Link>
             </Button>

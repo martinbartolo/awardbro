@@ -3,9 +3,9 @@
 import { useState } from "react";
 
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { loggerLink } from "@trpc/client";
-import { createTRPCReact } from "@trpc/react-query";
-import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
+import { createTRPCClient, loggerLink } from "@trpc/client";
+import { type inferRouterOutputs } from "@trpc/server";
+import { createTRPCContext } from "@trpc/tanstack-react-query";
 
 import { type AppRouter } from "~/server/api/root";
 
@@ -22,27 +22,20 @@ const getQueryClient = () => {
   return (clientQueryClientSingleton ??= createQueryClient());
 };
 
-export const api = createTRPCReact<AppRouter>();
-
 /**
- * Inference helper for inputs.
- *
- * @example type HelloInput = RouterInputs['example']['hello']
+ * `useTRPC()` gives each procedure's query keys and options for TanStack Query, e.g.
+ * `useQuery(trpc.award.getCategory.queryOptions({ id }))`.
  */
-export type RouterInputs = inferRouterInputs<AppRouter>;
+export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
-/**
- * Inference helper for outputs.
- *
- * @example type HelloOutput = RouterOutputs['example']['hello']
- */
+/** What each procedure returns, e.g. `RouterOutputs["award"]["getCategory"]` */
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
   const [trpcClient] = useState(() =>
-    api.createClient({
+    createTRPCClient<AppRouter>({
       links: [
         loggerLink({
           enabled: op =>
@@ -57,9 +50,9 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <api.Provider client={trpcClient} queryClient={queryClient}>
+      <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {props.children}
-      </api.Provider>
+      </TRPCProvider>
     </QueryClientProvider>
   );
 }
