@@ -116,7 +116,7 @@ TEST_DATABASE_URL="$(neonctl connection-string test-bar-123 --database-name awar
 neonctl branches delete test-bar-123
 ```
 
-Against Neon from outside Frankfurt a full run takes a few minutes, since every call is a round trip. In CI it's much faster.
+A full run takes about 20 seconds in CI. Against Neon from further away it takes a few minutes, since every call is a round trip to Frankfurt.
 
 The app's client uses Neon's serverless driver, which can't reach a plain Postgres server, so the tests swap in the standard `pg` driver (`src/test/integration/db.ts`). The router code and its queries are the same.
 
