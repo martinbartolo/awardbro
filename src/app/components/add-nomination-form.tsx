@@ -18,23 +18,9 @@ import {
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { type CategoryType } from "~/generated/prisma/enums";
+import { isValidImageUrl } from "~/lib/images";
 import { nominationFormSchema, type NominationFormValues } from "~/lib/schemas";
 import { api } from "~/trpc/react";
-
-// Helper to validate image URLs
-const isValidImageUrl = (url: string) => {
-  // Must be a valid URL
-  try {
-    new URL(url);
-  } catch {
-    return false;
-  }
-  // Check for common image extensions
-  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url)) return true;
-  // Google Drive share links
-  if (url.includes("drive.google.com") && url.includes("/file/d/")) return true;
-  return false;
-};
 
 type AddNominationFormProps = {
   categoryId: string;
