@@ -5,8 +5,7 @@ import { useEffect } from "react";
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "motion/react";
 
-import { type CategoryType } from "~/generated/prisma/enums";
-import { getScoreLabel } from "~/lib/utils";
+import { getScoreLabel, type LabelledCategory } from "~/lib/scoring";
 
 import { NominationDescription } from "./nomination-description";
 
@@ -27,17 +26,18 @@ export function WinnerAnimation({
   index,
   isWinner,
   isTied,
-  categoryType = "NORMAL",
+  category,
   hideVoteCounts = false,
 }: {
   nomination: Nomination;
   index: number;
   isWinner: boolean;
   isTied: boolean;
-  categoryType?: CategoryType;
+  /** Decides whether the score is labelled votes or points */
+  category: LabelledCategory;
   hideVoteCounts?: boolean;
 }) {
-  const scoreLabel = getScoreLabel(categoryType, nomination._count.votes);
+  const scoreLabel = getScoreLabel(category, nomination._count.votes);
   useEffect(() => {
     let burstInterval: NodeJS.Timeout | undefined;
     let animationFrame: number | undefined;
