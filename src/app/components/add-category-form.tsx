@@ -41,7 +41,7 @@ import { useTRPC } from "~/trpc/react";
 const categoryTypeDescriptions: Record<CategoryType, string> = {
   NORMAL: "Standard category with text-based nominations",
   IMAGE: "Category for image-based nominations with captions",
-  AGGREGATE: "Combines votes from multiple source categories",
+  AGGREGATE: "Adds up the scores from multiple source categories",
   RANKING: "Voters rank their top X choices, points awarded by position",
 };
 
@@ -168,8 +168,8 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                               choices. Points are awarded based on position.
                             </p>
                             <p>
-                              <strong>Aggregate:</strong> Combines votes from
-                              multiple categories. Voting is disabled.
+                              <strong>Aggregate:</strong> Adds up the scores
+                              from multiple categories. Voting is disabled.
                             </p>
                           </div>
                         </TooltipContent>
@@ -330,9 +330,10 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                     <FormItem>
                       <FormLabel>Select Source Categories</FormLabel>
                       <p className="text-muted-foreground mb-2 max-w-(--breakpoint-md) text-sm">
-                        Choose the categories whose votes you want to combine.
+                        Choose the categories whose scores you want to add up.
                         Nominations that appear in multiple source categories
-                        will have their votes added together.
+                        will have their scores added together. If any source is
+                        a ranking category, the totals are shown in points.
                       </p>
                       <div className="space-y-2">
                         {categories.map(category => (

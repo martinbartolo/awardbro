@@ -76,7 +76,7 @@ export function VotingInterface({
   if (isAggregate) {
     return (
       <p>
-        This is an aggregate category that combines votes from multiple
+        This is an aggregate category that adds up the scores from multiple
         categories. Voting is not available.
       </p>
     );

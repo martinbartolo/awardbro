@@ -326,9 +326,10 @@ export default function HelpPage() {
                         Pro Tip: Aggregate Categories
                       </h4>
                       <p className="text-muted-foreground mt-1 text-sm">
-                        Use aggregate categories to combine votes from multiple
-                        categories. Great for &quot;Overall Winner&quot; awards
-                        that sum up performance across all categories!
+                        Use aggregate categories to add up the scores from
+                        multiple categories. Great for &quot;Overall
+                        Winner&quot; awards that sum up performance across all
+                        categories!
                       </p>
                     </div>
                   </div>
