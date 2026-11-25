@@ -48,7 +48,7 @@ describe("sessionFormSchema password", () => {
     ["4 characters", "abcd"],
     ["72 characters", "a".repeat(72)],
     ["spaces inside", "open sesame"],
-    ["72 bytes of accents", "é".repeat(36)],
+    ["72 bytes of accents", "\u00e9".repeat(36)],
     // A letter plus a combining accent is counted as the single letter it's stored as
     ["72 bytes of decomposed accents", "e\u0301".repeat(36)],
   ])("accepts a password of %s", (_, password) => {
@@ -70,7 +70,7 @@ describe("sessionFormSchema password", () => {
     ["a trailing space", "secret ", untrimmed],
     ["a trailing newline", "secret\n", untrimmed],
     ["73 characters", "a".repeat(73), tooLong],
-    ["over 72 bytes of accents", "é".repeat(37), tooLong],
+    ["over 72 bytes of accents", "\u00e9".repeat(37), tooLong],
     ["over 72 bytes of emoji", "🏆".repeat(19), tooLong],
   ])("rejects a password with %s", (_, password, message) => {
     const result = sessionFormSchema.safeParse({ ...show, password });

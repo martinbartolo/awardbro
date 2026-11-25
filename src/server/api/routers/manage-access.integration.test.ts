@@ -121,7 +121,7 @@ describe("a show with a password", () => {
   it.each([
     ["with a stray space", "secret1 ", "secret1"],
     // The same "é", as a letter plus a combining accent and as one character
-    ["with accents typed another way", "café" + "1", "café" + "1"],
+    ["with accents typed another way", "cafe\u0301" + "1", "caf\u00e9" + "1"],
   ])("gives access for the password %s", async (_, entered, created) => {
     const show = await createShow(visitor(), { password: created });
     const cohost = visitor();
