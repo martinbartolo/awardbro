@@ -1,5 +1,5 @@
 import { type TRPCError } from "@trpc/server";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { expect } from "vitest";
 
 import { createCaller } from "~/server/api/root";
@@ -14,7 +14,9 @@ import { testDb } from "./db";
  */
 export function visitor({
   deviceId = randomUUID(),
-}: { deviceId?: string | null } = {}) {
+  // Each visitor comes from its own address unless a test says otherwise
+  ip = `10.${randomInt(256)}.${randomInt(256)}.${randomInt(256)}`,
+}: { deviceId?: string | null; ip?: string } = {}) {
   const cookies = new Map<string, string>();
   if (deviceId) cookies.set(DEVICE_ID_COOKIE, deviceId);
 
@@ -35,6 +37,7 @@ export function visitor({
         cookie: [...cookies]
           .map(([name, value]) => `${name}=${value}`)
           .join("; "),
+        "x-forwarded-for": ip,
       }),
       resHeaders: new CookieJar(),
     }),
