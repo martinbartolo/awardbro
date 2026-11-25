@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -29,12 +29,13 @@ type PasswordVerificationProps = {
 export function PasswordVerification({ slug }: PasswordVerificationProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
+  const [isRefreshing, startRefresh] = useTransition();
 
   const trpc = useTRPC();
   const verifyAccess = useMutation(
     trpc.award.verifyManageAccess.mutationOptions({
       onSuccess: () => {
-        router.refresh();
+        startRefresh(() => router.refresh());
       },
       onError: error => {
         toast.error(error.message);
@@ -49,7 +50,20 @@ export function PasswordVerification({ slug }: PasswordVerificationProps) {
   };
 
   // Stay in the "verifying" state through the refresh so the form doesn't flash back
-  const isVerifying = verifyAccess.isPending || verifyAccess.isSuccess;
+  const isVerifying = verifyAccess.isPending || isRefreshing;
+
+  // The password was right, but the refreshed page still shows this form: the browser didn't
+  // keep the access cookie. Say so, and make the form usable again (the password stays, so
+  // the host can retry once cookies are allowed).
+  const { isSuccess, reset } = verifyAccess;
+  useEffect(() => {
+    if (isSuccess && !isRefreshing) {
+      toast.error(
+        "Couldn't keep you signed in. Check that cookies are allowed for this site, then try again.",
+      );
+      reset();
+    }
+  }, [isSuccess, isRefreshing, reset]);
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
