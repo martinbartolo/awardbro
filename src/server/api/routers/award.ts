@@ -6,6 +6,7 @@ import { type CategoryType, Prisma } from "~/generated/prisma/client";
 import {
   categoryFormSchema,
   nominationFormSchema,
+  normalizePassword,
   rankingSubmissionSchema,
   sessionFormSchema,
 } from "~/lib/schemas";
@@ -239,7 +240,10 @@ export const awardRouter = createTRPCRouter({
             name: input.name,
             slug: input.slug,
             password: input.password
-              ? await bcrypt.hash(input.password, SALT_ROUNDS)
+              ? await bcrypt.hash(
+                  normalizePassword(input.password),
+                  SALT_ROUNDS,
+                )
               : null,
           },
           select: { id: true, name: true, slug: true },
@@ -973,7 +977,8 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         slug: z.string(),
-        password: z.string(),
+        // Shows created before BAR-49 allowed up to 100 characters; this only stops huge inputs
+        password: z.string().max(1000, "Invalid password"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -999,7 +1004,18 @@ export const awardRouter = createTRPCRouter({
         return { success: true };
       }
 
-      const isValid = await bcrypt.compare(input.password, session.password);
+      // Passwords are stored normalized and without surrounding spaces, so a stray space from a
+      // phone keyboard doesn't matter. Shows created before that are also checked as typed.
+      let isValid = false;
+      for (const candidate of new Set([
+        normalizePassword(input.password).trim(),
+        input.password,
+      ])) {
+        if (await bcrypt.compare(candidate, session.password)) {
+          isValid = true;
+          break;
+        }
+      }
       recordLoginAttempt(input.slug, isValid);
 
       if (!isValid) {

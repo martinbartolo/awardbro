@@ -1,7 +1,9 @@
+import bcrypt from "bcryptjs";
 import { describe, expect, it } from "vitest";
 
 import { cookieName } from "~/server/auth/manage-token";
 import { DEVICE_ID_COOKIE } from "~/server/cookies";
+import { testDb } from "~/test/integration/db";
 import {
   awardPaths,
   createShow,
@@ -114,6 +116,59 @@ describe("a show with a password", () => {
     await expect(
       writeRoutes.addCategory(cohost.api, show),
     ).resolves.toBeDefined();
+  });
+
+  it.each([
+    ["with a stray space", "secret1 ", "secret1"],
+    // The same "é", as a letter plus a combining accent and as one character
+    ["with accents typed another way", "café" + "1", "café" + "1"],
+  ])("gives access for the password %s", async (_, entered, created) => {
+    const show = await createShow(visitor(), { password: created });
+    const cohost = visitor();
+
+    await cohost.api.verifyManageAccess({
+      slug: show.show.slug,
+      password: entered,
+    });
+
+    await expect(
+      writeRoutes.addCategory(cohost.api, show),
+    ).resolves.toBeDefined();
+  });
+
+  it("still gives access to a show whose password was saved with spaces", async () => {
+    // Shows created before BAR-49 could have a password with surrounding spaces
+    const show = await createShow(visitor(), { password: "secret1" });
+    await testDb.session.update({
+      where: { id: show.show.id },
+      data: { password: await bcrypt.hash(" secret1 ", 4) },
+    });
+    const cohost = visitor();
+
+    await cohost.api.verifyManageAccess({
+      slug: show.show.slug,
+      password: " secret1 ",
+    });
+
+    await expect(
+      writeRoutes.addCategory(cohost.api, show),
+    ).resolves.toBeDefined();
+  });
+
+  it.each([
+    ["only spaces", "    "],
+    ["a leading space", " secret1"],
+    ["over 72 bytes", "a".repeat(73)],
+  ])("refuses to create a show with a password of %s", async (_, password) => {
+    await expectError(
+      visitor().api.createSession({
+        name: "Movie Awards",
+        slug: "movie-awards",
+        password,
+      }),
+      "BAD_REQUEST",
+    );
+    expect(await testDb.session.count()).toBe(0);
   });
 
   it("gives no access for a wrong password", async () => {
