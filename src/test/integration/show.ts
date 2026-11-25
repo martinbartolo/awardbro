@@ -21,10 +21,11 @@ export async function createShow(host: Visitor, { password = "" } = {}) {
   type CategoryInput = Parameters<Visitor["api"]["addCategory"]>[0];
   const addCategory = (category: Omit<CategoryInput, "sessionId">) =>
     host.api.addCategory({ sessionId: show.id, ...category });
+  const addNomination = (
+    nomination: Parameters<Visitor["api"]["addNomination"]>[0],
+  ) => host.api.addNomination(nomination);
   const addFilms = (categoryId: string) =>
-    Promise.all(
-      FILMS.map(name => host.api.addNomination({ categoryId, name })),
-    );
+    Promise.all(FILMS.map(name => addNomination({ categoryId, name })));
 
   const [normal, ranking] = await Promise.all([
     addCategory({ name: "Best Film", type: "NORMAL", sourceCategories: [] }),
@@ -52,7 +53,15 @@ export async function createShow(host: Visitor, { password = "" } = {}) {
       n => n.name === name,
     )!;
 
-  return { show, normal, ranking, aggregate, film, addCategory };
+  return {
+    show,
+    normal,
+    ranking,
+    aggregate,
+    film,
+    addCategory,
+    addNomination,
+  };
 }
 
 export type Show = Awaited<ReturnType<typeof createShow>>;
