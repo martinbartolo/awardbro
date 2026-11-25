@@ -10,7 +10,12 @@ import {
   rankingSubmissionSchema,
   sessionFormSchema,
 } from "~/lib/schemas";
-import { scoreNomination } from "~/lib/scoring";
+import {
+  type ScoredCategory,
+  type ScoredNomination,
+  scoreNomination,
+  type SourceNomination,
+} from "~/lib/scoring";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   clearLoginAttempts,
@@ -31,50 +36,83 @@ const scoringFields = {
   votes: { where: { rank: { not: null } }, select: { rank: true } },
 } as const;
 
-/**
- * A category's nominations with their scores in `_count.votes` (votes, or points in ranking and
- * aggregate categories), and without their votes, so individual votes are never sent.
- */
-const withScores = async <
-  N extends {
-    name: string;
-    _count: { votes: number };
-    votes: { rank: number | null }[];
-  },
->(
-  client: typeof db,
-  category: {
-    type: CategoryType;
-    rankingTop: number | null;
-    sourceCategories: { id: string }[];
-    nominations: N[];
-  },
-) => {
-  const sourceNominations =
-    category.type === "AGGREGATE"
-      ? await client.nomination.findMany({
-          where: {
-            name: { in: category.nominations.map(n => n.name) },
-            categoryId: { in: category.sourceCategories.map(c => c.id) },
-          },
-          select: {
-            name: true,
-            ...scoringFields,
-            category: { select: { type: true, rankingTop: true } },
-          },
-        })
-      : [];
+/** A category as loaded for scoring, with its sources when it's an aggregate */
+type ScorableCategory = ScoredCategory & {
+  id: string;
+  sourceCategories: (ScoredCategory & { id: string })[];
+  nominations: ScoredNomination[];
+};
 
-  return category.nominations.map(({ votes, ...nomination }) => ({
-    ...nomination,
-    _count: {
-      votes: scoreNomination(
-        category,
-        { ...nomination, votes },
-        sourceNominations,
+/**
+ * The categories, with each nomination's score in `_count.votes` (votes, or points in ranking and
+ * aggregate categories) and without its votes, so individual votes are never sent.
+ *
+ * An aggregate is scored from its sources' nominations. Sources among `categories` are used as
+ * loaded; any others are loaded in one query for all aggregates. So scoring a whole show costs no
+ * extra queries, and scoring one aggregate at most one.
+ */
+const withScores = async <C extends ScorableCategory>(
+  client: typeof db,
+  categories: C[],
+) => {
+  /** Each category's nominations, by category ID */
+  const nominationsOf = new Map<string, ScoredNomination[]>(
+    categories.map(category => [category.id, category.nominations]),
+  );
+  const aggregates = categories.filter(c => c.type === "AGGREGATE");
+  const missingSourceIds = [
+    ...new Set(
+      aggregates.flatMap(a => a.sourceCategories.map(source => source.id)),
+    ),
+  ].filter(id => !nominationsOf.has(id));
+  const names = [
+    ...new Set(aggregates.flatMap(a => a.nominations.map(n => n.name))),
+  ];
+  if (missingSourceIds.length && names.length) {
+    const fetched = await client.nomination.findMany({
+      where: { categoryId: { in: missingSourceIds }, name: { in: names } },
+      select: { categoryId: true, name: true, ...scoringFields },
+    });
+    for (const nomination of fetched) {
+      const list = nominationsOf.get(nomination.categoryId);
+      if (list) list.push(nomination);
+      else nominationsOf.set(nomination.categoryId, [nomination]);
+    }
+  }
+
+  /** An aggregate's source nominations, with the source each is in, grouped by name */
+  const sourcesByName = (category: C) => {
+    const byName = new Map<string, SourceNomination[]>();
+    for (const source of category.sourceCategories) {
+      for (const nomination of nominationsOf.get(source.id) ?? []) {
+        const withSource = { ...nomination, category: source };
+        const list = byName.get(nomination.name);
+        if (list) list.push(withSource);
+        else byName.set(nomination.name, [withSource]);
+      }
+    }
+    return byName;
+  };
+
+  return categories.map(category => {
+    const sources =
+      category.type === "AGGREGATE" ? sourcesByName(category) : undefined;
+    return {
+      ...category,
+      nominations: category.nominations.map(
+        ({ votes, ...nomination }: C["nominations"][number]) => ({
+          ...nomination,
+          _count: {
+            votes: scoreNomination(
+              category,
+              { ...nomination, votes },
+              sources?.get(nomination.name),
+            ),
+          },
+        }),
       ),
-    },
-  }));
+    };
+  });
 };
 
 const SALT_ROUNDS = 10;
@@ -260,12 +298,7 @@ export const awardRouter = createTRPCRouter({
 
       return {
         ...session,
-        categories: await Promise.all(
-          session.categories.map(async category => ({
-            ...category,
-            nominations: await withScores(ctx.db, category),
-          })),
-        ),
+        categories: await withScores(ctx.db, session.categories),
       };
     }),
 
@@ -376,10 +409,8 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
-      return {
-        ...category,
-        nominations: await withScores(ctx.db, category),
-      };
+      const [scored] = await withScores(ctx.db, [category]);
+      return scored!;
     }),
 
   toggleRevealCategory: publicProcedure

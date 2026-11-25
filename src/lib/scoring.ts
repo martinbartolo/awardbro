@@ -1,17 +1,17 @@
 import { type CategoryType } from "~/generated/prisma/enums";
 
-type ScoredCategory = { type: CategoryType; rankingTop: number | null };
+export type ScoredCategory = { type: CategoryType; rankingTop: number | null };
 /**
  * A nomination as loaded for scoring: how many votes it has, and the ranks of its ranked votes.
  * Votes without a rank may be left out of `votes`, since they earn no ranking points.
  */
-type ScoredNomination = {
+export type ScoredNomination = {
   name: string;
   _count: { votes: number };
   votes: { rank: number | null }[];
 };
 /** A nomination in one of an aggregate category's source categories */
-type SourceNomination = ScoredNomination & { category: ScoredCategory };
+export type SourceNomination = ScoredNomination & { category: ScoredCategory };
 
 /** Whether a category's votes earn ranking points (a ranking category without a top N counts votes) */
 const earnsRankingPoints = (
