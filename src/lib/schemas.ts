@@ -90,8 +90,13 @@ export const categoryFormSchema = z
 
 export const nominationFormSchema = z.object({
   categoryId: z.string().min(1, "Category ID is required"),
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  description: z.string().max(500, "Description is too long").optional(),
+  // Trimmed, so "Dune " and "Dune" are the same name
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name is too long"),
+  description: z.string().trim().max(500, "Description is too long").optional(),
 });
 
 export const rankingSubmissionSchema = z.object({

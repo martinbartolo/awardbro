@@ -5,6 +5,7 @@ import {
   awardPaths,
   createShow,
   FILMS,
+  open,
   procedureNames,
   type Show,
   showState,
@@ -65,6 +66,10 @@ describe("the password hash", () => {
   });
 });
 
+/** How many nominations with this name the category has */
+const copies = (categoryId: string, name: string) =>
+  testDb.nomination.count({ where: { categoryId, name } });
+
 describe("an aggregate category", () => {
   const addAggregate = (show: Show, sourceCategories: string[]) =>
     show.addCategory({ name: "Overall", type: "AGGREGATE", sourceCategories });
@@ -104,10 +109,6 @@ describe("an aggregate category", () => {
     expect(nominations.map(n => n.name).sort()).toEqual([...FILMS].sort());
   });
 
-  /** How many nominations with this name the category has */
-  const copies = (categoryId: string, name: string) =>
-    testDb.nomination.count({ where: { categoryId, name } });
-
   it("gets one copy of a nomination added to any of its sources", async () => {
     const host = visitor();
     const show = await createShow(host);
@@ -122,6 +123,84 @@ describe("an aggregate category", () => {
     });
 
     expect(await copies(show.aggregate.id, "Poor Things")).toBe(1);
+  });
+});
+
+describe("a nomination with the same name as another in its category", () => {
+  // Each show's normal category already has Dune, with no description
+  const addDune = (show: Show, name: string, description?: string) =>
+    show.addNomination({ categoryId: show.normal.id, name, description });
+
+  it.each([
+    ["the same name", "Dune", undefined],
+    ["a different case and spaces", "  dune ", undefined],
+    ["an empty description", "Dune", ""],
+  ])(
+    "is refused with %s and the same description",
+    async (_, name, description) => {
+      const show = await createShow(visitor());
+
+      await expectError(addDune(show, name, description), "BAD_REQUEST");
+
+      expect(await copies(show.normal.id, "Dune")).toBe(1);
+    },
+  );
+
+  it("is refused with an exact repeat of a description too", async () => {
+    const show = await createShow(visitor());
+    await addDune(show, "Dune", "Part Two");
+
+    await expectError(addDune(show, "Dune", " Part Two "), "BAD_REQUEST");
+  });
+
+  it("is copied into a new aggregate once, with the first one's description", async () => {
+    const show = await createShow(visitor());
+    await addDune(show, "Dune", "Part Two");
+
+    const overall = await show.addCategory({
+      name: "Overall 2",
+      type: "AGGREGATE",
+      sourceCategories: [show.normal.id],
+    });
+
+    expect(
+      await testDb.nomination.findMany({
+        where: { categoryId: overall.id, name: "Dune" },
+        select: { description: true },
+      }),
+    ).toEqual([{ description: null }]);
+  });
+
+  it("can't be added to an aggregate, whose nominations come from its sources", async () => {
+    const show = await createShow(visitor());
+
+    await expectError(
+      show.addNomination({
+        categoryId: show.aggregate.id,
+        name: "Poor Things",
+      }),
+      "BAD_REQUEST",
+    );
+  });
+
+  it("is allowed with a different description, and the aggregate adds them together", async () => {
+    const host = visitor();
+    const show = await createShow(host);
+    const second = await addDune(show, "Dune", "Part Two");
+    await open(host, show.normal.id);
+    await visitor().api.vote({ nominationId: show.film("normal", "Dune").id });
+    await visitor().api.vote({ nominationId: second.id });
+
+    const aggregate = await visitor().api.getCategory({
+      id: show.aggregate.id,
+    });
+
+    expect(await copies(show.normal.id, "Dune")).toBe(2);
+    expect(
+      aggregate.nominations
+        .filter(n => n.name === "Dune")
+        .map(n => n._count.votes),
+    ).toEqual([2]);
   });
 });
 

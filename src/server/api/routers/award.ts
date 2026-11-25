@@ -361,11 +361,13 @@ export const awardRouter = createTRPCRouter({
               },
             });
 
-            // An aggregate starts with a copy of its sources' nominations, one per name
+            // An aggregate starts with a copy of its sources' nominations, one per name. A name
+            // can appear more than once; the first one added gives the copy its description.
             if (sourceIds.length) {
               const sourceNominations = await tx.nomination.findMany({
                 where: { categoryId: { in: sourceIds } },
                 distinct: ["name"],
+                orderBy: [{ name: "asc" }, { createdAt: "asc" }],
                 select: { name: true, description: true },
               });
               await tx.nomination.createMany({
@@ -505,6 +507,38 @@ export const awardRouter = createTRPCRouter({
               throw new TRPCError({
                 code: "NOT_FOUND",
                 message: "Category not found",
+              });
+            }
+            if (category.type === "AGGREGATE") {
+              // Its nominations are copied from its sources
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Add nominations to the source categories instead",
+              });
+            }
+
+            // The same name and description twice is an accidental double-add. The same name with
+            // a different description (or image) is allowed: hosts use it on purpose. Names are
+            // compared ignoring case, which is stricter than aggregates (they match exact names).
+            // Compared here rather than in SQL: older rows may have untrimmed text.
+            const existing = await tx.nomination.findMany({
+              where: { categoryId: input.categoryId },
+              select: { name: true, description: true },
+            });
+            const sameName = existing.filter(
+              n => n.name.trim().toLowerCase() === input.name.toLowerCase(),
+            );
+            const description = input.description ?? "";
+            if (
+              sameName.some(n => (n.description ?? "").trim() === description)
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: !description
+                  ? `"${input.name}" is already in this category`
+                  : category.type === "IMAGE"
+                    ? `"${input.name}" with this image is already in this category`
+                    : `"${input.name}" with this description is already in this category`,
               });
             }
 

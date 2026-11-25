@@ -40,6 +40,7 @@ Notes:
 
 - Changing a vote in a normal or image category replaces the voter's previous vote. Re-submitting a ranking replaces the whole ranking.
 - An aggregate's sources must be categories of the same show, and can't be aggregates themselves.
+- A category can have the same nomination name twice with different descriptions (for example, one person nominated for two things, or several photos with the same caption), but not the same name (ignoring case) and description twice. An aggregate adds up every source nomination with exactly the same name, so those count together there.
 - An aggregate category copies nominations from its sources when it's created. Nominations added to a source later are copied to the aggregate automatically.
 - Scores are computed when they're read (`getSessionBySlug`, `getCategory`), not stored.
 

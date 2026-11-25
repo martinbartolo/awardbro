@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   categoryFormSchema,
+  nominationFormSchema,
   rankingSubmissionSchema,
   sessionFormSchema,
 } from "./schemas";
@@ -157,6 +158,30 @@ describe("categoryFormSchema", () => {
     expect(
       errorPaths(categoryFormSchema.safeParse({ ...category, type: "POLL" })),
     ).toEqual(["type"]);
+  });
+});
+
+describe("nominationFormSchema", () => {
+  it("trims the name and description", () => {
+    expect(
+      nominationFormSchema.parse({
+        categoryId: "category",
+        name: "  Dune ",
+        description: " Part Two\n",
+      }),
+    ).toEqual({
+      categoryId: "category",
+      name: "Dune",
+      description: "Part Two",
+    });
+  });
+
+  it("rejects a name of only spaces", () => {
+    expect(
+      errorPaths(
+        nominationFormSchema.safeParse({ categoryId: "category", name: "   " }),
+      ),
+    ).toEqual(["name"]);
   });
 });
 
