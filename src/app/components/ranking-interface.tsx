@@ -17,7 +17,7 @@ type Ranking = {
   rank: number;
 };
 
-type MyVotes = RouterOutputs["award"]["getMyVotes"];
+export type MyVotes = RouterOutputs["award"]["getMyVotes"];
 
 /** The voter's saved vote or ranking, owned by `LiveVotingSession` */
 export type MyVotesProps = {

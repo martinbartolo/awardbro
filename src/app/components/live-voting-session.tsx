@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
@@ -12,12 +12,18 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
+import { type MyVotes } from "./ranking-interface";
 import { VotingInterface } from "./voting-interface";
 
 type Session = RouterOutputs["award"]["getSessionBySlug"];
 
 type LiveVotingSessionProps = {
   initialSession: Session;
+  /** The voter's votes in the category that was active when the page was rendered */
+  initialMyVotes?: {
+    categoryId: string;
+    votes: MyVotes;
+  };
   slug: string;
 };
 
@@ -37,6 +43,7 @@ const containerVariants = {
 
 export function LiveVotingSession({
   initialSession,
+  initialMyVotes,
   slug,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
@@ -58,17 +65,32 @@ export function LiveVotingSession({
 
   const activeCategory = session.categories[0];
 
+  // The server-rendered votes only describe the first category shown. Drop
+  // them once the host moves on, so a category reopened later (and maybe
+  // reset meanwhile) never starts from them.
+  const [initialVotes, setInitialVotes] = useState(initialMyVotes);
+  if (initialVotes && initialVotes.categoryId !== activeCategory?.id) {
+    setInitialVotes(undefined);
+  }
+
   // The voter's own vote (or ranking) in the active category. Its key includes
   // the category, so the "already voted" banner never shows another
   // category's answer while the next one loads. Only the active category's
   // votes are cached (gcTime: 0): a category the host reopens may have been
-  // reset in the meantime.
+  // reset in the meantime. Always reloaded on mount (staleTime: 0): back and
+  // forward navigation can restore server-rendered votes that are out of date.
   const myVotesOptions = trpc.award.getMyVotes.queryOptions(
     { categoryId: activeCategory?.id ?? "" },
     {
       refetchInterval: 5000,
       retry: 3,
       gcTime: 0,
+      staleTime: 0,
+      // Checked here too: the render that drops them still runs with them
+      initialData:
+        initialVotes?.categoryId === activeCategory?.id
+          ? initialVotes?.votes
+          : undefined,
       enabled: !!activeCategory && activeCategory.type !== "AGGREGATE",
     },
   );
@@ -81,9 +103,7 @@ export function LiveVotingSession({
   // Bound to this render's category, so a vote that completes after the host
   // has moved on reloads the category it was cast in. Undefined if it fails.
   const refetchMyVotes = () =>
-    queryClient
-      .fetchQuery({ ...myVotesOptions, staleTime: 0 })
-      .catch(() => undefined);
+    queryClient.fetchQuery(myVotesOptions).catch(() => undefined);
 
   useEffect(() => {
     if (isSessionError) {
