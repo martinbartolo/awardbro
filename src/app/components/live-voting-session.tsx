@@ -101,9 +101,16 @@ export function LiveVotingSession({
   } = useQuery(myVotesOptions);
   const hasVoted = !!myVotes?.length;
   // Bound to this render's category, so a vote that completes after the host
-  // has moved on reloads the category it was cast in. Undefined if it fails.
-  const refetchMyVotes = () =>
-    queryClient.fetchQuery(myVotesOptions).catch(() => undefined);
+  // has moved on reloads the category it was cast in. A poll already in flight
+  // may have started before the vote was saved, so it's cancelled rather than
+  // reused. Undefined if it fails.
+  const refetchMyVotes = async () => {
+    await queryClient.cancelQueries({
+      queryKey: myVotesOptions.queryKey,
+      exact: true,
+    });
+    return queryClient.fetchQuery(myVotesOptions).catch(() => undefined);
+  };
 
   useEffect(() => {
     if (isSessionError) {
