@@ -239,6 +239,7 @@ export default async function ManagePage({
                         <NominationActions
                           nominationId={nomination.id}
                           nominationName={nomination.name}
+                          nominationDescription={nomination.description}
                         />
                       </div>
                     ))}

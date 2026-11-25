@@ -161,7 +161,15 @@ export function RankingInterface({
               </span>
               {slot.nomination ? (
                 <div className="flex flex-1 items-center justify-between gap-2">
-                  <span className="font-medium">{slot.nomination.name}</span>
+                  {/* The description tells apart nominations with the same name */}
+                  <div className="min-w-0">
+                    <span className="font-medium">{slot.nomination.name}</span>
+                    <NominationDescription
+                      description={slot.nomination.description ?? null}
+                      className="text-muted-foreground line-clamp-1 text-xs"
+                      imageClassName="relative mt-1 h-10 w-16"
+                    />
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
