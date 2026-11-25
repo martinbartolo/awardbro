@@ -12,6 +12,11 @@ import {
 } from "~/lib/schemas";
 import { scoreNomination } from "~/lib/scoring";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  clearLoginAttempts,
+  countLoginAttempt,
+  loginClient,
+} from "~/server/auth/login-attempts";
 import { assertCanManage } from "~/server/auth/manage";
 import { setManageCookie } from "~/server/auth/manage-token";
 import { DEVICE_ID_COOKIE, getCookie } from "~/server/cookies";
@@ -73,57 +78,6 @@ const withScores = async <
 };
 
 const SALT_ROUNDS = 10;
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
-
-// Store failed attempts in memory (in production, use Redis or similar)
-const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
-
-const checkRateLimit = (identifier: string) => {
-  const now = Date.now();
-  const attempts = loginAttempts.get(identifier);
-
-  if (attempts) {
-    // Reset if lockout time has passed
-    if (now - attempts.lastAttempt > LOCKOUT_TIME) {
-      loginAttempts.delete(identifier);
-      return;
-    }
-
-    if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-      const timeLeft = Math.ceil(
-        (LOCKOUT_TIME - (now - attempts.lastAttempt)) / 1000 / 60,
-      );
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message: `Too many attempts. Please try again in ${timeLeft} minutes`,
-      });
-    }
-  }
-};
-
-const recordLoginAttempt = (identifier: string, success: boolean) => {
-  const now = Date.now();
-  const attempts = loginAttempts.get(identifier);
-
-  if (success) {
-    loginAttempts.delete(identifier);
-    return;
-  }
-
-  if (attempts) {
-    loginAttempts.set(identifier, {
-      count: attempts.count + 1,
-      lastAttempt: now,
-    });
-  } else {
-    loginAttempts.set(identifier, {
-      count: 1,
-      lastAttempt: now,
-    });
-  }
-};
-
 /*
  * Each show has an advisory lock that keeps votes and host actions apart.
  * Saving a vote takes it shared, so voters don't block each other. Host
@@ -982,16 +936,12 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Check rate limit before proceeding
-      checkRateLimit(input.slug);
-
       const session = await ctx.db.session.findUnique({
         where: { slug: input.slug },
         select: { id: true, password: true },
       });
 
       if (!session) {
-        recordLoginAttempt(input.slug, false);
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Session not found",
@@ -1000,9 +950,11 @@ export const awardRouter = createTRPCRouter({
 
       // If no password is set, allow access
       if (!session.password) {
-        recordLoginAttempt(input.slug, true);
         return { success: true };
       }
+
+      // Counted before the check, so parallel guesses can't get past the limit
+      await countLoginAttempt(ctx.db, session.id, loginClient(ctx.headers));
 
       // Passwords are stored normalized and without surrounding spaces, so a stray space from a
       // phone keyboard doesn't matter. Shows created before that are also checked as typed.
@@ -1016,8 +968,6 @@ export const awardRouter = createTRPCRouter({
           break;
         }
       }
-      recordLoginAttempt(input.slug, isValid);
-
       if (!isValid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -1025,6 +975,7 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
+      await clearLoginAttempts(ctx.db, session.id);
       setManageCookie(ctx.resHeaders, session.id);
       return { success: true };
     }),

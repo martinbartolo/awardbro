@@ -23,8 +23,9 @@ Defined in `prisma/schema.prisma`.
 - **Category**: belongs to a session. Has a `type`, `isActive` (at most one active per session), `revealed`, and presentation options `hideVoteCounts` and `winnerOnly`.
 - **Nomination**: belongs to a category. `description` is either text or an image URL.
 - **Vote**: one row per voter per nomination, keyed by `deviceId`. `rank` is set only for ranking votes.
+- **LoginAttempt**: manage password attempts for a show, one row per client and one for the whole show (count and time of the last one), for the attempt limits below.
 
-Deleting a session cascades to its categories, nominations and votes (`onDelete: Cascade`).
+Deleting a session cascades to its categories, nominations, votes and login attempts (`onDelete: Cascade`).
 
 ## Category types
 
@@ -59,7 +60,7 @@ Notes:
 - Every write route calls `assertCanManage` first. It finds the show that owns the target (session, category or nomination) and checks the cookie. `manage-access.integration.test.ts` checks this for every mutation, and fails when a new mutation isn't listed there.
 - The manage page calls `hasManageAccess` on the server and renders only the password form until access is granted.
 - Shows created **without** a password are open: anyone with the link can manage them.
-- After 5 wrong passwords for a slug, further attempts are blocked for 15 minutes. The counter is in memory, so it only applies per server instance.
+- Password attempts are limited per show, in the `LoginAttempt` table, so the limits hold across server instances (`src/server/auth/login-attempts.ts`). Each client (IP address, stored only as a keyed hash) gets 5 attempts per show, then is locked out for 15 minutes. The show as a whole gets 50, against guessing from many addresses. A client's refused attempts don't count towards that, so one client can't lock the host out. Attempts are counted before the password is checked, so parallel guesses can't get past the limits, and the right password clears them.
 - The password hash is never sent to the client.
 
 ## Live updates
