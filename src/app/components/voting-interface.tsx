@@ -138,6 +138,12 @@ export function VotingInterface({
                 {currentVote?.nominationId === selectedNomination.id && (
                   <span className="text-primary ml-2 text-xs">(Submitted)</span>
                 )}
+                {/* The description tells apart nominations with the same name */}
+                <NominationDescription
+                  description={selectedNomination.description ?? null}
+                  className="text-muted-foreground line-clamp-1 text-xs"
+                  imageClassName="relative mt-1 h-10 w-16"
+                />
               </div>
             </div>
           ) : (

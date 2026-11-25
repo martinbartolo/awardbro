@@ -17,16 +17,20 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { isImageUrl } from "~/lib/images";
 import { useTRPC } from "~/trpc/react";
 
 type NominationActionsProps = {
   nominationId: string;
   nominationName: string;
+  /** Shown in the confirmation when it's text, to tell apart nominations with the same name */
+  nominationDescription?: string | null;
 };
 
 export function NominationActions({
   nominationId,
   nominationName,
+  nominationDescription,
 }: NominationActionsProps) {
   const router = useRouter();
 
@@ -58,9 +62,12 @@ export function NominationActions({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete nomination?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &quot;{nominationName}&quot;? This
-            will permanently remove this nomination and all its votes. This
-            action cannot be undone.
+            Are you sure you want to delete &quot;{nominationName}&quot;
+            {nominationDescription && !isImageUrl(nominationDescription)
+              ? ` (${nominationDescription})`
+              : ""}
+            ? This will permanently remove this nomination and all its votes.
+            This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
