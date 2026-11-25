@@ -8,15 +8,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { type CategoryType } from "~/generated/prisma/enums";
-import { estimateVoters } from "~/lib/scoring";
 import { useTRPC } from "~/trpc/react";
 
 type LiveVotingProps = {
   categoryId: string;
   initialVoteCount: number;
-  categoryType: CategoryType;
-  rankingTop?: number | null;
 };
 
 const containerVariants = {
@@ -40,12 +36,7 @@ const containerVariants = {
 
 const MAX_RETRIES = 3;
 
-export function LiveVoting({
-  categoryId,
-  initialVoteCount,
-  categoryType,
-  rankingTop,
-}: LiveVotingProps) {
+export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
   const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const lastToastTimeRef = useRef(0);
 
@@ -64,13 +55,14 @@ export function LiveVoting({
   // Derive error limit exceeded from failureCount (no setState needed)
   const hasExceededErrorLimit = isError && failureCount >= MAX_RETRIES;
 
-  // Ranking categories score points, so this estimates the number of voters
-  const totalVotes = data
-    ? estimateVoters(
-        { type: categoryType, rankingTop: rankingTop ?? null },
-        data.nominations,
-      )
-    : initialVoteCount;
+  // Estimated on the server: ranking categories score points, not votes. Once the category is
+  // revealed, only hosts get it, so keep the last count until this view gives way to the results.
+  const [lastKnownVotes, setLastKnownVotes] = useState(initialVoteCount);
+  const latestVotes = data?.estimatedVoters;
+  if (latestVotes != null && latestVotes !== lastKnownVotes) {
+    setLastKnownVotes(latestVotes);
+  }
+  const totalVotes = latestVotes ?? lastKnownVotes;
 
   // Calculate the vote difference for animation
   const voteDiff = totalVotes - prevVotes;

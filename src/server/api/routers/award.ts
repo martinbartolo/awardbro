@@ -11,6 +11,9 @@ import {
   sessionFormSchema,
 } from "~/lib/schemas";
 import {
+  estimateVoters,
+  publicScores,
+  type RevealOptions,
   type ScoredCategory,
   type ScoredNomination,
   scoreNomination,
@@ -22,7 +25,7 @@ import {
   countLoginAttempt,
   loginClient,
 } from "~/server/auth/login-attempts";
-import { assertCanManage } from "~/server/auth/manage";
+import { assertCanManage, isHost } from "~/server/auth/manage";
 import { setManageCookie } from "~/server/auth/manage-token";
 import { DEVICE_ID_COOKIE, getCookie } from "~/server/cookies";
 import { type db } from "~/server/db";
@@ -36,16 +39,49 @@ const scoringFields = {
   votes: { where: { rank: { not: null } }, select: { rank: true } },
 } as const;
 
+/**
+ * What a category reveals to someone who can't manage the show. An aggregate is made of its
+ * sources' scores, so it reveals no more than they do: nothing until every source is revealed,
+ * only the order if any source hides its counts or shows only its winner, and only its winners
+ * if any source shows only its winner. Otherwise its own
+ * totals minus one source's would give another source's hidden scores.
+ */
+const revealOptions = (
+  category: RevealOptions & {
+    type: CategoryType;
+    sourceCategories: RevealOptions[];
+  },
+): RevealOptions =>
+  category.type !== "AGGREGATE"
+    ? category
+    : {
+        revealed:
+          category.revealed &&
+          category.sourceCategories.every(source => source.revealed),
+        winnerOnly:
+          category.winnerOnly ||
+          category.sourceCategories.some(source => source.winnerOnly),
+        hideVoteCounts:
+          category.hideVoteCounts ||
+          category.sourceCategories.some(
+            source => source.hideVoteCounts || source.winnerOnly,
+          ),
+      };
+
 /** A category as loaded for scoring, with its sources when it's an aggregate */
-type ScorableCategory = ScoredCategory & {
-  id: string;
-  sourceCategories: (ScoredCategory & { id: string })[];
-  nominations: ScoredNomination[];
-};
+type ScorableCategory = ScoredCategory &
+  RevealOptions & {
+    id: string;
+    sourceCategories: (ScoredCategory & RevealOptions & { id: string })[];
+    nominations: ScoredNomination[];
+  };
 
 /**
  * The categories, with each nomination's score in `_count.votes` (votes, or points in ranking and
  * aggregate categories) and without its votes, so individual votes are never sent.
+ *
+ * With `canSeeAllScores` (hosts) every score is sent; otherwise only what the show reveals
+ * (`publicScores` with `revealOptions`).
  *
  * An aggregate is scored from its sources' nominations. Sources among `categories` are used as
  * loaded; any others are loaded in one query for all aggregates. So scoring a whole show costs no
@@ -54,6 +90,7 @@ type ScorableCategory = ScoredCategory & {
 const withScores = async <C extends ScorableCategory>(
   client: typeof db,
   categories: C[],
+  canSeeAllScores: boolean,
 ) => {
   /** Each category's nominations, by category ID */
   const nominationsOf = new Map<string, ScoredNomination[]>(
@@ -97,20 +134,31 @@ const withScores = async <C extends ScorableCategory>(
   return categories.map(category => {
     const sources =
       category.type === "AGGREGATE" ? sourcesByName(category) : undefined;
+    const nominations = category.nominations.map(
+      ({ votes, ...nomination }: C["nominations"][number]) => ({
+        ...nomination,
+        _count: {
+          votes: scoreNomination(
+            category,
+            { ...nomination, votes },
+            sources?.get(nomination.name),
+          ),
+        },
+      }),
+    );
     return {
       ...category,
-      nominations: category.nominations.map(
-        ({ votes, ...nomination }: C["nominations"][number]) => ({
-          ...nomination,
-          _count: {
-            votes: scoreNomination(
-              category,
-              { ...nomination, votes },
-              sources?.get(nomination.name),
-            ),
-          },
-        }),
-      ),
+      nominations: canSeeAllScores
+        ? nominations
+        : publicScores(revealOptions(category), nominations),
+      // The present page's live count while voting is open, so public until the reveal. After
+      // it, the total next to masked scores would give hidden ones away (a loser's score is
+      // the total minus the winner's), so only hosts get it. An aggregate's would mix votes and
+      // points, so it has none.
+      estimatedVoters:
+        category.type === "AGGREGATE" || (!canSeeAllScores && category.revealed)
+          ? null
+          : estimateVoters(category, nominations),
     };
   });
 };
@@ -267,29 +315,36 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const session = await ctx.db.session.findUnique({
-        where: { slug: input.slug },
-        // Never send the password hash to the client
-        omit: { password: true },
-        include: {
-          categories: {
-            where: input.activeOnly ? { isActive: true } : undefined,
-            orderBy: { createdAt: "asc" },
-            include: {
-              nominations: {
-                orderBy: { createdAt: "asc" },
-                include: scoringFields,
-              },
-              sourceCategories: true,
-              aggregateOf: {
-                select: { id: true, name: true },
+      const [session, access] = await Promise.all([
+        ctx.db.session.findUnique({
+          where: { slug: input.slug },
+          // Never send the password hash to the client
+          omit: { password: true },
+          include: {
+            categories: {
+              where: input.activeOnly ? { isActive: true } : undefined,
+              orderBy: { createdAt: "asc" },
+              include: {
+                nominations: {
+                  orderBy: { createdAt: "asc" },
+                  include: scoringFields,
+                },
+                sourceCategories: true,
+                aggregateOf: {
+                  select: { id: true, name: true },
+                },
               },
             },
           },
-        },
-      });
+        }),
+        // Only to check access; never sent to the client
+        ctx.db.session.findUnique({
+          where: { slug: input.slug },
+          select: { id: true, password: true },
+        }),
+      ]);
 
-      if (!session) {
+      if (!session || !access) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Session not found",
@@ -298,7 +353,11 @@ export const awardRouter = createTRPCRouter({
 
       return {
         ...session,
-        categories: await withScores(ctx.db, session.categories),
+        categories: await withScores(
+          ctx.db,
+          session.categories,
+          isHost(ctx, access),
+        ),
       };
     }),
 
@@ -396,22 +455,29 @@ export const awardRouter = createTRPCRouter({
   getCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const category = await ctx.db.category.findUnique({
+      const found = await ctx.db.category.findUnique({
         where: { id: input.id },
         include: {
           nominations: { include: scoringFields },
           sourceCategories: true,
+          // Only to check access; never sent to the client
+          session: { select: { id: true, password: true } },
         },
       });
 
-      if (!category) {
+      if (!found) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Category not found",
         });
       }
 
-      const [scored] = await withScores(ctx.db, [category]);
+      const { session, ...category } = found;
+      const [scored] = await withScores(
+        ctx.db,
+        [category],
+        isHost(ctx, session),
+      );
       return scored!;
     }),
 
