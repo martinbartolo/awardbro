@@ -1,17 +1,23 @@
 import { type CategoryType } from "~/generated/prisma/enums";
 
-type ScoredCategory = { type: CategoryType; rankingTop: number | null };
+export type ScoredCategory = { type: CategoryType; rankingTop: number | null };
 /**
  * A nomination as loaded for scoring: how many votes it has, and the ranks of its ranked votes.
  * Votes without a rank may be left out of `votes`, since they earn no ranking points.
  */
-type ScoredNomination = {
+export type ScoredNomination = {
   name: string;
   _count: { votes: number };
   votes: { rank: number | null }[];
 };
 /** A nomination in one of an aggregate category's source categories */
-type SourceNomination = ScoredNomination & { category: ScoredCategory };
+export type SourceNomination = ScoredNomination & { category: ScoredCategory };
+
+/** Whether a category's votes earn ranking points (a ranking category without a top N counts votes) */
+const earnsRankingPoints = (
+  category: ScoredCategory,
+): category is ScoredCategory & { rankingTop: number } =>
+  category.type === "RANKING" && !!category.rankingTop;
 
 /** Points for one ranking vote: 1st place = rankingTop points, 2nd = rankingTop − 1, … */
 const calculatePoints = (rank: number, rankingTop: number) =>
@@ -21,14 +27,11 @@ const calculatePoints = (rank: number, rankingTop: number) =>
  * A nomination's score from its own votes. In a ranking category each vote earns points by its
  * rank, and votes without a rank earn nothing. In every other category each vote is 1 point.
  */
-const scoreVotes = (
-  { type, rankingTop }: ScoredCategory,
-  nomination: ScoredNomination,
-) =>
-  type === "RANKING" && rankingTop
+const scoreVotes = (category: ScoredCategory, nomination: ScoredNomination) =>
+  earnsRankingPoints(category)
     ? nomination.votes.reduce(
         (sum, { rank }) =>
-          rank ? sum + calculatePoints(rank, rankingTop) : sum,
+          rank ? sum + calculatePoints(rank, category.rankingTop) : sum,
         0,
       )
     : nomination._count.votes;
@@ -68,3 +71,57 @@ export function estimateVoters(
   }
   return Math.round(total / pointsPerBallot);
 }
+
+/** A category with its sources' types, enough to know what its scores count */
+export type LabelledCategory = ScoredCategory & {
+  sourceCategories: ScoredCategory[];
+};
+
+/**
+ * "points" or "votes" for a nomination's score. Ranking scores are points, and so are an
+ * aggregate's when any of its sources is a ranking category: one ranking can give a nomination
+ * several points.
+ */
+export const getScoreLabel = (category: LabelledCategory, count: number) => {
+  const isPoints =
+    earnsRankingPoints(category) ||
+    (category.type === "AGGREGATE" &&
+      category.sourceCategories.some(earnsRankingPoints));
+  if (isPoints) return count === 1 ? "point" : "points";
+  return count === 1 ? "vote" : "votes";
+};
+
+/** What a category shows once it's revealed */
+export type RevealOptions = {
+  revealed: boolean;
+  winnerOnly: boolean;
+  hideVoteCounts: boolean;
+};
+
+/**
+ * The scores someone who can't manage the show may see, in `_count.votes`:
+ * - before the reveal, none (all 0);
+ * - with `winnerOnly`, only the winners' (the others are 0);
+ * - with `hideVoteCounts`, only their order: the highest is the number of different scores, the
+ *   next one less, down to 1, and 0 stays 0. Ties stay ties, so the winners can still be found.
+ */
+export const publicScores = <N extends { _count: { votes: number } }>(
+  category: RevealOptions,
+  nominations: N[],
+): N[] => {
+  let scores = nominations.map(n => (category.revealed ? n._count.votes : 0));
+  if (category.winnerOnly) {
+    const top = Math.max(0, ...scores);
+    scores = scores.map(score => (score === top ? score : 0));
+  }
+  if (category.hideVoteCounts) {
+    const distinct = [...new Set(scores.filter(score => score > 0))].sort(
+      (a, b) => a - b,
+    );
+    scores = scores.map(score => (score > 0 ? distinct.indexOf(score) + 1 : 0));
+  }
+  return nominations.map((nomination, i) => ({
+    ...nomination,
+    _count: { ...nomination._count, votes: scores[i]! },
+  }));
+};

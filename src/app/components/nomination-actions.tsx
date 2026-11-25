@@ -3,7 +3,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -17,28 +16,32 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { isImageUrl } from "~/lib/images";
 import { useTRPC } from "~/trpc/react";
 
 type NominationActionsProps = {
   nominationId: string;
   nominationName: string;
+  /** Shown in the confirmation when it's text, to tell apart nominations with the same name */
+  nominationDescription?: string | null;
 };
 
 export function NominationActions({
   nominationId,
   nominationName,
+  nominationDescription,
 }: NominationActionsProps) {
   const router = useRouter();
 
   const trpc = useTRPC();
+  const onManageError = useManageErrorHandler();
   const deleteNomination = useMutation(
     trpc.award.deleteNomination.mutationOptions({
       onSuccess: () => {
         router.refresh();
       },
-      onError: () => {
-        toast.error("Failed to delete nomination");
-      },
+      onError: onManageError("Failed to delete nomination"),
     }),
   );
 
@@ -59,9 +62,12 @@ export function NominationActions({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete nomination?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &quot;{nominationName}&quot;? This
-            will permanently remove this nomination and all its votes. This
-            action cannot be undone.
+            Are you sure you want to delete &quot;{nominationName}&quot;
+            {nominationDescription && !isImageUrl(nominationDescription)
+              ? ` (${nominationDescription})`
+              : ""}
+            ? This will permanently remove this nomination and all its votes.
+            This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

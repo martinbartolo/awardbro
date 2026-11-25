@@ -1,23 +1,8 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-import { type CategoryType } from "~/generated/prisma/enums";
-
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-/**
- * Get the appropriate label for vote/point count based on category type
- */
-export function getScoreLabel(
-  categoryType: CategoryType,
-  count: number,
-): string {
-  if (categoryType === "RANKING") {
-    return count === 1 ? "point" : "points";
-  }
-  return count === 1 ? "vote" : "votes";
 }
 
 type Ranking = { nominationId: string; rank: number | null };

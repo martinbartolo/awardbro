@@ -21,6 +21,9 @@ const PASSWORD_HASH = bcrypt.hashSync(PASSWORD, 4);
 
 const db = vi.hoisted(() => ({
   session: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
+  // The password attempt limit (see login-attempts.ts)
+  $queryRaw: vi.fn(),
+  loginAttempt: { deleteMany: vi.fn() },
 }));
 vi.mock("~/server/db", () => ({ db }));
 
@@ -53,6 +56,8 @@ beforeEach(() => {
     id: SESSION.id,
     password: PASSWORD_HASH,
   });
+  db.$queryRaw.mockResolvedValue([{ failures: 1 }]);
+  db.loginAttempt.deleteMany.mockResolvedValue({ count: 1 });
 });
 
 describe("manage cookie over the client links", () => {

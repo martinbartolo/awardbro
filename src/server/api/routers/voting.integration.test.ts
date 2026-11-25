@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { testDb } from "~/test/integration/db";
-import { createShow, open, type Show } from "~/test/integration/show";
+import {
+  createShow,
+  open,
+  scoresByName,
+  type Show,
+} from "~/test/integration/show";
 import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 
 let host: Visitor;
@@ -52,7 +57,9 @@ describe("voting in a normal category", () => {
     await voteFor("Dune");
 
     expect(await votesOf(voter)).toEqual({ "normal:Dune": null });
-    expect(await voter.api.hasVoted({ categoryId: show.normal.id })).toBe(true);
+    expect(await voter.api.getMyVotes({ categoryId: show.normal.id })).toEqual([
+      { nominationId: show.film("normal", "Dune").id, rank: null },
+    ]);
   });
 
   it("replaces the voter's previous vote", async () => {
@@ -138,6 +145,30 @@ describe("ranking", () => {
       "ranking:Dune": 1,
       "ranking:Barbie": 2,
     });
+  });
+
+  it("gives the voter only their own ranking, best first", async () => {
+    await open(host, show.ranking.id);
+
+    await submit([
+      ["ranking", "Barbie", 2],
+      ["ranking", "Dune", 1],
+    ]);
+
+    expect(await voter.api.getMyVotes({ categoryId: show.ranking.id })).toEqual(
+      [
+        { nominationId: show.film("ranking", "Dune").id, rank: 1 },
+        { nominationId: show.film("ranking", "Barbie").id, rank: 2 },
+      ],
+    );
+    for (const other of [visitor(), visitor({ deviceId: null })]) {
+      expect(
+        await other.api.getMyVotes({ categoryId: show.ranking.id }),
+      ).toEqual([]);
+    }
+    expect(await voter.api.getMyVotes({ categoryId: show.normal.id })).toEqual(
+      [],
+    );
   });
 
   it("replaces the voter's whole previous ranking", async () => {
@@ -229,10 +260,7 @@ describe("scores", () => {
       slug: show.show.slug,
     });
     const scores = Object.fromEntries(
-      categories.map(c => [
-        c.name,
-        Object.fromEntries(c.nominations.map(n => [n.name, n._count.votes])),
-      ]),
+      categories.map(c => [c.name, scoresByName(c.nominations)]),
     );
 
     expect(scores).toEqual({
@@ -241,5 +269,69 @@ describe("scores", () => {
       "Top Films": { Dune: 1, Barbie: 2, Oppenheimer: 0 },
       Overall: { Dune: 3, Barbie: 2, Oppenheimer: 0 },
     });
+  });
+
+  it("are the same for an aggregate loaded on its own", async () => {
+    await open(host, show.normal.id);
+    await voteFor("Dune");
+    await open(host, show.ranking.id);
+    await rank("Barbie", "Dune");
+    const expected = { Dune: 2, Barbie: 2, Oppenheimer: 0 };
+
+    const category = await visitor().api.getCategory({ id: show.aggregate.id });
+    await open(host, show.aggregate.id);
+    const { categories } = await visitor().api.getSessionBySlug({
+      slug: show.show.slug,
+      activeOnly: true,
+    });
+
+    expect(scoresByName(category.nominations)).toEqual(expected);
+    expect(categories.map(c => scoresByName(c.nominations))).toEqual([
+      expected,
+    ]);
+  });
+
+  it("take a fixed number of database operations, however many aggregates there are", async () => {
+    let operations = 0;
+    const counting = testDb.$extends({
+      query: {
+        $allOperations: ({ args, query }) => {
+          operations++;
+          return query(args);
+        },
+      },
+    }) as unknown as typeof testDb;
+    const countOperations = async (
+      call: (api: Visitor["api"]) => Promise<unknown>,
+    ) => {
+      operations = 0;
+      await call(visitor({ db: counting }).api);
+      return operations;
+    };
+    for (const name of ["Overall 2", "Overall 3"]) {
+      await show.addCategory({
+        name,
+        type: "AGGREGATE",
+        sourceCategories: [show.normal.id, show.ranking.id],
+      });
+    }
+    await open(host, show.aggregate.id);
+
+    // The show with its categories, and its password to check access (in parallel);
+    // aggregates are scored from sources loaded with the show
+    expect(
+      await countOperations(api =>
+        api.getSessionBySlug({ slug: show.show.slug }),
+      ),
+    ).toBe(2);
+    // Only the active aggregate is loaded, so its sources' nominations take one more
+    expect(
+      await countOperations(api =>
+        api.getSessionBySlug({ slug: show.show.slug, activeOnly: true }),
+      ),
+    ).toBe(3);
+    expect(
+      await countOperations(api => api.getCategory({ id: show.aggregate.id })),
+    ).toBe(2);
   });
 });

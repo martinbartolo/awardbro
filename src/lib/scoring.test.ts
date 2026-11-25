@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { estimateVoters, scoreNomination } from "./scoring";
+import {
+  estimateVoters,
+  getScoreLabel,
+  publicScores,
+  type RevealOptions,
+  scoreNomination,
+} from "./scoring";
 
 const normal = { type: "NORMAL", rankingTop: null } as const;
 const image = { type: "IMAGE", rankingTop: null } as const;
@@ -124,5 +130,97 @@ describe("estimateVoters", () => {
 
   it("counts nothing for a category without nominations", () => {
     expect(estimateVoters(topThree, [])).toBe(0);
+  });
+});
+
+describe("getScoreLabel", () => {
+  it.each([
+    ["NORMAL", 1, "vote"],
+    ["NORMAL", 0, "votes"],
+    ["IMAGE", 2, "votes"],
+    ["RANKING", 1, "point"],
+    ["RANKING", 12, "points"],
+  ] as const)("labels %s with %i as %s", (type, count, label) => {
+    expect(
+      getScoreLabel({ type, rankingTop: 3, sourceCategories: [] }, count),
+    ).toBe(label);
+  });
+
+  // Matches scoreNomination, which counts plain votes for a ranking category without a top N
+  it("labels a ranking category without a top N as votes", () => {
+    expect(
+      getScoreLabel(
+        { type: "RANKING", rankingTop: null, sourceCategories: [] },
+        2,
+      ),
+    ).toBe("votes");
+  });
+
+  it.each([
+    ["only normal and image sources", ["NORMAL", "IMAGE"], 5, "votes"],
+    ["a ranking source", ["NORMAL", "RANKING"], 3, "points"],
+    ["a ranking source, with 1", ["RANKING"], 1, "point"],
+  ] as const)("labels an aggregate with %s", (_, sources, count, label) => {
+    const sourceCategories = sources.map(type => ({ type, rankingTop: 3 }));
+    expect(
+      getScoreLabel(
+        { type: "AGGREGATE", rankingTop: null, sourceCategories },
+        count,
+      ),
+    ).toBe(label);
+  });
+});
+
+describe("publicScores", () => {
+  const scored = (...scores: number[]) =>
+    scores.map((votes, i) => ({ id: `n${i}`, _count: { votes } }));
+  const shown = (options: Partial<RevealOptions>, ...scores: number[]) =>
+    publicScores(
+      {
+        revealed: true,
+        winnerOnly: false,
+        hideVoteCounts: false,
+        ...options,
+      },
+      scored(...scores),
+    ).map(n => n._count.votes);
+
+  it("shows nothing before the reveal", () => {
+    expect(shown({ revealed: false }, 5, 3, 0)).toEqual([0, 0, 0]);
+  });
+
+  it("shows every score after the reveal", () => {
+    expect(shown({}, 5, 3, 0)).toEqual([5, 3, 0]);
+  });
+
+  it("shows only the winners' scores with winnerOnly, ties included", () => {
+    expect(shown({ winnerOnly: true }, 5, 3, 5, 0)).toEqual([5, 0, 5, 0]);
+  });
+
+  it("shows only the order with hideVoteCounts, keeping ties and no votes", () => {
+    expect(shown({ hideVoteCounts: true }, 12, 3, 12, 0, 7)).toEqual([
+      3, 1, 3, 0, 2,
+    ]);
+  });
+
+  it("combines winnerOnly and hideVoteCounts", () => {
+    expect(
+      shown({ winnerOnly: true, hideVoteCounts: true }, 12, 3, 12, 7),
+    ).toEqual([1, 0, 1, 0]);
+  });
+
+  it("shows no winner when nobody voted", () => {
+    expect(shown({ winnerOnly: true, hideVoteCounts: true }, 0, 0)).toEqual([
+      0, 0,
+    ]);
+  });
+
+  it("keeps the other fields", () => {
+    expect(
+      publicScores(
+        { revealed: false, winnerOnly: false, hideVoteCounts: false },
+        [{ id: "a", name: "Dune", _count: { votes: 4 } }],
+      ),
+    ).toEqual([{ id: "a", name: "Dune", _count: { votes: 0 } }]);
   });
 });

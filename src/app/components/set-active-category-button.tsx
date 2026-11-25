@@ -5,9 +5,9 @@ import { useTransition } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Ban, Presentation } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
 
 export function SetActiveCategoryButton({
@@ -23,14 +23,13 @@ export function SetActiveCategoryButton({
   const [isRefreshing, startRefresh] = useTransition();
 
   const trpc = useTRPC();
+  const onManageError = useManageErrorHandler();
   const setActive = useMutation(
     trpc.award.setActiveCategory.mutationOptions({
       onSuccess: () => {
         startRefresh(() => router.refresh());
       },
-      onError: error => {
-        toast.error(error.message || "Error updating category status");
-      },
+      onError: onManageError(),
     }),
   );
   const isUpdating = setActive.isPending || isRefreshing;

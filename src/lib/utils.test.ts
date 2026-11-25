@@ -1,19 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getOrdinal, getScoreLabel, isSameRanking } from "./utils";
-
-describe("getScoreLabel", () => {
-  it.each([
-    ["NORMAL", 1, "vote"],
-    ["NORMAL", 0, "votes"],
-    ["IMAGE", 2, "votes"],
-    ["AGGREGATE", 5, "votes"],
-    ["RANKING", 1, "point"],
-    ["RANKING", 12, "points"],
-  ] as const)("labels %s with %i as %s", (type, count, label) => {
-    expect(getScoreLabel(type, count)).toBe(label);
-  });
-});
+import { getOrdinal, isSameRanking } from "./utils";
 
 describe("getOrdinal", () => {
   it.each([

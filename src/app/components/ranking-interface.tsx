@@ -2,19 +2,28 @@
 
 import { useMemo, useState } from "react";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
 import { cn, getOrdinal, isSameRanking } from "~/lib/utils";
-import { useTRPC } from "~/trpc/react";
+import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
 
 type Ranking = {
   nominationId: string;
   rank: number;
+};
+
+export type MyVotes = RouterOutputs["award"]["getMyVotes"];
+
+/** The voter's saved vote or ranking, owned by `LiveVotingSession` */
+export type MyVotesProps = {
+  myVotes: MyVotes | undefined;
+  /** Reloads `myVotes`, resolving to the reloaded data (undefined on failure) */
+  refetchMyVotes: () => Promise<MyVotes | undefined>;
 };
 
 type Nomination = {
@@ -27,23 +36,16 @@ export function RankingInterface({
   nominations,
   categoryId,
   rankingTop,
+  myVotes: currentRankings,
+  refetchMyVotes,
 }: {
   nominations: Nomination[];
   categoryId: string;
   rankingTop: number;
-}) {
+} & MyVotesProps) {
   // Track user modifications separately - null means use server data
   const [userRankings, setUserRankings] = useState<Ranking[] | null>(null);
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-
-  // Get existing rankings
-  const { data: currentRankings } = useQuery(
-    trpc.award.getCurrentRankings.queryOptions(
-      { categoryId },
-      { refetchInterval: 5000 },
-    ),
-  );
 
   // Derive rankings from server data or user modifications
   const rankings = useMemo(() => {
@@ -52,16 +54,13 @@ export function RankingInterface({
       return userRankings;
     }
     // Otherwise derive from server data
-    if (currentRankings && currentRankings.length > 0) {
-      return currentRankings
-        .filter(v => v.rank !== null)
-        .map(v => ({
-          nominationId: v.nominationId,
-          rank: v.rank!,
-        }))
-        .sort((a, b) => a.rank - b.rank);
-    }
-    return [];
+    return (currentRankings ?? [])
+      .filter(v => v.rank !== null)
+      .map(v => ({
+        nominationId: v.nominationId,
+        rank: v.rank!,
+      }))
+      .sort((a, b) => a.rank - b.rank);
   }, [currentRankings, userRankings]);
 
   const setRankings = (newRankings: Ranking[]) => {
@@ -72,18 +71,10 @@ export function RankingInterface({
     trpc.award.submitRanking.mutationOptions({
       onSuccess: async (_data, { rankings: submitted }) => {
         toast.success("Rankings submitted successfully!");
-        void queryClient.invalidateQueries(
-          trpc.award.hasVoted.queryFilter({ categoryId }),
-        );
         // Load the submitted ranking before dropping the local one, so the
-        // form never looks empty in between (the queries only poll every 5 s).
+        // form never looks empty in between (the query only polls every 5 s).
         // If loading it fails, keep the local ranking until the next poll.
-        await queryClient.invalidateQueries(
-          trpc.award.getCurrentRankings.queryFilter({ categoryId }),
-        );
-        const saved = queryClient.getQueryData(
-          trpc.award.getCurrentRankings.queryKey({ categoryId }),
-        );
+        const saved = await refetchMyVotes();
         if (saved && isSameRanking(saved, submitted)) setUserRankings(null);
       },
       onError: error => {
@@ -133,7 +124,7 @@ export function RankingInterface({
     return { rank: i + 1, nomination };
   });
 
-  const hasExistingRankings = currentRankings && currentRankings.length > 0;
+  const hasExistingRankings = !!currentRankings?.length;
 
   return (
     <div className="space-y-6">
@@ -170,7 +161,15 @@ export function RankingInterface({
               </span>
               {slot.nomination ? (
                 <div className="flex flex-1 items-center justify-between gap-2">
-                  <span className="font-medium">{slot.nomination.name}</span>
+                  {/* The description tells apart nominations with the same name */}
+                  <div className="min-w-0">
+                    <span className="font-medium">{slot.nomination.name}</span>
+                    <NominationDescription
+                      description={slot.nomination.description ?? null}
+                      className="text-muted-foreground line-clamp-1 text-xs"
+                      imageClassName="relative mt-1 h-10 w-16"
+                    />
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"

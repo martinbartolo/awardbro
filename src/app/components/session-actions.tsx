@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
 
 type SessionActionsProps = {
@@ -29,15 +30,14 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
   const router = useRouter();
 
   const trpc = useTRPC();
+  const onManageError = useManageErrorHandler();
   const deleteSession = useMutation(
     trpc.award.deleteSession.mutationOptions({
       onSuccess: () => {
         router.push("/");
         toast.success("Award show deleted successfully");
       },
-      onError: () => {
-        toast.error("Failed to delete award show");
-      },
+      onError: onManageError("Failed to delete award show"),
     }),
   );
 
@@ -47,9 +47,7 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
         router.refresh();
         toast.success("All votes have been reset");
       },
-      onError: () => {
-        toast.error("Failed to reset votes");
-      },
+      onError: onManageError("Failed to reset votes"),
     }),
   );
 

@@ -6,6 +6,16 @@ import { CategoryType } from "~/generated/prisma/enums";
 const categoryTypeValues = Object.values(CategoryType) as [string, ...string[]];
 export const categoryTypeEnum = z.enum(categoryTypeValues);
 
+/** bcrypt ignores everything after the first 72 bytes of a password */
+const MAX_PASSWORD_BYTES = 72;
+
+/**
+ * The form of a password that is hashed and checked. The same accented letter can arrive as one
+ * code point or as a letter plus a combining accent, depending on the keyboard.
+ */
+export const normalizePassword = (password: string) =>
+  password.normalize("NFC");
+
 // Reuse the exact schemas from award.ts
 export const sessionFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
@@ -23,8 +33,22 @@ export const sessionFormSchema = z.object({
     .or(
       z
         .string()
-        .min(4, "Password must be at least 4 characters")
-        .max(100, "Password is too long"),
+        // Counts characters, not UTF-16 code units, so two emoji aren't enough
+        .refine(
+          password => [...password].length >= 4,
+          "Password must be at least 4 characters",
+        )
+        // Also rejects a password of only spaces, which would look like no password at all
+        .refine(
+          password => password.trim() === password,
+          "Password can't start or end with a space or line break",
+        )
+        .refine(
+          password =>
+            new TextEncoder().encode(normalizePassword(password)).length <=
+            MAX_PASSWORD_BYTES,
+          `Password is too long: use at most ${MAX_PASSWORD_BYTES} characters (fewer with accents or emoji)`,
+        ),
     )
     .optional(),
 });
@@ -66,8 +90,13 @@ export const categoryFormSchema = z
 
 export const nominationFormSchema = z.object({
   categoryId: z.string().min(1, "Category ID is required"),
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  description: z.string().max(500, "Description is too long").optional(),
+  // Trimmed, so "Dune " and "Dune" are the same name
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name is too long"),
+  description: z.string().trim().max(500, "Description is too long").optional(),
 });
 
 export const rankingSubmissionSchema = z.object({

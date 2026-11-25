@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -12,14 +12,19 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
+import { type MyVotes } from "./ranking-interface";
 import { VotingInterface } from "./voting-interface";
 
 type Session = RouterOutputs["award"]["getSessionBySlug"];
 
 type LiveVotingSessionProps = {
   initialSession: Session;
+  /** The voter's votes in the category that was active when the page was rendered */
+  initialMyVotes?: {
+    categoryId: string;
+    votes: MyVotes;
+  };
   slug: string;
-  initialHasVoted: boolean;
 };
 
 const containerVariants = {
@@ -38,10 +43,11 @@ const containerVariants = {
 
 export function LiveVotingSession({
   initialSession,
+  initialMyVotes,
   slug,
-  initialHasVoted,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const {
     data: session,
     error: sessionError,
@@ -59,21 +65,52 @@ export function LiveVotingSession({
 
   const activeCategory = session.categories[0];
 
+  // The server-rendered votes only describe the first category shown. Drop
+  // them once the host moves on, so a category reopened later (and maybe
+  // reset meanwhile) never starts from them.
+  const [initialVotes, setInitialVotes] = useState(initialMyVotes);
+  if (initialVotes && initialVotes.categoryId !== activeCategory?.id) {
+    setInitialVotes(undefined);
+  }
+
+  // The voter's own vote (or ranking) in the active category. Its key includes
+  // the category, so the "already voted" banner never shows another
+  // category's answer while the next one loads. Only the active category's
+  // votes are cached (gcTime: 0): a category the host reopens may have been
+  // reset in the meantime. Always reloaded on mount (staleTime: 0): back and
+  // forward navigation can restore server-rendered votes that are out of date.
+  const myVotesOptions = trpc.award.getMyVotes.queryOptions(
+    { categoryId: activeCategory?.id ?? "" },
+    {
+      refetchInterval: 5000,
+      retry: 3,
+      gcTime: 0,
+      staleTime: 0,
+      // Checked here too: the render that drops them still runs with them
+      initialData:
+        initialVotes?.categoryId === activeCategory?.id
+          ? initialVotes?.votes
+          : undefined,
+      enabled: !!activeCategory && activeCategory.type !== "AGGREGATE",
+    },
+  );
   const {
-    data: hasVoted = initialHasVoted,
+    data: myVotes,
     error: voteError,
     isError: isVoteError,
-  } = useQuery(
-    trpc.award.hasVoted.queryOptions(
-      { categoryId: activeCategory?.id ?? "" },
-      {
-        refetchInterval: 5000,
-        initialData: initialHasVoted,
-        retry: 3,
-        enabled: !!activeCategory,
-      },
-    ),
-  );
+  } = useQuery(myVotesOptions);
+  const hasVoted = !!myVotes?.length;
+  // Bound to this render's category, so a vote that completes after the host
+  // has moved on reloads the category it was cast in. A poll already in flight
+  // may have started before the vote was saved, so it's cancelled rather than
+  // reused. Undefined if it fails.
+  const refetchMyVotes = async () => {
+    await queryClient.cancelQueries({
+      queryKey: myVotesOptions.queryKey,
+      exact: true,
+    });
+    return queryClient.fetchQuery(myVotesOptions).catch(() => undefined);
+  };
 
   useEffect(() => {
     if (isSessionError) {
@@ -193,6 +230,8 @@ export function LiveVotingSession({
                   categoryId={activeCategory.id}
                   categoryType={activeCategory.type}
                   rankingTop={activeCategory.rankingTop}
+                  myVotes={myVotes}
+                  refetchMyVotes={refetchMyVotes}
                 />
               </CardContent>
             </Card>

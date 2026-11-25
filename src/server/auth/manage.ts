@@ -47,7 +47,7 @@ export const assertCanManage = async (
     throw new TRPCError({ code: "NOT_FOUND", message: "Award show not found" });
   }
 
-  if (!canManage(session, name => getCookie(ctx.headers, name))) {
+  if (!isHost(ctx, session)) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "Enter the management password to make changes",
@@ -56,6 +56,12 @@ export const assertCanManage = async (
 
   return session;
 };
+
+/** Whether the request comes from someone who can manage this show (without throwing) */
+export const isHost = (
+  ctx: { headers: Headers },
+  session: { id: string; password: string | null },
+) => canManage(session, name => getCookie(ctx.headers, name));
 
 /** For Server Components: can the current visitor manage the show with this slug? */
 export const hasManageAccess = async (slug: string) => {

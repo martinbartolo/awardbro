@@ -6,12 +6,26 @@ import { type CategoryType, Prisma } from "~/generated/prisma/client";
 import {
   categoryFormSchema,
   nominationFormSchema,
+  normalizePassword,
   rankingSubmissionSchema,
   sessionFormSchema,
 } from "~/lib/schemas";
-import { scoreNomination } from "~/lib/scoring";
+import {
+  estimateVoters,
+  publicScores,
+  type RevealOptions,
+  type ScoredCategory,
+  type ScoredNomination,
+  scoreNomination,
+  type SourceNomination,
+} from "~/lib/scoring";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { assertCanManage } from "~/server/auth/manage";
+import {
+  clearLoginAttempts,
+  countLoginAttempt,
+  loginClient,
+} from "~/server/auth/login-attempts";
+import { assertCanManage, isHost } from "~/server/auth/manage";
 import { setManageCookie } from "~/server/auth/manage-token";
 import { DEVICE_ID_COOKIE, getCookie } from "~/server/cookies";
 import { type db } from "~/server/db";
@@ -26,103 +40,130 @@ const scoringFields = {
 } as const;
 
 /**
- * A category's nominations with their scores in `_count.votes` (votes, or points in ranking and
- * aggregate categories), and without their votes, so individual votes are never sent.
+ * What a category reveals to someone who can't manage the show. An aggregate is made of its
+ * sources' scores, so it reveals no more than they do: nothing until every source is revealed,
+ * only the order if any source hides its counts or shows only its winner, and only its winners
+ * if any source shows only its winner. Otherwise its own
+ * totals minus one source's would give another source's hidden scores.
  */
-const withScores = async <
-  N extends {
-    name: string;
-    _count: { votes: number };
-    votes: { rank: number | null }[];
-  },
->(
-  client: typeof db,
-  category: {
+const revealOptions = (
+  category: RevealOptions & {
     type: CategoryType;
-    rankingTop: number | null;
-    sourceCategories: { id: string }[];
-    nominations: N[];
+    sourceCategories: RevealOptions[];
   },
-) => {
-  const sourceNominations =
-    category.type === "AGGREGATE"
-      ? await client.nomination.findMany({
-          where: {
-            name: { in: category.nominations.map(n => n.name) },
-            categoryId: { in: category.sourceCategories.map(c => c.id) },
-          },
-          select: {
-            name: true,
-            ...scoringFields,
-            category: { select: { type: true, rankingTop: true } },
-          },
-        })
-      : [];
+): RevealOptions =>
+  category.type !== "AGGREGATE"
+    ? category
+    : {
+        revealed:
+          category.revealed &&
+          category.sourceCategories.every(source => source.revealed),
+        winnerOnly:
+          category.winnerOnly ||
+          category.sourceCategories.some(source => source.winnerOnly),
+        hideVoteCounts:
+          category.hideVoteCounts ||
+          category.sourceCategories.some(
+            source => source.hideVoteCounts || source.winnerOnly,
+          ),
+      };
 
-  return category.nominations.map(({ votes, ...nomination }) => ({
-    ...nomination,
-    _count: {
-      votes: scoreNomination(
-        category,
-        { ...nomination, votes },
-        sourceNominations,
-      ),
-    },
-  }));
+/** A category as loaded for scoring, with its sources when it's an aggregate */
+type ScorableCategory = ScoredCategory &
+  RevealOptions & {
+    id: string;
+    sourceCategories: (ScoredCategory & RevealOptions & { id: string })[];
+    nominations: ScoredNomination[];
+  };
+
+/**
+ * The categories, with each nomination's score in `_count.votes` (votes, or points in ranking and
+ * aggregate categories) and without its votes, so individual votes are never sent.
+ *
+ * With `canSeeAllScores` (hosts) every score is sent; otherwise only what the show reveals
+ * (`publicScores` with `revealOptions`).
+ *
+ * An aggregate is scored from its sources' nominations. Sources among `categories` are used as
+ * loaded; any others are loaded in one query for all aggregates. So scoring a whole show costs no
+ * extra queries, and scoring one aggregate at most one.
+ */
+const withScores = async <C extends ScorableCategory>(
+  client: typeof db,
+  categories: C[],
+  canSeeAllScores: boolean,
+) => {
+  /** Each category's nominations, by category ID */
+  const nominationsOf = new Map<string, ScoredNomination[]>(
+    categories.map(category => [category.id, category.nominations]),
+  );
+  const aggregates = categories.filter(c => c.type === "AGGREGATE");
+  const missingSourceIds = [
+    ...new Set(
+      aggregates.flatMap(a => a.sourceCategories.map(source => source.id)),
+    ),
+  ].filter(id => !nominationsOf.has(id));
+  const names = [
+    ...new Set(aggregates.flatMap(a => a.nominations.map(n => n.name))),
+  ];
+  if (missingSourceIds.length && names.length) {
+    const fetched = await client.nomination.findMany({
+      where: { categoryId: { in: missingSourceIds }, name: { in: names } },
+      select: { categoryId: true, name: true, ...scoringFields },
+    });
+    for (const nomination of fetched) {
+      const list = nominationsOf.get(nomination.categoryId);
+      if (list) list.push(nomination);
+      else nominationsOf.set(nomination.categoryId, [nomination]);
+    }
+  }
+
+  /** An aggregate's source nominations, with the source each is in, grouped by name */
+  const sourcesByName = (category: C) => {
+    const byName = new Map<string, SourceNomination[]>();
+    for (const source of category.sourceCategories) {
+      for (const nomination of nominationsOf.get(source.id) ?? []) {
+        const withSource = { ...nomination, category: source };
+        const list = byName.get(nomination.name);
+        if (list) list.push(withSource);
+        else byName.set(nomination.name, [withSource]);
+      }
+    }
+    return byName;
+  };
+
+  return categories.map(category => {
+    const sources =
+      category.type === "AGGREGATE" ? sourcesByName(category) : undefined;
+    const nominations = category.nominations.map(
+      ({ votes, ...nomination }: C["nominations"][number]) => ({
+        ...nomination,
+        _count: {
+          votes: scoreNomination(
+            category,
+            { ...nomination, votes },
+            sources?.get(nomination.name),
+          ),
+        },
+      }),
+    );
+    return {
+      ...category,
+      nominations: canSeeAllScores
+        ? nominations
+        : publicScores(revealOptions(category), nominations),
+      // The present page's live count while voting is open, so public until the reveal. After
+      // it, the total next to masked scores would give hidden ones away (a loser's score is
+      // the total minus the winner's), so only hosts get it. An aggregate's would mix votes and
+      // points, so it has none.
+      estimatedVoters:
+        category.type === "AGGREGATE" || (!canSeeAllScores && category.revealed)
+          ? null
+          : estimateVoters(category, nominations),
+    };
+  });
 };
 
 const SALT_ROUNDS = 10;
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
-
-// Store failed attempts in memory (in production, use Redis or similar)
-const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
-
-const checkRateLimit = (identifier: string) => {
-  const now = Date.now();
-  const attempts = loginAttempts.get(identifier);
-
-  if (attempts) {
-    // Reset if lockout time has passed
-    if (now - attempts.lastAttempt > LOCKOUT_TIME) {
-      loginAttempts.delete(identifier);
-      return;
-    }
-
-    if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-      const timeLeft = Math.ceil(
-        (LOCKOUT_TIME - (now - attempts.lastAttempt)) / 1000 / 60,
-      );
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message: `Too many attempts. Please try again in ${timeLeft} minutes`,
-      });
-    }
-  }
-};
-
-const recordLoginAttempt = (identifier: string, success: boolean) => {
-  const now = Date.now();
-  const attempts = loginAttempts.get(identifier);
-
-  if (success) {
-    loginAttempts.delete(identifier);
-    return;
-  }
-
-  if (attempts) {
-    loginAttempts.set(identifier, {
-      count: attempts.count + 1,
-      lastAttempt: now,
-    });
-  } else {
-    loginAttempts.set(identifier, {
-      count: 1,
-      lastAttempt: now,
-    });
-  }
-};
-
 /*
  * Each show has an advisory lock that keeps votes and host actions apart.
  * Saving a vote takes it shared, so voters don't block each other. Host
@@ -239,7 +280,10 @@ export const awardRouter = createTRPCRouter({
             name: input.name,
             slug: input.slug,
             password: input.password
-              ? await bcrypt.hash(input.password, SALT_ROUNDS)
+              ? await bcrypt.hash(
+                  normalizePassword(input.password),
+                  SALT_ROUNDS,
+                )
               : null,
           },
           select: { id: true, name: true, slug: true },
@@ -271,29 +315,36 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const session = await ctx.db.session.findUnique({
-        where: { slug: input.slug },
-        // Never send the password hash to the client
-        omit: { password: true },
-        include: {
-          categories: {
-            where: input.activeOnly ? { isActive: true } : undefined,
-            orderBy: { createdAt: "asc" },
-            include: {
-              nominations: {
-                orderBy: { createdAt: "asc" },
-                include: scoringFields,
-              },
-              sourceCategories: true,
-              aggregateOf: {
-                select: { id: true, name: true },
+      const [session, access] = await Promise.all([
+        ctx.db.session.findUnique({
+          where: { slug: input.slug },
+          // Never send the password hash to the client
+          omit: { password: true },
+          include: {
+            categories: {
+              where: input.activeOnly ? { isActive: true } : undefined,
+              orderBy: { createdAt: "asc" },
+              include: {
+                nominations: {
+                  orderBy: { createdAt: "asc" },
+                  include: scoringFields,
+                },
+                sourceCategories: true,
+                aggregateOf: {
+                  select: { id: true, name: true },
+                },
               },
             },
           },
-        },
-      });
+        }),
+        // Only to check access; never sent to the client
+        ctx.db.session.findUnique({
+          where: { slug: input.slug },
+          select: { id: true, password: true },
+        }),
+      ]);
 
-      if (!session) {
+      if (!session || !access) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Session not found",
@@ -302,11 +353,10 @@ export const awardRouter = createTRPCRouter({
 
       return {
         ...session,
-        categories: await Promise.all(
-          session.categories.map(async category => ({
-            ...category,
-            nominations: await withScores(ctx.db, category),
-          })),
+        categories: await withScores(
+          ctx.db,
+          session.categories,
+          isHost(ctx, access),
         ),
       };
     }),
@@ -370,11 +420,13 @@ export const awardRouter = createTRPCRouter({
               },
             });
 
-            // An aggregate starts with a copy of its sources' nominations, one per name
+            // An aggregate starts with a copy of its sources' nominations, one per name. A name
+            // can appear more than once; the first one added gives the copy its description.
             if (sourceIds.length) {
               const sourceNominations = await tx.nomination.findMany({
                 where: { categoryId: { in: sourceIds } },
                 distinct: ["name"],
+                orderBy: [{ name: "asc" }, { createdAt: "asc" }],
                 select: { name: true, description: true },
               });
               await tx.nomination.createMany({
@@ -403,25 +455,30 @@ export const awardRouter = createTRPCRouter({
   getCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const category = await ctx.db.category.findUnique({
+      const found = await ctx.db.category.findUnique({
         where: { id: input.id },
         include: {
           nominations: { include: scoringFields },
           sourceCategories: true,
+          // Only to check access; never sent to the client
+          session: { select: { id: true, password: true } },
         },
       });
 
-      if (!category) {
+      if (!found) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Category not found",
         });
       }
 
-      return {
-        ...category,
-        nominations: await withScores(ctx.db, category),
-      };
+      const { session, ...category } = found;
+      const [scored] = await withScores(
+        ctx.db,
+        [category],
+        isHost(ctx, session),
+      );
+      return scored!;
     }),
 
   toggleRevealCategory: publicProcedure
@@ -516,6 +573,38 @@ export const awardRouter = createTRPCRouter({
               throw new TRPCError({
                 code: "NOT_FOUND",
                 message: "Category not found",
+              });
+            }
+            if (category.type === "AGGREGATE") {
+              // Its nominations are copied from its sources
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Add nominations to the source categories instead",
+              });
+            }
+
+            // The same name and description twice is an accidental double-add. The same name with
+            // a different description (or image) is allowed: hosts use it on purpose. Names are
+            // compared ignoring case, which is stricter than aggregates (they match exact names).
+            // Compared here rather than in SQL: older rows may have untrimmed text.
+            const existing = await tx.nomination.findMany({
+              where: { categoryId: input.categoryId },
+              select: { name: true, description: true },
+            });
+            const sameName = existing.filter(
+              n => n.name.trim().toLowerCase() === input.name.toLowerCase(),
+            );
+            const description = input.description ?? "";
+            if (
+              sameName.some(n => (n.description ?? "").trim() === description)
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: !description
+                  ? `"${input.name}" is already in this category`
+                  : category.type === "IMAGE"
+                    ? `"${input.name}" with this image is already in this category`
+                    : `"${input.name}" with this description is already in this category`,
               });
             }
 
@@ -815,7 +904,11 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
-  getCurrentRankings: publicProcedure
+  /**
+   * This device's votes in a category: at most one in a normal or image
+   * category, the whole ranking (best first) in a ranking category.
+   */
+  getMyVotes: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .query(async ({ ctx, input }) => {
       const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
@@ -824,67 +917,16 @@ export const awardRouter = createTRPCRouter({
         return [];
       }
 
-      const votes = await ctx.db.vote.findMany({
+      return ctx.db.vote.findMany({
         where: {
-          deviceId: deviceId,
+          deviceId,
           nomination: {
             categoryId: input.categoryId,
           },
         },
-        include: {
-          nomination: true,
-        },
-        orderBy: {
-          rank: "asc",
-        },
+        select: { nominationId: true, rank: true },
+        orderBy: { rank: "asc" },
       });
-
-      return votes;
-    }),
-
-  getCurrentVote: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
-
-      if (!deviceId) {
-        return null;
-      }
-
-      const vote = await ctx.db.vote.findFirst({
-        where: {
-          deviceId: deviceId,
-          nomination: {
-            categoryId: input.categoryId,
-          },
-        },
-        include: {
-          nomination: true,
-        },
-      });
-
-      return vote;
-    }),
-
-  hasVoted: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
-
-      if (!deviceId) {
-        return false;
-      }
-
-      const vote = await ctx.db.vote.findFirst({
-        where: {
-          deviceId: deviceId,
-          nomination: {
-            categoryId: input.categoryId,
-          },
-        },
-      });
-
-      return !!vote;
     }),
 
   deleteNomination: publicProcedure
@@ -1020,20 +1062,17 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         slug: z.string(),
-        password: z.string(),
+        // Shows created before BAR-49 allowed up to 100 characters; this only stops huge inputs
+        password: z.string().max(1000, "Invalid password"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Check rate limit before proceeding
-      checkRateLimit(input.slug);
-
       const session = await ctx.db.session.findUnique({
         where: { slug: input.slug },
         select: { id: true, password: true },
       });
 
       if (!session) {
-        recordLoginAttempt(input.slug, false);
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Session not found",
@@ -1042,13 +1081,24 @@ export const awardRouter = createTRPCRouter({
 
       // If no password is set, allow access
       if (!session.password) {
-        recordLoginAttempt(input.slug, true);
         return { success: true };
       }
 
-      const isValid = await bcrypt.compare(input.password, session.password);
-      recordLoginAttempt(input.slug, isValid);
+      // Counted before the check, so parallel guesses can't get past the limit
+      await countLoginAttempt(ctx.db, session.id, loginClient(ctx.headers));
 
+      // Passwords are stored normalized and without surrounding spaces, so a stray space from a
+      // phone keyboard doesn't matter. Shows created before that are also checked as typed.
+      let isValid = false;
+      for (const candidate of new Set([
+        normalizePassword(input.password).trim(),
+        input.password,
+      ])) {
+        if (await bcrypt.compare(candidate, session.password)) {
+          isValid = true;
+          break;
+        }
+      }
       if (!isValid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -1056,6 +1106,7 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
+      await clearLoginAttempts(ctx.db, session.id);
       setManageCookie(ctx.resHeaders, session.id);
       return { success: true };
     }),

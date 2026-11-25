@@ -64,19 +64,23 @@ export default async function VotePage({
     slug,
     activeOnly: true,
   });
-
-  // Since we're using activeOnly, we know there's at most one category
+  // The voter's own votes in the active category, so a voter who has voted
+  // sees it straight away instead of an empty form
   const activeCategory = session.categories[0];
-  const hasVoted = activeCategory
-    ? await api.award.hasVoted({ categoryId: activeCategory.id })
-    : false;
+  const initialMyVotes =
+    activeCategory && activeCategory.type !== "AGGREGATE"
+      ? {
+          categoryId: activeCategory.id,
+          votes: await api.award.getMyVotes({ categoryId: activeCategory.id }),
+        }
+      : undefined;
 
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
       <LiveVotingSession
         initialSession={session}
+        initialMyVotes={initialMyVotes}
         slug={slug}
-        initialHasVoted={hasVoted}
       />
     </main>
   );
