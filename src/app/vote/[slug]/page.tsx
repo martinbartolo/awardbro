@@ -65,19 +65,9 @@ export default async function VotePage({
     activeOnly: true,
   });
 
-  // Since we're using activeOnly, we know there's at most one category
-  const activeCategory = session.categories[0];
-  const hasVoted = activeCategory
-    ? await api.award.hasVoted({ categoryId: activeCategory.id })
-    : false;
-
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
-      <LiveVotingSession
-        initialSession={session}
-        slug={slug}
-        initialHasVoted={hasVoted}
-      />
+      <LiveVotingSession initialSession={session} slug={slug} />
     </main>
   );
 }

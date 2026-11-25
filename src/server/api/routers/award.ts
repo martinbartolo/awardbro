@@ -815,7 +815,11 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
-  getCurrentRankings: publicProcedure
+  /**
+   * This device's votes in a category: at most one in a normal or image
+   * category, the whole ranking (best first) in a ranking category.
+   */
+  getMyVotes: publicProcedure
     .input(z.object({ categoryId: z.string() }))
     .query(async ({ ctx, input }) => {
       const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
@@ -824,67 +828,16 @@ export const awardRouter = createTRPCRouter({
         return [];
       }
 
-      const votes = await ctx.db.vote.findMany({
+      return ctx.db.vote.findMany({
         where: {
-          deviceId: deviceId,
+          deviceId,
           nomination: {
             categoryId: input.categoryId,
           },
         },
-        include: {
-          nomination: true,
-        },
-        orderBy: {
-          rank: "asc",
-        },
+        select: { nominationId: true, rank: true },
+        orderBy: { rank: "asc" },
       });
-
-      return votes;
-    }),
-
-  getCurrentVote: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
-
-      if (!deviceId) {
-        return null;
-      }
-
-      const vote = await ctx.db.vote.findFirst({
-        where: {
-          deviceId: deviceId,
-          nomination: {
-            categoryId: input.categoryId,
-          },
-        },
-        include: {
-          nomination: true,
-        },
-      });
-
-      return vote;
-    }),
-
-  hasVoted: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const deviceId = getCookie(ctx.headers, DEVICE_ID_COOKIE);
-
-      if (!deviceId) {
-        return false;
-      }
-
-      const vote = await ctx.db.vote.findFirst({
-        where: {
-          deviceId: deviceId,
-          nomination: {
-            categoryId: input.categoryId,
-          },
-        },
-      });
-
-      return !!vote;
     }),
 
   deleteNomination: publicProcedure

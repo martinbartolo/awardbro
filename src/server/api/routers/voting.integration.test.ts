@@ -52,7 +52,9 @@ describe("voting in a normal category", () => {
     await voteFor("Dune");
 
     expect(await votesOf(voter)).toEqual({ "normal:Dune": null });
-    expect(await voter.api.hasVoted({ categoryId: show.normal.id })).toBe(true);
+    expect(await voter.api.getMyVotes({ categoryId: show.normal.id })).toEqual([
+      { nominationId: show.film("normal", "Dune").id, rank: null },
+    ]);
   });
 
   it("replaces the voter's previous vote", async () => {
@@ -138,6 +140,30 @@ describe("ranking", () => {
       "ranking:Dune": 1,
       "ranking:Barbie": 2,
     });
+  });
+
+  it("gives the voter only their own ranking, best first", async () => {
+    await open(host, show.ranking.id);
+
+    await submit([
+      ["ranking", "Barbie", 2],
+      ["ranking", "Dune", 1],
+    ]);
+
+    expect(await voter.api.getMyVotes({ categoryId: show.ranking.id })).toEqual(
+      [
+        { nominationId: show.film("ranking", "Dune").id, rank: 1 },
+        { nominationId: show.film("ranking", "Barbie").id, rank: 2 },
+      ],
+    );
+    for (const other of [visitor(), visitor({ deviceId: null })]) {
+      expect(
+        await other.api.getMyVotes({ categoryId: show.ranking.id }),
+      ).toEqual([]);
+    }
+    expect(await voter.api.getMyVotes({ categoryId: show.normal.id })).toEqual(
+      [],
+    );
   });
 
   it("replaces the voter's whole previous ranking", async () => {

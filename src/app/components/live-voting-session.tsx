@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -19,7 +19,6 @@ type Session = RouterOutputs["award"]["getSessionBySlug"];
 type LiveVotingSessionProps = {
   initialSession: Session;
   slug: string;
-  initialHasVoted: boolean;
 };
 
 const containerVariants = {
@@ -39,9 +38,9 @@ const containerVariants = {
 export function LiveVotingSession({
   initialSession,
   slug,
-  initialHasVoted,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const {
     data: session,
     error: sessionError,
@@ -59,21 +58,32 @@ export function LiveVotingSession({
 
   const activeCategory = session.categories[0];
 
+  // The voter's own vote (or ranking) in the active category. Its key includes
+  // the category, so the "already voted" banner never shows another
+  // category's answer while the next one loads. Only the active category's
+  // votes are cached (gcTime: 0): a category the host reopens may have been
+  // reset in the meantime.
+  const myVotesOptions = trpc.award.getMyVotes.queryOptions(
+    { categoryId: activeCategory?.id ?? "" },
+    {
+      refetchInterval: 5000,
+      retry: 3,
+      gcTime: 0,
+      enabled: !!activeCategory && activeCategory.type !== "AGGREGATE",
+    },
+  );
   const {
-    data: hasVoted = initialHasVoted,
+    data: myVotes,
     error: voteError,
     isError: isVoteError,
-  } = useQuery(
-    trpc.award.hasVoted.queryOptions(
-      { categoryId: activeCategory?.id ?? "" },
-      {
-        refetchInterval: 5000,
-        initialData: initialHasVoted,
-        retry: 3,
-        enabled: !!activeCategory,
-      },
-    ),
-  );
+  } = useQuery(myVotesOptions);
+  const hasVoted = !!myVotes?.length;
+  // Bound to this render's category, so a vote that completes after the host
+  // has moved on reloads the category it was cast in. Undefined if it fails.
+  const refetchMyVotes = () =>
+    queryClient
+      .fetchQuery({ ...myVotesOptions, staleTime: 0 })
+      .catch(() => undefined);
 
   useEffect(() => {
     if (isSessionError) {
@@ -193,6 +203,8 @@ export function LiveVotingSession({
                   categoryId={activeCategory.id}
                   categoryType={activeCategory.type}
                   rankingTop={activeCategory.rankingTop}
+                  myVotes={myVotes}
+                  refetchMyVotes={refetchMyVotes}
                 />
               </CardContent>
             </Card>
