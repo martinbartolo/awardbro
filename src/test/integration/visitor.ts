@@ -16,7 +16,9 @@ export function visitor({
   deviceId = randomUUID(),
   // Each visitor comes from its own address unless a test says otherwise
   ip = `10.${randomInt(256)}.${randomInt(256)}.${randomInt(256)}`,
-}: { deviceId?: string | null; ip?: string } = {}) {
+  // A test can pass a client that, for example, counts queries
+  db = testDb,
+}: { deviceId?: string | null; ip?: string; db?: typeof testDb } = {}) {
   const cookies = new Map<string, string>();
   if (deviceId) cookies.set(DEVICE_ID_COOKIE, deviceId);
 
@@ -41,7 +43,7 @@ export function visitor({
       }),
       resHeaders: new CookieJar(),
     }),
-    db: testDb,
+    db,
   })).award;
 
   return { api, cookies, deviceId };
