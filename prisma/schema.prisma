@@ -18,13 +18,26 @@ enum CategoryType {
 }
 
 model Session {
-    id         String     @id @default(cuid())
-    name       String
-    slug       String     @unique
-    password   String? // Optional password for managing the session
-    createdAt  DateTime   @default(now())
-    updatedAt  DateTime   @updatedAt
-    categories Category[]
+    id            String        @id @default(cuid())
+    name          String
+    slug          String        @unique
+    password      String? // Optional password for managing the session
+    createdAt     DateTime      @default(now())
+    updatedAt     DateTime      @updatedAt
+    categories    Category[]
+    loginAttempts LoginAttempt[]
+}
+
+// Manage password attempts for a show, so the limits hold across server instances. One row per
+// client (a keyed hash of its IP address, never the address itself), and one for the whole show.
+model LoginAttempt {
+    sessionId     String
+    session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+    client        String
+    failures      Int
+    lastFailureAt DateTime
+
+    @@id([sessionId, client])
 }
 
 model Category {

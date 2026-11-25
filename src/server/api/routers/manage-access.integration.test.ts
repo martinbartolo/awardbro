@@ -1,6 +1,11 @@
 import bcrypt from "bcryptjs";
 import { describe, expect, it } from "vitest";
 
+import {
+  CLIENT_LIMIT,
+  LOCKOUT_MS,
+  SHOW_LIMIT,
+} from "~/server/auth/login-attempts";
 import { cookieName } from "~/server/auth/manage-token";
 import { DEVICE_ID_COOKIE } from "~/server/cookies";
 import { testDb } from "~/test/integration/db";
@@ -183,6 +188,152 @@ describe("a show with a password", () => {
       "UNAUTHORIZED",
     );
     expect([...stranger.cookies.keys()]).toEqual([DEVICE_ID_COOKIE]);
+  });
+});
+
+describe("password attempts", () => {
+  /** One client guessing: every call comes from the same address */
+  const guesser = (show: Show, ip = "203.0.113.7") => {
+    const client = visitor({ ip });
+    const guess = (password = "guess") =>
+      client.api.verifyManageAccess({ slug: show.show.slug, password });
+    const guessWrong = async (times = CLIENT_LIMIT) => {
+      for (let i = 0; i < times; i++) {
+        await expectError(guess(), "UNAUTHORIZED");
+      }
+    };
+    return { guess, guessWrong };
+  };
+  const tooMany = (call: Promise<unknown>) =>
+    expectError(call, "TOO_MANY_REQUESTS");
+  const showRow = (show: Show) =>
+    testDb.loginAttempt.findUnique({
+      where: { sessionId_client: { sessionId: show.show.id, client: "show" } },
+    });
+
+  it("lock a client out after too many wrong ones, even with the right one, but not other clients", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    const stranger = guesser(show);
+
+    await stranger.guessWrong();
+
+    await tooMany(stranger.guess());
+    await tooMany(stranger.guess("secret1"));
+    await expect(
+      guesser(show, "198.51.100.1").guess("secret1"),
+    ).resolves.toEqual({ success: true });
+  });
+
+  it("can't be got past by guessing in parallel", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    const { guess } = guesser(show);
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 12 }, () => guess()),
+    );
+    const codes = results.map(result =>
+      result.status === "rejected"
+        ? (result.reason as { code: string }).code
+        : "OK",
+    );
+
+    expect(codes.filter(code => code === "UNAUTHORIZED")).toHaveLength(
+      CLIENT_LIMIT,
+    );
+    expect(codes.filter(code => code === "TOO_MANY_REQUESTS")).toHaveLength(
+      12 - CLIENT_LIMIT,
+    );
+  });
+
+  it("count towards the show's cap only until the client is locked out", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    const stranger = guesser(show);
+
+    await stranger.guessWrong();
+    await tooMany(stranger.guess());
+
+    expect((await showRow(show))?.failures).toBe(CLIENT_LIMIT);
+  });
+
+  it("lock every client out once the show's cap is reached", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    await guesser(show).guessWrong(1);
+    await testDb.loginAttempt.update({
+      where: { sessionId_client: { sessionId: show.show.id, client: "show" } },
+      data: { failures: SHOW_LIMIT },
+    });
+
+    await tooMany(guesser(show, "198.51.100.1").guess("secret1"));
+  });
+
+  it("are forgotten after the right password", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    const host = guesser(show);
+    await host.guessWrong(CLIENT_LIMIT - 1);
+
+    await host.guess("secret1");
+
+    expect(await testDb.loginAttempt.count()).toBe(0);
+    await host.guessWrong();
+    await tooMany(host.guess());
+  });
+
+  it("unlock 15 minutes after the last counted one, and don't extend the lockout meanwhile", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    const stranger = guesser(show);
+    await stranger.guessWrong();
+    const before = await testDb.loginAttempt.findMany({
+      orderBy: { client: "asc" },
+    });
+
+    await tooMany(stranger.guess());
+    expect(
+      await testDb.loginAttempt.findMany({ orderBy: { client: "asc" } }),
+    ).toEqual(before);
+
+    await testDb.loginAttempt.updateMany({
+      data: { lastFailureAt: new Date(Date.now() - LOCKOUT_MS - 60_000) },
+    });
+    await expect(stranger.guess("secret1")).resolves.toEqual({ success: true });
+  });
+
+  it("are kept per show", async () => {
+    const locked = await createShow(visitor(), { password: "secret1" });
+    const other = await createShow(visitor(), { password: "secret1" });
+    await guesser(locked).guessWrong();
+
+    await expect(guesser(other).guess("secret1")).resolves.toEqual({
+      success: true,
+    });
+  });
+
+  it("don't store the client's address", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    await guesser(show, "203.0.113.7").guessWrong(1);
+
+    const clients = (await testDb.loginAttempt.findMany()).map(
+      row => row.client,
+    );
+    expect(clients).toHaveLength(2);
+    expect(clients.join()).not.toContain("203.0.113.7");
+  });
+
+  it("are deleted with the show", async () => {
+    const show = await createShow(visitor(), { password: "secret1" });
+    await guesser(show).guessWrong(1);
+
+    await testDb.session.delete({ where: { id: show.show.id } });
+
+    expect(await testDb.loginAttempt.count()).toBe(0);
+  });
+
+  it("aren't recorded for a show that doesn't exist", async () => {
+    await expectError(
+      visitor().api.verifyManageAccess({ slug: "no-such-show", password: "x" }),
+      "NOT_FOUND",
+    );
+
+    expect(await testDb.loginAttempt.count()).toBe(0);
   });
 });
 
