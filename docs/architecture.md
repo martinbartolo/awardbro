@@ -57,7 +57,7 @@ Notes:
 
 - Creating a show, or entering its password, sets a cookie `manage_<sessionId>`. It holds an expiry and an HMAC-SHA256 signature made with `AUTH_SECRET`, and lasts 30 days. The client sends mutations without streaming (`src/trpc/links.ts`): a streamed response sends its headers before the procedure runs, so the cookie would be lost.
 - Every write route calls `assertCanManage` first. It finds the show that owns the target (session, category or nomination) and checks the cookie. `manage-access.integration.test.ts` checks this for every mutation, and fails when a new mutation isn't listed there.
-- The manage page calls `hasManageAccess` on the server and renders only the password form until access is granted.
+- The manage page calls `hasManageAccess` on the server and renders only the password form until access is granted. If access is lost while the page is open (the cookie expires), the next action fails with UNAUTHORIZED and the page refreshes to the password form: every manage mutation's `onError` goes through `useManageErrorHandler` (`src/lib/hooks`).
 - Shows created **without** a password are open: anyone with the link can manage them.
 - After 5 wrong passwords for a slug, further attempts are blocked for 15 minutes. The counter is in memory, so it only applies per server instance.
 - The password hash is never sent to the client.

@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { type CategoryType } from "~/generated/prisma/enums";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { categoryFormSchema, type CategoryFormValues } from "~/lib/schemas";
 import { useTRPC } from "~/trpc/react";
 
@@ -63,6 +64,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
 
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const onManageError = useManageErrorHandler();
   const { data: categories } = useQuery(
     trpc.award.getSessionCategories.queryOptions({
       sessionId,
@@ -88,9 +90,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
           trpc.award.getSessionCategories.queryFilter({ sessionId }),
         );
       },
-      onError: error => {
-        toast.error(error.message);
-      },
+      onError: onManageError(),
     }),
   );
 
