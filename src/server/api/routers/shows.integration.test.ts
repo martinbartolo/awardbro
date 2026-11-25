@@ -18,10 +18,7 @@ const queries = {
   getSessionCategories: (api, s) =>
     api.getSessionCategories({ sessionId: s.show.id }),
   getCategory: (api, s) => api.getCategory({ id: s.ranking.id }),
-  getCurrentRankings: (api, s) =>
-    api.getCurrentRankings({ categoryId: s.ranking.id }),
-  getCurrentVote: (api, s) => api.getCurrentVote({ categoryId: s.normal.id }),
-  hasVoted: (api, s) => api.hasVoted({ categoryId: s.normal.id }),
+  getMyVotes: (api, s) => api.getMyVotes({ categoryId: s.ranking.id }),
   getPublicSessions: api => api.getPublicSessions(),
 } satisfies Record<
   string,
