@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { TRPCClientError } from "@trpc/client";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -19,6 +18,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { type CategoryType } from "~/generated/prisma/enums";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { isValidImageUrl } from "~/lib/images";
 import { nominationFormSchema, type NominationFormValues } from "~/lib/schemas";
 import { useTRPC } from "~/trpc/react";
@@ -43,6 +43,7 @@ export function AddNominationForm({
   });
 
   const trpc = useTRPC();
+  const onManageError = useManageErrorHandler();
   const addNomination = useMutation(
     trpc.award.addNomination.mutationOptions({
       onSuccess: () => {
@@ -50,13 +51,7 @@ export function AddNominationForm({
         form.reset();
         router.refresh();
       },
-      onError: error => {
-        if (error instanceof TRPCClientError) {
-          toast.error(error.message);
-        } else {
-          toast.error("Failed to add nomination. Please try again.");
-        }
-      },
+      onError: onManageError(),
     }),
   );
 

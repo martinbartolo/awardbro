@@ -3,7 +3,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
 
 type NominationActionsProps = {
@@ -31,14 +31,13 @@ export function NominationActions({
   const router = useRouter();
 
   const trpc = useTRPC();
+  const onManageError = useManageErrorHandler();
   const deleteNomination = useMutation(
     trpc.award.deleteNomination.mutationOptions({
       onSuccess: () => {
         router.refresh();
       },
-      onError: () => {
-        toast.error("Failed to delete nomination");
-      },
+      onError: onManageError("Failed to delete nomination"),
     }),
   );
 

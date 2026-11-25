@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
 
 type CategoryActionsProps = {
@@ -50,6 +51,7 @@ export function CategoryActions({
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const onManageError = useManageErrorHandler();
 
   // Optimistic local state for instant UI feedback
   const [optimisticValue, setOptimisticValue] =
@@ -77,10 +79,10 @@ export function CategoryActions({
             : "Vote counts will be visible in presentation",
         );
       },
-      onError: () => {
+      onError: error => {
         // Revert optimistic update
         setOptimisticValue(hideVoteCounts);
-        toast.error("Failed to update setting");
+        onManageError("Failed to update setting")(error);
       },
     }),
   );
@@ -102,9 +104,9 @@ export function CategoryActions({
             : "All nominees will be shown on reveal",
         );
       },
-      onError: () => {
+      onError: error => {
         setOptimisticWinnerOnly(winnerOnly);
-        toast.error("Failed to update setting");
+        onManageError("Failed to update setting")(error);
       },
     }),
   );
@@ -114,9 +116,7 @@ export function CategoryActions({
       onSuccess: () => {
         router.refresh();
       },
-      onError: () => {
-        toast.error("Failed to delete category");
-      },
+      onError: onManageError("Failed to delete category"),
     }),
   );
 
@@ -126,9 +126,7 @@ export function CategoryActions({
         router.refresh();
         toast.success("Category votes have been reset");
       },
-      onError: () => {
-        toast.error("Failed to reset category votes");
-      },
+      onError: onManageError("Failed to reset category votes"),
     }),
   );
 
