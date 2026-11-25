@@ -160,10 +160,10 @@ export default async function ManagePage({
                     category.sourceCategories.length > 0 && (
                       <div className="mt-2">
                         <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
-                          This is an aggregate category that automatically sums
-                          up votes from its source categories. Each
-                          nomination&apos;s vote count represents the total
-                          votes across all source categories.
+                          This is an aggregate category that automatically adds
+                          up the scores from its source categories. Each
+                          nomination&apos;s score is its total across all source
+                          categories.
                         </p>
                         <p className="text-muted-foreground mt-2 text-sm font-medium">
                           Source Categories:
@@ -202,8 +202,8 @@ export default async function ManagePage({
                           category.
                         </p>
                         <p className="text-muted-foreground text-sm">
-                          Vote counts shown are the sum of votes across all
-                          source categories and update automatically.
+                          Scores shown are the totals across all source
+                          categories and update automatically.
                         </p>
                       </div>
                     ) : (
