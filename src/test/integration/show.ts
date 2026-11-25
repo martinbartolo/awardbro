@@ -118,3 +118,8 @@ export const procedureNames = (type: "query" | "mutation") =>
 /** The paths of the award router's procedures with these names */
 export const awardPaths = (names: string[]) =>
   names.map(name => `award.${name}`).sort();
+
+/** Each nomination's score, by name */
+export const scoresByName = (
+  nominations: { name: string; _count: { votes: number } }[],
+) => Object.fromEntries(nominations.map(n => [n.name, n._count.votes]));

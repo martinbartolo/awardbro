@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { testDb } from "~/test/integration/db";
-import { createShow, open, type Show } from "~/test/integration/show";
+import {
+  createShow,
+  open,
+  scoresByName,
+  type Show,
+} from "~/test/integration/show";
 import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 
 let host: Visitor;
@@ -244,10 +249,6 @@ describe("ranking", () => {
 });
 
 describe("scores", () => {
-  /** Each nomination's score, by name */
-  const byName = (nominations: { name: string; _count: { votes: number } }[]) =>
-    Object.fromEntries(nominations.map(n => [n.name, n._count.votes]));
-
   it("count votes, ranking points and aggregate totals from the database", async () => {
     await open(host, show.normal.id);
     await voteFor("Dune");
@@ -259,7 +260,7 @@ describe("scores", () => {
       slug: show.show.slug,
     });
     const scores = Object.fromEntries(
-      categories.map(c => [c.name, byName(c.nominations)]),
+      categories.map(c => [c.name, scoresByName(c.nominations)]),
     );
 
     expect(scores).toEqual({
@@ -284,11 +285,13 @@ describe("scores", () => {
       activeOnly: true,
     });
 
-    expect(byName(category.nominations)).toEqual(expected);
-    expect(categories.map(c => byName(c.nominations))).toEqual([expected]);
+    expect(scoresByName(category.nominations)).toEqual(expected);
+    expect(categories.map(c => scoresByName(c.nominations))).toEqual([
+      expected,
+    ]);
   });
 
-  it("take one database operation for a whole show, and two for an aggregate on its own, however many aggregates there are", async () => {
+  it("take a fixed number of database operations, however many aggregates there are", async () => {
     let operations = 0;
     const counting = testDb.$extends({
       query: {
@@ -314,18 +317,19 @@ describe("scores", () => {
     }
     await open(host, show.aggregate.id);
 
-    // The show with its categories; aggregates are scored from sources loaded with it
+    // The show with its categories, and its password to check access (in parallel);
+    // aggregates are scored from sources loaded with the show
     expect(
       await countOperations(api =>
         api.getSessionBySlug({ slug: show.show.slug }),
       ),
-    ).toBe(1);
+    ).toBe(2);
     // Only the active aggregate is loaded, so its sources' nominations take one more
     expect(
       await countOperations(api =>
         api.getSessionBySlug({ slug: show.show.slug, activeOnly: true }),
       ),
-    ).toBe(2);
+    ).toBe(3);
     expect(
       await countOperations(api => api.getCategory({ id: show.aggregate.id })),
     ).toBe(2);

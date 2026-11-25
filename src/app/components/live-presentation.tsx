@@ -9,7 +9,6 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
-import { estimateVoters } from "~/lib/scoring";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
@@ -278,12 +277,7 @@ export function LivePresentation({
                   ) : (
                     <LiveVoting
                       categoryId={category.id}
-                      initialVoteCount={estimateVoters(
-                        category,
-                        category.nominations,
-                      )}
-                      categoryType={category.type}
-                      rankingTop={category.rankingTop}
+                      initialVoteCount={category.estimatedVoters ?? 0}
                     />
                   )}
                 </motion.div>

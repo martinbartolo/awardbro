@@ -43,6 +43,7 @@ Notes:
 - A category can have the same nomination name twice with different descriptions (for example, one person nominated for two things, or several photos with the same caption), but not the same name (ignoring case) and description twice. An aggregate adds up every source nomination with exactly the same name, so those count together there.
 - An aggregate category copies nominations from its sources when it's created. Nominations added to a source later are copied to the aggregate automatically.
 - Scores are computed when they're read (`getSessionBySlug`, `getCategory`), not stored.
+- Only hosts (anyone who can manage the show) get every score. Everyone else gets what the show reveals (`publicScores` in `scoring.ts`): no scores before a category is revealed, and after it only the winners' with `winnerOnly`, or only their order with `hideVoteCounts`. An aggregate reveals no more than its sources: nothing until all of them are revealed, and only the order if any of them hides its counts or shows only its winner. Each category (except an aggregate) also has `estimatedVoters`, the present page's live count, which everyone gets until the category is revealed (after it, only hosts: the total next to the winners' scores would give the others away). A show without a password can be managed by anyone, so anyone gets its scores.
 
 ## Running a show
 
