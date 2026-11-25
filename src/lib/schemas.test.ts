@@ -44,32 +44,40 @@ describe("sessionFormSchema password", () => {
     );
   });
 
-  it("accepts a password of 4 to 100 characters", () => {
-    for (const password of ["abcd", "a".repeat(100)]) {
-      expect(sessionFormSchema.safeParse({ ...show, password }).success).toBe(
-        true,
-      );
-    }
+  it.each([
+    ["4 characters", "abcd"],
+    ["72 characters", "a".repeat(72)],
+    ["spaces inside", "open sesame"],
+    ["72 bytes of accents", "é".repeat(36)],
+    // A letter plus a combining accent is counted as the single letter it's stored as
+    ["72 bytes of decomposed accents", "e\u0301".repeat(36)],
+  ])("accepts a password of %s", (_, password) => {
+    expect(sessionFormSchema.safeParse({ ...show, password }).success).toBe(
+      true,
+    );
   });
 
-  it("rejects a password shorter than 4 characters", () => {
-    const result = sessionFormSchema.safeParse({ ...show, password: "abc" });
+  const tooShort = "Password must be at least 4 characters";
+  const untrimmed = "Password can't start or end with a space or line break";
+  const tooLong =
+    "Password is too long: use at most 72 characters (fewer with accents or emoji)";
+
+  it.each([
+    ["3 characters", "abc", tooShort],
+    ["2 emoji", "🏆🏆", tooShort],
+    ["only spaces", "    ", untrimmed],
+    ["a leading space", " secret", untrimmed],
+    ["a trailing space", "secret ", untrimmed],
+    ["a trailing newline", "secret\n", untrimmed],
+    ["73 characters", "a".repeat(73), tooLong],
+    ["over 72 bytes of accents", "é".repeat(37), tooLong],
+    ["over 72 bytes of emoji", "🏆".repeat(19), tooLong],
+  ])("rejects a password with %s", (_, password, message) => {
+    const result = sessionFormSchema.safeParse({ ...show, password });
 
     expect(result.error?.issues).toEqual([
-      expect.objectContaining({
-        path: ["password"],
-        message: "Password must be at least 4 characters",
-      }),
+      expect.objectContaining({ path: ["password"], message }),
     ]);
-  });
-
-  it("rejects a password over 100 characters", () => {
-    const result = sessionFormSchema.safeParse({
-      ...show,
-      password: "a".repeat(101),
-    });
-
-    expect(errorPaths(result)).toEqual(["password"]);
   });
 });
 
