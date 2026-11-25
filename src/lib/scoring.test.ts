@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { estimateVoters, getScoreLabel, scoreNomination } from "./scoring";
+import {
+  estimateVoters,
+  getScoreLabel,
+  publicScores,
+  type RevealOptions,
+  scoreNomination,
+} from "./scoring";
 
 const normal = { type: "NORMAL", rankingTop: null } as const;
 const image = { type: "IMAGE", rankingTop: null } as const;
@@ -162,5 +168,59 @@ describe("getScoreLabel", () => {
         count,
       ),
     ).toBe(label);
+  });
+});
+
+describe("publicScores", () => {
+  const scored = (...scores: number[]) =>
+    scores.map((votes, i) => ({ id: `n${i}`, _count: { votes } }));
+  const shown = (options: Partial<RevealOptions>, ...scores: number[]) =>
+    publicScores(
+      {
+        revealed: true,
+        winnerOnly: false,
+        hideVoteCounts: false,
+        ...options,
+      },
+      scored(...scores),
+    ).map(n => n._count.votes);
+
+  it("shows nothing before the reveal", () => {
+    expect(shown({ revealed: false }, 5, 3, 0)).toEqual([0, 0, 0]);
+  });
+
+  it("shows every score after the reveal", () => {
+    expect(shown({}, 5, 3, 0)).toEqual([5, 3, 0]);
+  });
+
+  it("shows only the winners' scores with winnerOnly, ties included", () => {
+    expect(shown({ winnerOnly: true }, 5, 3, 5, 0)).toEqual([5, 0, 5, 0]);
+  });
+
+  it("shows only the order with hideVoteCounts, keeping ties and no votes", () => {
+    expect(shown({ hideVoteCounts: true }, 12, 3, 12, 0, 7)).toEqual([
+      3, 1, 3, 0, 2,
+    ]);
+  });
+
+  it("combines winnerOnly and hideVoteCounts", () => {
+    expect(
+      shown({ winnerOnly: true, hideVoteCounts: true }, 12, 3, 12, 7),
+    ).toEqual([1, 0, 1, 0]);
+  });
+
+  it("shows no winner when nobody voted", () => {
+    expect(shown({ winnerOnly: true, hideVoteCounts: true }, 0, 0)).toEqual([
+      0, 0,
+    ]);
+  });
+
+  it("keeps the other fields", () => {
+    expect(
+      publicScores(
+        { revealed: false, winnerOnly: false, hideVoteCounts: false },
+        [{ id: "a", name: "Dune", _count: { votes: 4 } }],
+      ),
+    ).toEqual([{ id: "a", name: "Dune", _count: { votes: 0 } }]);
   });
 });

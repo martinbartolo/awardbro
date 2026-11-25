@@ -90,3 +90,38 @@ export const getScoreLabel = (category: LabelledCategory, count: number) => {
   if (isPoints) return count === 1 ? "point" : "points";
   return count === 1 ? "vote" : "votes";
 };
+
+/** What a category shows once it's revealed */
+export type RevealOptions = {
+  revealed: boolean;
+  winnerOnly: boolean;
+  hideVoteCounts: boolean;
+};
+
+/**
+ * The scores someone who can't manage the show may see, in `_count.votes`:
+ * - before the reveal, none (all 0);
+ * - with `winnerOnly`, only the winners' (the others are 0);
+ * - with `hideVoteCounts`, only their order: the highest is the number of different scores, the
+ *   next one less, down to 1, and 0 stays 0. Ties stay ties, so the winners can still be found.
+ */
+export const publicScores = <N extends { _count: { votes: number } }>(
+  category: RevealOptions,
+  nominations: N[],
+): N[] => {
+  let scores = nominations.map(n => (category.revealed ? n._count.votes : 0));
+  if (category.winnerOnly) {
+    const top = Math.max(0, ...scores);
+    scores = scores.map(score => (score === top ? score : 0));
+  }
+  if (category.hideVoteCounts) {
+    const distinct = [...new Set(scores.filter(score => score > 0))].sort(
+      (a, b) => a - b,
+    );
+    scores = scores.map(score => (score > 0 ? distinct.indexOf(score) + 1 : 0));
+  }
+  return nominations.map((nomination, i) => ({
+    ...nomination,
+    _count: { ...nomination._count, votes: scores[i]! },
+  }));
+};
