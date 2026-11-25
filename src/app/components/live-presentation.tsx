@@ -261,7 +261,7 @@ export function LivePresentation({
                                     index={index}
                                     isWinner={isWinner}
                                     isTied={isTied}
-                                    categoryType={category.type}
+                                    category={category}
                                     hideVoteCounts={category.hideVoteCounts}
                                   />
                                 </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { estimateVoters, scoreNomination } from "./scoring";
+import { estimateVoters, getScoreLabel, scoreNomination } from "./scoring";
 
 const normal = { type: "NORMAL", rankingTop: null } as const;
 const image = { type: "IMAGE", rankingTop: null } as const;
@@ -124,5 +124,43 @@ describe("estimateVoters", () => {
 
   it("counts nothing for a category without nominations", () => {
     expect(estimateVoters(topThree, [])).toBe(0);
+  });
+});
+
+describe("getScoreLabel", () => {
+  it.each([
+    ["NORMAL", 1, "vote"],
+    ["NORMAL", 0, "votes"],
+    ["IMAGE", 2, "votes"],
+    ["RANKING", 1, "point"],
+    ["RANKING", 12, "points"],
+  ] as const)("labels %s with %i as %s", (type, count, label) => {
+    expect(
+      getScoreLabel({ type, rankingTop: 3, sourceCategories: [] }, count),
+    ).toBe(label);
+  });
+
+  // Matches scoreNomination, which counts plain votes for a ranking category without a top N
+  it("labels a ranking category without a top N as votes", () => {
+    expect(
+      getScoreLabel(
+        { type: "RANKING", rankingTop: null, sourceCategories: [] },
+        2,
+      ),
+    ).toBe("votes");
+  });
+
+  it.each([
+    ["only normal and image sources", ["NORMAL", "IMAGE"], 5, "votes"],
+    ["a ranking source", ["NORMAL", "RANKING"], 3, "points"],
+    ["a ranking source, with 1", ["RANKING"], 1, "point"],
+  ] as const)("labels an aggregate with %s", (_, sources, count, label) => {
+    const sourceCategories = sources.map(type => ({ type, rankingTop: 3 }));
+    expect(
+      getScoreLabel(
+        { type: "AGGREGATE", rankingTop: null, sourceCategories },
+        count,
+      ),
+    ).toBe(label);
   });
 });

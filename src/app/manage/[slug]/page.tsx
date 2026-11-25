@@ -19,7 +19,7 @@ import { SetActiveCategoryButton } from "~/app/components/set-active-category-bu
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { getScoreLabel } from "~/lib/utils";
+import { getScoreLabel } from "~/lib/scoring";
 import { hasManageAccess } from "~/server/auth/manage";
 import { api } from "~/trpc/server";
 
@@ -233,10 +233,7 @@ export default async function ManagePage({
                           />
                           <div className="text-accent mt-2 text-sm">
                             {nomination._count.votes}{" "}
-                            {getScoreLabel(
-                              category.type,
-                              nomination._count.votes,
-                            )}
+                            {getScoreLabel(category, nomination._count.votes)}
                           </div>
                         </div>
                         <NominationActions
