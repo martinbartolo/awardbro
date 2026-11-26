@@ -14,8 +14,8 @@ import { NominationActions } from "~/app/components/nomination-actions";
 import { NominationDescription } from "~/app/components/nomination-description";
 import { PasswordVerification } from "~/app/components/password-verification";
 import { RevealCategoryButton } from "~/app/components/reveal-category-button";
-import { SessionActions } from "~/app/components/session-actions";
 import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
+import { DangerZone, RunShowCard } from "~/app/components/show-controls";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -63,7 +63,7 @@ export default async function ManagePage({
     <main className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
-        <div className="bg-card mb-8 rounded-lg p-6">
+        <div className="mb-6 px-1">
           <div className="flex flex-col gap-6">
             {/* Title Row */}
             <div className="flex items-start justify-between gap-4">
@@ -82,10 +82,10 @@ export default async function ManagePage({
                 </Link>
               </Button>
             </div>
-            {/* Actions Row */}
-            <SessionActions code={code} sessionId={session.id} />
           </div>
         </div>
+
+        <RunShowCard code={code} />
 
         {/* Main Content */}
         <div className="space-y-8">
@@ -249,6 +249,8 @@ export default async function ManagePage({
               </Card>
             ))}
           </section>
+
+          <DangerZone sessionId={session.id} />
         </div>
       </div>
     </main>
