@@ -139,5 +139,4 @@ export type SessionFormValues = z.infer<typeof sessionFormSchema>;
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export type CategoryUpdateValues = z.infer<typeof categoryUpdateSchema>;
 export type NominationFieldValues = z.infer<typeof nominationFieldsSchema>;
-export type NominationFormValues = z.infer<typeof nominationFormSchema>;
 export type RankingSubmissionValues = z.infer<typeof rankingSubmissionSchema>;

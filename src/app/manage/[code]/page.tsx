@@ -10,8 +10,11 @@ import Link from "next/link";
 import { AddCategoryForm } from "~/app/components/add-category-form";
 import { AddNominationForm } from "~/app/components/add-nomination-form";
 import { CategoryActions } from "~/app/components/category-actions";
-import { NominationActions } from "~/app/components/nomination-actions";
-import { NominationDescription } from "~/app/components/nomination-description";
+import {
+  CategoryEditor,
+  EditCategoryButton,
+} from "~/app/components/category-editor";
+import { NominationItem } from "~/app/components/nomination-item";
 import { PasswordVerification } from "~/app/components/password-verification";
 import { RevealCategoryButton } from "~/app/components/reveal-category-button";
 import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
@@ -59,6 +62,11 @@ export default async function ManagePage({
     );
   }
 
+  // The categories an aggregate can add up
+  const sourceOptions = session.categories
+    .filter(c => c.type !== "AGGREGATE")
+    .map(({ id, name }) => ({ id, name }));
+
   return (
     <main className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -105,89 +113,108 @@ export default async function ManagePage({
             {session.categories.map(category => (
               <Card key={category.id} className="border-border">
                 <CardHeader className="border-border border-b">
-                  <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xl">{category.name}</span>
-                      {category.type === "AGGREGATE" && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 bg-purple-500/15 px-2.5 py-1 text-purple-600 dark:text-purple-400"
-                        >
-                          <Layers className="h-3.5 w-3.5" />
-                          Aggregate
-                        </Badge>
+                  <CategoryEditor
+                    category={{
+                      id: category.id,
+                      name: category.name,
+                      description: category.description,
+                      type: category.type,
+                      rankingTop: category.rankingTop,
+                      sourceCategoryIds: category.sourceCategories.map(
+                        s => s.id,
+                      ),
+                      // Hosts get every score, and any vote gives a nomination one
+                      hasVotes: category.nominations.some(
+                        n => n._count.votes > 0,
+                      ),
+                    }}
+                    sourceOptions={sourceOptions}
+                  >
+                    <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xl">{category.name}</span>
+                        {category.type === "AGGREGATE" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 bg-purple-500/15 px-2.5 py-1 text-purple-600 dark:text-purple-400"
+                          >
+                            <Layers className="h-3.5 w-3.5" />
+                            Aggregate
+                          </Badge>
+                        )}
+                        {category.type === "IMAGE" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 bg-blue-500/15 px-2.5 py-1 text-blue-600"
+                          >
+                            <ImageIcon className="h-3.5 w-3.5" />
+                            Image
+                          </Badge>
+                        )}
+                        {category.type === "RANKING" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 bg-emerald-500/15 px-2.5 py-1 text-emerald-600 dark:text-emerald-400"
+                          >
+                            <ListOrdered className="h-3.5 w-3.5" />
+                            Ranking (Top {category.rankingTop})
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <EditCategoryButton />
+                        <CategoryActions
+                          categoryId={category.id}
+                          hideVoteCounts={category.hideVoteCounts}
+                          winnerOnly={category.winnerOnly}
+                        />
+                        <SetActiveCategoryButton
+                          categoryId={category.id}
+                          isActive={category.isActive}
+                        />
+                        <RevealCategoryButton
+                          categoryId={category.id}
+                          revealed={category.revealed}
+                        />
+                      </div>
+                    </CardTitle>
+                    {category.description && (
+                      <p className="text-muted-foreground text-sm">
+                        {category.description}
+                      </p>
+                    )}
+                    {category.type === "AGGREGATE" &&
+                      category.sourceCategories.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
+                            This is an aggregate category that automatically
+                            adds up the scores from its source categories. Each
+                            nomination&apos;s score is its total across all
+                            source categories.
+                          </p>
+                          <p className="text-muted-foreground mt-2 text-sm font-medium">
+                            Source Categories:
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {category.sourceCategories.map(sourceCategory => (
+                              <Badge key={sourceCategory.id} variant="outline">
+                                {sourceCategory.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                      {category.type === "IMAGE" && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 bg-blue-500/15 px-2.5 py-1 text-blue-600"
-                        >
-                          <ImageIcon className="h-3.5 w-3.5" />
-                          Image
-                        </Badge>
-                      )}
-                      {category.type === "RANKING" && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 bg-emerald-500/15 px-2.5 py-1 text-emerald-600 dark:text-emerald-400"
-                        >
-                          <ListOrdered className="h-3.5 w-3.5" />
-                          Ranking (Top {category.rankingTop})
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <CategoryActions
-                        categoryId={category.id}
-                        hideVoteCounts={category.hideVoteCounts}
-                        winnerOnly={category.winnerOnly}
-                      />
-                      <SetActiveCategoryButton
-                        categoryId={category.id}
-                        isActive={category.isActive}
-                      />
-                      <RevealCategoryButton
-                        categoryId={category.id}
-                        revealed={category.revealed}
-                      />
-                    </div>
-                  </CardTitle>
-                  {category.description && (
-                    <p className="text-muted-foreground text-sm">
-                      {category.description}
-                    </p>
-                  )}
-                  {category.type === "AGGREGATE" &&
-                    category.sourceCategories.length > 0 && (
+                    {category.type === "RANKING" && category.rankingTop && (
                       <div className="mt-2">
                         <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
-                          This is an aggregate category that automatically adds
-                          up the scores from its source categories. Each
-                          nomination&apos;s score is its total across all source
-                          categories.
+                          Voters rank their top {category.rankingTop} choices.
+                          Points are awarded by position: 1st place ={" "}
+                          {category.rankingTop} points, 2nd ={" "}
+                          {category.rankingTop - 1} points, etc.
                         </p>
-                        <p className="text-muted-foreground mt-2 text-sm font-medium">
-                          Source Categories:
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {category.sourceCategories.map(sourceCategory => (
-                            <Badge key={sourceCategory.id} variant="outline">
-                              {sourceCategory.name}
-                            </Badge>
-                          ))}
-                        </div>
                       </div>
                     )}
-                  {category.type === "RANKING" && category.rankingTop && (
-                    <div className="mt-2">
-                      <p className="text-muted-foreground max-w-(--breakpoint-md) text-sm">
-                        Voters rank their top {category.rankingTop} choices.
-                        Points are awarded by position: 1st place ={" "}
-                        {category.rankingTop} points, 2nd ={" "}
-                        {category.rankingTop - 1} points, etc.
-                      </p>
-                    </div>
-                  )}
+                  </CategoryEditor>
                 </CardHeader>
                 <CardContent className="mt-4">
                   <div className="mb-6">
@@ -219,30 +246,12 @@ export default async function ManagePage({
                       Nominations
                     </h3>
                     {category.nominations.map(nomination => (
-                      <div
+                      <NominationItem
                         key={nomination.id}
-                        className="bg-secondary hover:bg-secondary/80 flex items-center justify-between rounded-lg p-4 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <div className="text-secondary-foreground font-semibold">
-                            {nomination.name}
-                          </div>
-                          <NominationDescription
-                            description={nomination.description}
-                            className="text-muted-foreground mt-1 text-sm"
-                            imageClassName="mt-1 h-48"
-                          />
-                          <div className="text-accent mt-2 text-sm">
-                            {nomination._count.votes}{" "}
-                            {getScoreLabel(category, nomination._count.votes)}
-                          </div>
-                        </div>
-                        <NominationActions
-                          nominationId={nomination.id}
-                          nominationName={nomination.name}
-                          nominationDescription={nomination.description}
-                        />
-                      </div>
+                        nomination={nomination}
+                        categoryType={category.type}
+                        score={`${nomination._count.votes} ${getScoreLabel(category, nomination._count.votes)}`}
+                      />
                     ))}
                   </div>
                 </CardContent>
