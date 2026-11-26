@@ -48,9 +48,9 @@ Notes:
 ## Running a show
 
 1. The host sets a category **active**. That deactivates every other category in the show.
-2. Voters see and vote in the active category only. The server rejects votes in inactive categories.
+2. Voters see and vote in the active category only. The server rejects votes in inactive or revealed categories.
 3. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: setting or stopping the active category, reveal, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `withShowLocked` in `award.ts`). Add new actions to this list if they close voting, change results or delete votes. Adding a nomination and creating an aggregate category take it too, so a nomination added while an aggregate of its category is being created is copied into the aggregate exactly once.
-4. The host **reveals** the category. The present page then shows results, respecting `hideVoteCounts` (ranks without numbers) and `winnerOnly` (only first place).
+4. The host **reveals** the category. The present page then shows results, respecting `hideVoteCounts` (ranks without numbers) and `winnerOnly` (only first place). Revealing closes voting: the vote page shows the voter's own vote instead of the form, and the server refuses new votes, so the results on the big screen can't change. Hiding the results again reopens voting.
 
 ## Identity and access
 

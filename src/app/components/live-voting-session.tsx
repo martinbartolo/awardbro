@@ -64,6 +64,8 @@ export function LiveVotingSession({
   );
 
   const activeCategory = session.categories[0];
+  // Revealing a category closes voting in it (the server refuses votes too)
+  const isClosed = !!activeCategory?.revealed;
 
   // The server-rendered votes only describe the first category shown. Drop
   // them once the host moves on, so a category reopened later (and maybe
@@ -173,11 +175,13 @@ export function LiveVotingSession({
           <div className="mb-8 text-center">
             <h1 className="text-4xl font-bold">{session.name}</h1>
             <p className="text-muted-foreground mt-2">
-              {activeCategory.type === "RANKING"
-                ? `Rank your top ${activeCategory.rankingTop} choices`
-                : "Cast your vote"}
+              {isClosed
+                ? "Voting has closed"
+                : activeCategory.type === "RANKING"
+                  ? `Rank your top ${activeCategory.rankingTop} choices`
+                  : "Cast your vote"}
             </p>
-            {hasVoted && (
+            {hasVoted && !isClosed && (
               <p className="text-chart-2 mt-2">
                 You have already voted in this category
               </p>
@@ -232,6 +236,7 @@ export function LiveVotingSession({
                   rankingTop={activeCategory.rankingTop}
                   myVotes={myVotes}
                   refetchMyVotes={refetchMyVotes}
+                  closed={isClosed}
                 />
               </CardContent>
             </Card>

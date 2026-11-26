@@ -21,6 +21,7 @@ export function VotingInterface({
   rankingTop,
   myVotes,
   refetchMyVotes,
+  closed,
 }: {
   nominations: {
     id: string;
@@ -31,6 +32,8 @@ export function VotingInterface({
   categoryId: string;
   categoryType: CategoryType;
   rankingTop?: number | null;
+  /** Voting has closed: show the voter's vote without the form */
+  closed: boolean;
 } & MyVotesProps) {
   const isAggregate = categoryType === "AGGREGATE";
   const isRanking = categoryType === "RANKING";
@@ -38,6 +41,10 @@ export function VotingInterface({
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
   const trpc = useTRPC();
   const currentVote = myVotes?.[0];
+
+  // Drop an unsaved choice once voting closes, so the voter sees what was
+  // counted, and reopening starts from it
+  if (closed && userSelectedId !== null) setUserSelectedId(null);
 
   // Derive effective selection: user's choice takes precedence, fall back to current vote
   const selectedNominationId =
@@ -98,6 +105,7 @@ export function VotingInterface({
         rankingTop={rankingTop}
         myVotes={myVotes}
         refetchMyVotes={refetchMyVotes}
+        closed={closed}
       />
     );
   }
@@ -106,8 +114,9 @@ export function VotingInterface({
     <div className="space-y-6">
       {/* Instructions */}
       <p className="text-muted-foreground text-sm">
-        Select your favorite nomination and cast your vote. You can change your
-        vote at any time before voting closes.
+        {closed
+          ? "Watch the big screen for the results."
+          : "Select your favorite nomination and cast your vote. You can change your vote at any time before voting closes."}
       </p>
 
       {/* Current selection slot */}
@@ -148,73 +157,82 @@ export function VotingInterface({
             </div>
           ) : (
             <span className="text-muted-foreground text-sm">
-              Click a nomination below to select your vote
+              {!closed
+                ? "Click a nomination below to select your vote"
+                : myVotes
+                  ? "You didn't vote in this category"
+                  : "Checking your vote..."}
             </span>
           )}
         </div>
       </div>
 
-      {/* Available nominations */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Available Nominations:</h3>
-        <div className="space-y-2">
-          {nominations.map(nomination => {
-            const isSelected = selectedNominationId === nomination.id;
-            const isCurrentVote = currentVote?.nominationId === nomination.id;
+      {!closed && (
+        <>
+          {/* Available nominations */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Available Nominations:</h3>
+            <div className="space-y-2">
+              {nominations.map(nomination => {
+                const isSelected = selectedNominationId === nomination.id;
+                const isCurrentVote =
+                  currentVote?.nominationId === nomination.id;
 
-            return (
-              <button
-                key={nomination.id}
-                onClick={() => setUserSelectedId(nomination.id)}
-                className={cn(
-                  "w-full text-left transition-all",
-                  "rounded-lg p-4",
-                  isSelected
-                    ? "bg-primary/20 ring-primary ring-2"
-                    : "cursor-pointer bg-white/10 hover:bg-white/20",
-                  isVoting && "cursor-not-allowed opacity-50",
-                )}
-                disabled={isVoting}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold">
-                      {nomination.name}
-                      {!isSelected && isCurrentVote && (
-                        <span className="text-muted-foreground ml-2 text-sm">
-                          (Previously voted)
-                        </span>
-                      )}
-                    </div>
-                    {nomination.description && (
-                      <NominationDescription
-                        description={nomination.description}
-                        className="text-muted-foreground text-sm wrap-break-word"
-                      />
+                return (
+                  <button
+                    key={nomination.id}
+                    onClick={() => setUserSelectedId(nomination.id)}
+                    className={cn(
+                      "w-full text-left transition-all",
+                      "rounded-lg p-4",
+                      isSelected
+                        ? "bg-primary/20 ring-primary ring-2"
+                        : "cursor-pointer bg-white/10 hover:bg-white/20",
+                      isVoting && "cursor-not-allowed opacity-50",
                     )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                    disabled={isVoting}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">
+                          {nomination.name}
+                          {!isSelected && isCurrentVote && (
+                            <span className="text-muted-foreground ml-2 text-sm">
+                              (Previously voted)
+                            </span>
+                          )}
+                        </div>
+                        {nomination.description && (
+                          <NominationDescription
+                            description={nomination.description}
+                            className="text-muted-foreground text-sm wrap-break-word"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* Submit button */}
-      <Button
-        className="w-full"
-        size="lg"
-        onClick={handleVote}
-        disabled={isVoting || !selectedNominationId}
-      >
-        {isVoting
-          ? "Casting Vote..."
-          : currentVote
-            ? "Update Vote"
-            : selectedNominationId
-              ? "Cast Vote"
-              : "Select a Nomination"}
-      </Button>
+          {/* Submit button */}
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleVote}
+            disabled={isVoting || !selectedNominationId}
+          >
+            {isVoting
+              ? "Casting Vote..."
+              : currentVote
+                ? "Update Vote"
+                : selectedNominationId
+                  ? "Cast Vote"
+                  : "Select a Nomination"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }
