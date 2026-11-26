@@ -303,6 +303,11 @@ export default function HelpPage() {
                       <Badge variant="outline">Most Helpful</Badge>
                     </div>
                   </div>
+                  <p className="text-muted-foreground text-sm">
+                    Categories run in the order they&apos;re listed. Use the
+                    arrows next to a category&apos;s name to move it, for
+                    example to save the biggest award for last.
+                  </p>
                   <div className="flex items-start gap-3 rounded-lg border p-4">
                     <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                     <div>

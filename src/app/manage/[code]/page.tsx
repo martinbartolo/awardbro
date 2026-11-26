@@ -14,6 +14,7 @@ import {
   CategoryEditor,
   EditCategoryButton,
 } from "~/app/components/category-editor";
+import { MoveCategoryButtons } from "~/app/components/move-category-buttons";
 import { NominationItem } from "~/app/components/nomination-item";
 import { PasswordVerification } from "~/app/components/password-verification";
 import { RevealCategoryButton } from "~/app/components/reveal-category-button";
@@ -110,7 +111,7 @@ export default async function ManagePage({
             <h2 className="text-foreground text-2xl font-semibold">
               Categories
             </h2>
-            {session.categories.map(category => (
+            {session.categories.map((category, index) => (
               <Card key={category.id} className="border-border">
                 <CardHeader className="border-border border-b">
                   <CategoryEditor
@@ -132,6 +133,12 @@ export default async function ManagePage({
                   >
                     <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex flex-wrap items-center gap-2">
+                        <MoveCategoryButtons
+                          categoryId={category.id}
+                          categoryName={category.name}
+                          index={index}
+                          count={session.categories.length}
+                        />
                         <span className="text-xl">{category.name}</span>
                         {category.type === "AGGREGATE" && (
                           <Badge
