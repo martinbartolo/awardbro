@@ -5,7 +5,6 @@ import {
   CircleCheck,
   Eye,
   FolderPlus,
-  Link2,
   ListPlus,
   Monitor,
   MousePointerClick,
@@ -167,22 +166,9 @@ export default function HelpPage() {
                     Go to Create Page
                   </CardTitle>
                   <CardDescription>
-                    Click &quot;Create Award Show&quot; on the homepage or
-                    navigate to{" "}
-                    <code className="bg-muted rounded px-1.5 py-0.5">
-                      /create
-                    </code>
+                    Click &quot;Create Award Show&quot; on the homepage
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="bg-secondary flex items-center gap-3 rounded-lg p-4">
-                    <Link2 className="text-primary h-5 w-5" />
-                    <span className="text-sm">
-                      Tip: Bookmark this page for easy access when creating
-                      future shows
-                    </span>
-                  </div>
-                </CardContent>
               </Card>
             </motion.div>
 
@@ -209,15 +195,10 @@ export default function HelpPage() {
                       </p>
                     </div>
                     <div className="bg-secondary rounded-lg p-4">
-                      <h4 className="mb-2 font-medium">
-                        Password{" "}
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          Optional
-                        </Badge>
-                      </h4>
+                      <h4 className="mb-2 font-medium">Password</h4>
                       <p className="text-muted-foreground text-sm">
-                        Add a password to protect your manage page. Recommended
-                        if you want to restrict who can edit categories.
+                        Keeps your manage page to you: your room code is on the
+                        big screen for everyone to see.
                       </p>
                     </div>
                   </div>
@@ -232,10 +213,11 @@ export default function HelpPage() {
                     <div className="bg-primary/20 text-primary flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold">
                       3
                     </div>
-                    Save Your Links
+                    Your Room Code
                   </CardTitle>
                   <CardDescription>
-                    After creation, you&apos;ll receive important links
+                    Your show gets a short code, such as K7QF. It&apos;s all you
+                    and your voters need
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -243,27 +225,29 @@ export default function HelpPage() {
                     <div className="bg-secondary flex items-start gap-3 rounded-lg p-4">
                       <Vote className="text-primary mt-0.5 h-5 w-5 shrink-0" />
                       <div>
-                        <h4 className="font-medium">Vote Link</h4>
+                        <h4 className="font-medium">Voters</h4>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          Share with participants to let them vote
+                          Enter the code on the homepage, or scan the QR code on
+                          the big screen
                         </p>
                       </div>
                     </div>
                     <div className="bg-secondary flex items-start gap-3 rounded-lg p-4">
                       <Settings className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                       <div>
-                        <h4 className="font-medium">Manage Link</h4>
+                        <h4 className="font-medium">You</h4>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          Admin access to control your show
+                          Get back to your manage page with &quot;Manage your
+                          show&quot; on the homepage and your password
                         </p>
                       </div>
                     </div>
                     <div className="bg-secondary flex items-start gap-3 rounded-lg p-4">
                       <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
                       <div>
-                        <h4 className="font-medium">Present Link</h4>
+                        <h4 className="font-medium">Big Screen</h4>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          Display on big screen for reveals
+                          Open it from your manage page for voting and reveals
                         </p>
                       </div>
                     </div>
@@ -404,8 +388,8 @@ export default function HelpPage() {
                         <h4 className="font-medium">Reveal Winner</h4>
                       </div>
                       <p className="text-muted-foreground text-sm">
-                        Once voting is done, click &quot;Reveal&quot; to show
-                        the winner on the presentation screen with a celebration
+                        Once voting is done, click &quot;Reveal Winner&quot; to
+                        show the winner on the big screen with a celebration
                         animation!
                       </p>
                     </div>
@@ -429,7 +413,7 @@ export default function HelpPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                     <Share2 className="text-accent h-6 w-6" />
-                    Sharing the Vote Link
+                    Getting Voters In
                   </CardTitle>
                   <CardDescription>
                     Get your participants voting
@@ -438,15 +422,14 @@ export default function HelpPage() {
                 <CardContent>
                   <div className="bg-secondary rounded-lg p-4">
                     <p className="text-muted-foreground mb-3 text-sm">
-                      Share the voting link with your participants via:
+                      At the show, the big screen shows a QR code and your room
+                      code: voters scan the QR code, or enter the code on the
+                      awardbro.com homepage.
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">Email</Badge>
-                      <Badge variant="outline">Slack / Teams</Badge>
-                      <Badge variant="outline">QR Code</Badge>
-                      <Badge variant="outline">Meeting Chat</Badge>
-                    </div>
-                    <p className="text-muted-foreground mt-3 text-sm">
+                    <p className="text-muted-foreground mb-3 text-sm">
+                      Someone not in the room? Give them the room code too.
+                    </p>
+                    <p className="text-muted-foreground text-sm">
                       Voters don&apos;t need to sign up - they can vote
                       immediately from any device!
                     </p>
@@ -472,8 +455,8 @@ export default function HelpPage() {
             </Badge>
             <h2 className="mb-2 text-3xl font-bold">Presenting the Winners</h2>
             <p className="text-muted-foreground max-w-2xl">
-              The presentation page is designed for big screens and projectors.
-              It creates an exciting atmosphere for your award ceremony!
+              The big screen page is made for projectors and TVs. It shows
+              guests how to join, counts votes live, and reveals the winners.
             </p>
           </motion.div>
 
@@ -492,10 +475,12 @@ export default function HelpPage() {
                 <CardContent className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="bg-secondary rounded-lg p-4">
-                      <h4 className="mb-2 font-medium">1. Open Present Link</h4>
+                      <h4 className="mb-2 font-medium">
+                        1. Open the Big Screen
+                      </h4>
                       <p className="text-muted-foreground text-sm">
-                        Navigate to your show&apos;s present URL on the device
-                        connected to the projector/TV
+                        Click &quot;Open Big Screen&quot; on your manage page,
+                        on the device connected to the projector or TV
                       </p>
                     </div>
                     <div className="bg-secondary rounded-lg p-4">
@@ -528,9 +513,10 @@ export default function HelpPage() {
                         1
                       </div>
                       <div>
-                        <h4 className="font-medium">Active Category</h4>
+                        <h4 className="font-medium">How to Join</h4>
                         <p className="text-muted-foreground text-sm">
-                          Shows the current category name and all nominations
+                          A QR code and your room code, while waiting and during
+                          voting
                         </p>
                       </div>
                     </div>
@@ -539,10 +525,10 @@ export default function HelpPage() {
                         2
                       </div>
                       <div>
-                        <h4 className="font-medium">Live Vote Count</h4>
+                        <h4 className="font-medium">Active Category</h4>
                         <p className="text-muted-foreground text-sm">
-                          Watch votes come in real-time as people submit their
-                          choices
+                          The category being voted on, with a live count of the
+                          votes coming in
                         </p>
                       </div>
                     </div>
@@ -554,7 +540,8 @@ export default function HelpPage() {
                         <h4 className="font-medium">Winner Reveal</h4>
                         <p className="text-muted-foreground text-sm">
                           Dramatic animation with confetti when you reveal the
-                          winner!
+                          winner. The room code moves to a corner, so latecomers
+                          can still join
                         </p>
                       </div>
                     </div>
@@ -584,8 +571,8 @@ export default function HelpPage() {
                       <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                       <span className="text-sm">
                         <strong>Two devices:</strong> Use one device to manage
-                        (your laptop) and another for presentation (connected to
-                        projector)
+                        (your laptop or phone) and another for the big screen
+                        (connected to the projector)
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
