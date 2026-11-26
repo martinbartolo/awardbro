@@ -22,6 +22,7 @@ const queries = {
   getCategory: (api, s) => api.getCategory({ id: s.ranking.id }),
   getMyVotes: (api, s) => api.getMyVotes({ categoryId: s.ranking.id }),
   getPublicSessions: api => api.getPublicSessions(),
+  findShow: (api, s) => api.findShow({ code: s.show.code }),
 } satisfies Record<
   string,
   (api: Visitor["api"], show: Show) => Promise<unknown>
@@ -81,6 +82,18 @@ describe("a room code", () => {
     // Slugs are only for shows from before room codes
     const saved = await testDb.session.findMany({ select: { slug: true } });
     for (const { slug } of saved) expect(slug).toBeNull();
+  });
+
+  it("finds a show by the code typed on the homepage, ignoring case and spaces", async () => {
+    const { api } = visitor();
+    const { code } = await create();
+    const spaced = `  ${code.slice(0, 2).toLowerCase()} ${code.slice(2)} `;
+
+    for (const typed of [code, spaced]) {
+      expect(await api.findShow({ code: typed }), typed).toEqual({ code });
+    }
+    await expectError(api.findShow({ code: "no-such-show" }), "NOT_FOUND");
+    await expectError(api.findShow({ code: " " }), "BAD_REQUEST");
   });
 
   describe("in a page's URL", () => {

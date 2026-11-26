@@ -5,6 +5,11 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
-const config = {};
+const config = {
+  // The room code field moved to the homepage
+  redirects: async () => [
+    { source: "/join", destination: "/#join", permanent: false },
+  ],
+};
 
 export default config;
