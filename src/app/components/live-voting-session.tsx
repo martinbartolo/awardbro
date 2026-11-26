@@ -15,7 +15,7 @@ import { type RouterOutputs, useTRPC } from "~/trpc/react";
 import { type MyVotes } from "./ranking-interface";
 import { VotingInterface } from "./voting-interface";
 
-type Session = RouterOutputs["award"]["getSessionBySlug"];
+type Session = RouterOutputs["award"]["getSession"];
 
 type LiveVotingSessionProps = {
   initialSession: Session;
@@ -24,7 +24,7 @@ type LiveVotingSessionProps = {
     categoryId: string;
     votes: MyVotes;
   };
-  slug: string;
+  code: string;
 };
 
 const containerVariants = {
@@ -44,7 +44,7 @@ const containerVariants = {
 export function LiveVotingSession({
   initialSession,
   initialMyVotes,
-  slug,
+  code,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -53,8 +53,8 @@ export function LiveVotingSession({
     error: sessionError,
     isError: isSessionError,
   } = useQuery(
-    trpc.award.getSessionBySlug.queryOptions(
-      { slug, activeOnly: true },
+    trpc.award.getSession.queryOptions(
+      { code, activeOnly: true },
       {
         refetchInterval: 5000,
         initialData: initialSession,
@@ -64,6 +64,8 @@ export function LiveVotingSession({
   );
 
   const activeCategory = session.categories[0];
+  // Revealing a category closes voting in it (the server refuses votes too)
+  const isClosed = !!activeCategory?.revealed;
 
   // The server-rendered votes only describe the first category shown. Drop
   // them once the host moves on, so a category reopened later (and maybe
@@ -173,11 +175,13 @@ export function LiveVotingSession({
           <div className="mb-8 text-center">
             <h1 className="text-4xl font-bold">{session.name}</h1>
             <p className="text-muted-foreground mt-2">
-              {activeCategory.type === "RANKING"
-                ? `Rank your top ${activeCategory.rankingTop} choices`
-                : "Cast your vote"}
+              {isClosed
+                ? "Voting has closed"
+                : activeCategory.type === "RANKING"
+                  ? `Rank your top ${activeCategory.rankingTop} choices`
+                  : "Cast your vote"}
             </p>
-            {hasVoted && (
+            {hasVoted && !isClosed && (
               <p className="text-chart-2 mt-2">
                 You have already voted in this category
               </p>
@@ -232,6 +236,7 @@ export function LiveVotingSession({
                   rankingTop={activeCategory.rankingTop}
                   myVotes={myVotes}
                   refetchMyVotes={refetchMyVotes}
+                  closed={isClosed}
                 />
               </CardContent>
             </Card>

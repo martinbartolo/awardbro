@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   createShow,
   open,
+  reveal,
   scoresByName,
   type Show,
 } from "~/test/integration/show";
@@ -34,7 +35,6 @@ const seenBy = async (who: Visitor) => {
     voters: category.estimatedVoters,
   };
 };
-const reveal = () => host.api.toggleRevealCategory({ id: show.normal.id });
 const all = { Dune: 3, Barbie: 1, Oppenheimer: 0 };
 const none = { Dune: 0, Barbie: 0, Oppenheimer: 0 };
 
@@ -50,10 +50,10 @@ describe("scores before a category is revealed", () => {
   });
 });
 
-it("are the same in getSessionBySlug as in getCategory", async () => {
+it("are the same in getSession as in getCategory", async () => {
   for (const who of [visitor(), host]) {
-    const { categories } = await who.api.getSessionBySlug({
-      slug: show.show.slug,
+    const { categories } = await who.api.getSession({
+      code: show.show.code,
     });
     const normal = categories.find(c => c.id === show.normal.id)!;
 
@@ -66,7 +66,7 @@ it("are the same in getSessionBySlug as in getCategory", async () => {
 
 describe("scores after a category is revealed", () => {
   it("are shown to everyone, but the voter count only to the host", async () => {
-    await reveal();
+    await reveal(host, show.normal.id);
 
     expect(await seenBy(visitor())).toEqual({ scores: all, voters: null });
     expect(await seenBy(host)).toEqual({ scores: all, voters: 4 });
@@ -74,7 +74,7 @@ describe("scores after a category is revealed", () => {
 
   it("only show the winners with winnerOnly", async () => {
     await host.api.toggleWinnerOnly({ categoryId: show.normal.id });
-    await reveal();
+    await reveal(host, show.normal.id);
 
     expect((await seenBy(visitor())).scores).toEqual({
       Dune: 3,
@@ -86,7 +86,7 @@ describe("scores after a category is revealed", () => {
 
   it("only show the order with hideVoteCounts", async () => {
     await host.api.toggleHideVoteCounts({ categoryId: show.normal.id });
-    await reveal();
+    await reveal(host, show.normal.id);
 
     expect((await seenBy(visitor())).scores).toEqual({
       Dune: 2,
@@ -103,23 +103,21 @@ describe("an aggregate's scores", () => {
     scoresByName(
       (await visitor().api.getCategory({ id: show.aggregate.id })).nominations,
     );
-  const revealCategory = (id: string) => host.api.toggleRevealCategory({ id });
-
   it("stay hidden until every source is revealed", async () => {
-    await revealCategory(show.aggregate.id);
+    await reveal(host, show.aggregate.id);
     expect(await overall()).toEqual(none);
 
-    await revealCategory(show.normal.id);
+    await reveal(host, show.normal.id);
     expect(await overall()).toEqual(none);
 
-    await revealCategory(show.ranking.id);
+    await reveal(host, show.ranking.id);
     expect(await overall()).toEqual(all);
   });
 
   it("only show the order if a source hides its counts", async () => {
     await host.api.toggleHideVoteCounts({ categoryId: show.normal.id });
     for (const id of [show.normal.id, show.ranking.id, show.aggregate.id]) {
-      await revealCategory(id);
+      await reveal(host, id);
     }
 
     expect(await overall()).toEqual({ Dune: 2, Barbie: 1, Oppenheimer: 0 });

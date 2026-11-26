@@ -38,10 +38,13 @@ export function RankingInterface({
   rankingTop,
   myVotes: currentRankings,
   refetchMyVotes,
+  closed,
 }: {
   nominations: Nomination[];
   categoryId: string;
   rankingTop: number;
+  /** Voting has closed: show the voter's ranking without the form */
+  closed: boolean;
 } & MyVotesProps) {
   // Track user modifications separately - null means use server data
   const [userRankings, setUserRankings] = useState<Ranking[] | null>(null);
@@ -62,6 +65,10 @@ export function RankingInterface({
       }))
       .sort((a, b) => a.rank - b.rank);
   }, [currentRankings, userRankings]);
+
+  // Drop an unsaved ranking once voting closes, so the voter sees what was
+  // counted, and reopening starts from it
+  if (closed && userRankings !== null) setUserRankings(null);
 
   const setRankings = (newRankings: Ranking[]) => {
     setUserRankings(newRankings);
@@ -130,9 +137,15 @@ export function RankingInterface({
     <div className="space-y-6">
       {/* Instructions */}
       <p className="text-muted-foreground text-sm">
-        Rank your top {rankingTop} choices. {getOrdinal(1)} place gets{" "}
-        {rankingTop} points, {getOrdinal(2)} place gets {rankingTop - 1} points,
-        etc.
+        {closed ? (
+          "Watch the big screen for the results."
+        ) : (
+          <>
+            Rank your top {rankingTop} choices. {getOrdinal(1)} place gets{" "}
+            {rankingTop} points, {getOrdinal(2)} place gets {rankingTop - 1}{" "}
+            points, etc.
+          </>
+        )}
       </p>
 
       {/* Ranking slots */}
@@ -170,20 +183,25 @@ export function RankingInterface({
                       imageClassName="relative mt-1 h-10 w-16"
                     />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveRanking(slot.nomination!.id)}
-                    disabled={isSubmitting}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  {!closed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveRanking(slot.nomination!.id)}
+                      disabled={isSubmitting}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <span className="text-muted-foreground text-sm">
-                  Click a nomination below to assign {getOrdinal(slot.rank)}{" "}
-                  place
+                  {!closed
+                    ? `Click a nomination below to assign ${getOrdinal(slot.rank)} place`
+                    : currentRankings
+                      ? "Not ranked"
+                      : "Checking your ranking..."}
                 </span>
               )}
             </div>
@@ -191,71 +209,75 @@ export function RankingInterface({
         </div>
       </div>
 
-      {/* Available nominations */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Available Nominations:</h3>
-        <div className="space-y-2">
-          {nominations.map(nomination => {
-            const isRanked = rankedNominationIds.has(nomination.id);
-            const currentRank = rankings.find(
-              r => r.nominationId === nomination.id,
-            )?.rank;
+      {!closed && (
+        <>
+          {/* Available nominations */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Available Nominations:</h3>
+            <div className="space-y-2">
+              {nominations.map(nomination => {
+                const isRanked = rankedNominationIds.has(nomination.id);
+                const currentRank = rankings.find(
+                  r => r.nominationId === nomination.id,
+                )?.rank;
 
-            return (
-              <button
-                key={nomination.id}
-                onClick={() => !isRanked && handleAddRanking(nomination.id)}
-                disabled={isSubmitting || (isComplete && !isRanked)}
-                className={cn(
-                  "w-full text-left transition-all",
-                  "rounded-lg p-4",
-                  isRanked
-                    ? "bg-primary/20 ring-primary opacity-60 ring-2"
-                    : isComplete
-                      ? "cursor-not-allowed bg-white/5 opacity-40"
-                      : "cursor-pointer bg-white/10 hover:bg-white/20",
-                  isSubmitting && "cursor-not-allowed opacity-50",
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold">
-                      {nomination.name}
-                      {isRanked && (
-                        <span className="text-primary ml-2 text-sm">
-                          (Ranked {getOrdinal(currentRank!)})
-                        </span>
-                      )}
-                    </div>
-                    {nomination.description && (
-                      <NominationDescription
-                        description={nomination.description}
-                        className="text-muted-foreground text-sm"
-                      />
+                return (
+                  <button
+                    key={nomination.id}
+                    onClick={() => !isRanked && handleAddRanking(nomination.id)}
+                    disabled={isSubmitting || (isComplete && !isRanked)}
+                    className={cn(
+                      "w-full text-left transition-all",
+                      "rounded-lg p-4",
+                      isRanked
+                        ? "bg-primary/20 ring-primary opacity-60 ring-2"
+                        : isComplete
+                          ? "cursor-not-allowed bg-white/5 opacity-40"
+                          : "cursor-pointer bg-white/10 hover:bg-white/20",
+                      isSubmitting && "cursor-not-allowed opacity-50",
                     )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">
+                          {nomination.name}
+                          {isRanked && (
+                            <span className="text-primary ml-2 text-sm">
+                              (Ranked {getOrdinal(currentRank!)})
+                            </span>
+                          )}
+                        </div>
+                        {nomination.description && (
+                          <NominationDescription
+                            description={nomination.description}
+                            className="text-muted-foreground text-sm"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* Submit button */}
-      <Button
-        className="w-full"
-        size="lg"
-        onClick={handleSubmit}
-        disabled={isSubmitting || !isComplete}
-      >
-        {isSubmitting
-          ? "Submitting Rankings..."
-          : hasExistingRankings
-            ? "Update Rankings"
-            : isComplete
-              ? "Submit Rankings"
-              : `Select ${rankingTop - rankings.length} more`}
-      </Button>
+          {/* Submit button */}
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isComplete}
+          >
+            {isSubmitting
+              ? "Submitting Rankings..."
+              : hasExistingRankings
+                ? "Update Rankings"
+                : isComplete
+                  ? "Submit Rankings"
+                  : `Select ${rankingTop - rankings.length} more`}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Copy, CopyIcon, RotateCcw, Trash } from "lucide-react";
+import { ArrowRight, RotateCcw, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -21,14 +21,36 @@ import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
 
-type SessionActionsProps = {
-  slug: string;
-  sessionId: string;
-};
+/** What the host needs to get the show going: the room code voters enter, and the big screen */
+export function RunShowCard({ code }: { code: string }) {
+  return (
+    <section
+      aria-labelledby="run-show"
+      className="bg-card mb-8 flex flex-col gap-6 rounded-lg p-6 sm:flex-row sm:items-end sm:justify-between"
+    >
+      <div>
+        <h2 id="run-show" className="text-muted-foreground text-sm font-medium">
+          Room code
+        </h2>
+        <p className="font-mono text-5xl font-bold tracking-wide">{code}</p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Voters scan the QR code on the big screen, or enter this code on the
+          homepage.
+        </p>
+      </div>
+      <Button asChild size="lg" className="group shrink-0">
+        <Link href={`/present/${code}`} target="_blank">
+          Open Big Screen
+          <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
+        </Link>
+      </Button>
+    </section>
+  );
+}
 
-export function SessionActions({ slug, sessionId }: SessionActionsProps) {
+/** Resetting every vote and deleting the show, kept apart from the everyday controls */
+export function DangerZone({ sessionId }: { sessionId: string }) {
   const router = useRouter();
-
   const trpc = useTRPC();
   const onManageError = useManageErrorHandler();
   const deleteSession = useMutation(
@@ -51,43 +73,26 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
     }),
   );
 
-  const copyVotingUrl = () => {
-    const votingUrl = `${window.location.origin}/vote/${slug}`;
-    void navigator.clipboard.writeText(votingUrl);
-    toast.success("URL Copied!", {
-      icon: <CopyIcon className="size-4" />,
-      description: "The voting URL has been copied to your clipboard.",
-    });
-  };
-
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      {/* Primary Actions */}
-      <div className="flex w-full gap-2 sm:w-auto">
-        <Button onClick={copyVotingUrl} className="flex-1 sm:flex-none">
-          <Copy className="size-4" />
-          Copy Voting Link
-        </Button>
-
-        <Button asChild className="group flex-1 sm:flex-none">
-          <Link href={`/present/${slug}`} target="_blank">
-            Presentation
-            <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
-          </Link>
-        </Button>
-      </div>
-
-      {/* Secondary Actions */}
-      <div className="flex gap-2">
+    <section
+      aria-labelledby="danger-zone"
+      className="border-destructive/40 rounded-lg border p-6"
+    >
+      <h2
+        id="danger-zone"
+        className="text-foreground mb-1 text-xl font-semibold"
+      >
+        Danger zone
+      </h2>
+      <p className="text-muted-foreground mb-4 text-sm">
+        These can&apos;t be undone.
+      </p>
+      <div className="flex flex-wrap gap-2">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              tooltip="Reset All Votes"
-              aria-label="Reset All Votes"
-            >
+            <Button variant="outline">
               <RotateCcw className="size-4" />
+              Reset All Votes
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -112,13 +117,9 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button
-              variant="destructive"
-              size="icon"
-              tooltip="Delete Award Show"
-              aria-label="Delete Award Show"
-            >
+            <Button variant="destructive">
               <Trash className="size-4" />
+              Delete Award Show
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -141,6 +142,6 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </div>
+    </section>
   );
 }

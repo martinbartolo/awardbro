@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { type CategoryType, Prisma } from "~/generated/prisma/client";
+import { normalizeRoomCode } from "~/lib/join";
 import {
   categoryFormSchema,
   nominationFormSchema,
@@ -207,7 +208,26 @@ const withShowLocked = async <T>(
   }
 };
 
-const VOTE_NOT_ACTIVE = "Voting is not currently active for this category";
+/**
+ * Refuses a vote in a category that isn't open: not active, or already
+ * revealed (so the results on the big screen can't change after the reveal).
+ */
+const assertVotingOpen = (
+  category: { isActive: boolean; revealed: boolean } | undefined,
+) => {
+  if (!category?.isActive) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Voting is not currently active for this category",
+    });
+  }
+  if (category.revealed) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Voting has closed for this category",
+    });
+  }
+};
 
 /**
  * Saves a voter's vote or ranking in one transaction that holds the show's
@@ -232,17 +252,14 @@ const saveVote = async <T>(
       async tx => {
         // Show lock first, then the device lock, always in this order
         await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0))`;
-        const [category] = await tx.$queryRaw<{ isActive: boolean }[]>`
-          SELECT c."isActive"
+        const [category] = await tx.$queryRaw<
+          { isActive: boolean; revealed: boolean }[]
+        >`
+          SELECT c."isActive", c."revealed"
           FROM pg_advisory_xact_lock(hashtext(${deviceId}), hashtext(${categoryId})),
             "Category" c
           WHERE c."id" = ${categoryId}`;
-        if (!category?.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: VOTE_NOT_ACTIVE,
-          });
-        }
+        assertVotingOpen(category);
         const found = await tx.nomination.count({
           where: { id: { in: nominationIds }, categoryId },
         });
@@ -274,50 +291,60 @@ export const awardRouter = createTRPCRouter({
   createSession: publicProcedure
     .input(sessionFormSchema)
     .mutation(async ({ ctx, input }) => {
+      const password = await bcrypt.hash(
+        normalizePassword(input.password),
+        SALT_ROUNDS,
+      );
       try {
+        // The database picks the room code (the column's default, generate_room_code())
         const session = await ctx.db.session.create({
-          data: {
-            name: input.name,
-            slug: input.slug,
-            password: input.password
-              ? await bcrypt.hash(
-                  normalizePassword(input.password),
-                  SALT_ROUNDS,
-                )
-              : null,
-          },
-          select: { id: true, name: true, slug: true },
+          data: { name: input.name, password },
+          select: { id: true, name: true, code: true },
         });
         // The creator can manage the show straight away without re-entering the password
         setManageCookie(ctx.resHeaders, session.id);
         return session;
       } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          if (error.code === "P2002") {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "That URL is already in use. Please try another one",
-            });
-          }
-        }
+        if (isBusy(error)) throw hostBusy();
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create session",
+          cause: error,
         });
       }
     }),
 
-  getSessionBySlug: publicProcedure
+  /**
+   * Finds the show with the room code someone typed on the homepage, ignoring case and spaces.
+   * Returns only its code.
+   */
+  findShow: publicProcedure
+    .input(z.object({ code: z.string().trim().min(1).max(200) }))
+    .query(async ({ ctx, input }) => {
+      const show = await ctx.db.session.findUnique({
+        where: { code: normalizeRoomCode(input.code) },
+        select: { code: true },
+      });
+      if (!show) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No show has that code",
+        });
+      }
+      return show;
+    }),
+
+  getSession: publicProcedure
     .input(
       z.object({
-        slug: z.string(),
+        code: z.string(),
         activeOnly: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const [session, access] = await Promise.all([
         ctx.db.session.findUnique({
-          where: { slug: input.slug },
+          where: { code: input.code },
           // Never send the password hash to the client
           omit: { password: true },
           include: {
@@ -339,7 +366,7 @@ export const awardRouter = createTRPCRouter({
         }),
         // Only to check access; never sent to the client
         ctx.db.session.findUnique({
-          where: { slug: input.slug },
+          where: { code: input.code },
           select: { id: true, password: true },
         }),
       ]);
@@ -481,22 +508,16 @@ export const awardRouter = createTRPCRouter({
       return scored!;
     }),
 
-  toggleRevealCategory: publicProcedure
-    .input(z.object({ id: z.string() }))
+  /**
+   * Reveals a category's results, which closes voting in it, or hides them
+   * again, which reopens it. Sets the state the host saw rather than toggling,
+   * so a click from an out-of-date page (another device, a double click)
+   * can't hide the results and reopen voting by mistake.
+   */
+  setCategoryRevealed: publicProcedure
+    .input(z.object({ id: z.string(), revealed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { categoryId: input.id });
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.id },
-        select: { revealed: true },
-      });
-
-      if (!category) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
-        });
-      }
-
       // Holding the show's lock, so the results don't change after the reveal
       // as votes being saved land
       return withShowLocked(
@@ -504,7 +525,7 @@ export const awardRouter = createTRPCRouter({
         session.id,
         ctx.db.category.update({
           where: { id: input.id },
-          data: { revealed: !category.revealed },
+          data: { revealed: input.revealed },
         }),
       );
     }),
@@ -723,7 +744,12 @@ export const awardRouter = createTRPCRouter({
           select: {
             categoryId: true,
             category: {
-              select: { type: true, isActive: true, sessionId: true },
+              select: {
+                type: true,
+                isActive: true,
+                revealed: true,
+                sessionId: true,
+              },
             },
           },
         });
@@ -750,12 +776,7 @@ export const awardRouter = createTRPCRouter({
         }
 
         // Fail fast; saveVote checks again while holding the locks
-        if (!nomination.category.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: VOTE_NOT_ACTIVE,
-          });
-        }
+        assertVotingOpen(nomination.category);
 
         return await saveVote(
           ctx.db,
@@ -799,6 +820,7 @@ export const awardRouter = createTRPCRouter({
             type: true,
             rankingTop: true,
             isActive: true,
+            revealed: true,
             sessionId: true,
             nominations: { select: { id: true } },
           },
@@ -820,12 +842,7 @@ export const awardRouter = createTRPCRouter({
 
         // Fail fast, before validating a stale form; saveVote checks again
         // while holding the locks
-        if (!category.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: VOTE_NOT_ACTIVE,
-          });
-        }
+        assertVotingOpen(category);
 
         if (!category.rankingTop) {
           throw new TRPCError({
@@ -1042,7 +1059,7 @@ export const awardRouter = createTRPCRouter({
     try {
       return await ctx.db.session.findMany({
         select: {
-          slug: true,
+          code: true,
           updatedAt: true,
         },
         orderBy: {
@@ -1061,14 +1078,14 @@ export const awardRouter = createTRPCRouter({
   verifyManageAccess: publicProcedure
     .input(
       z.object({
-        slug: z.string(),
+        code: z.string(),
         // Shows created before BAR-49 allowed up to 100 characters; this only stops huge inputs
         password: z.string().max(1000, "Invalid password"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
-        where: { slug: input.slug },
+        where: { code: input.code },
         select: { id: true, password: true },
       });
 

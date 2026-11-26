@@ -19,14 +19,14 @@ import { Label } from "~/components/ui/label";
 import { useTRPC } from "~/trpc/react";
 
 type PasswordVerificationProps = {
-  slug: string;
+  code: string;
 };
 
 /**
  * Shown on the manage page when the visitor has no manage-access cookie for this show.
  * A correct password makes the server set the cookie; refreshing then renders the manage UI.
  */
-export function PasswordVerification({ slug }: PasswordVerificationProps) {
+export function PasswordVerification({ code }: PasswordVerificationProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [isRefreshing, startRefresh] = useTransition();
@@ -46,7 +46,7 @@ export function PasswordVerification({ slug }: PasswordVerificationProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    verifyAccess.mutate({ slug, password });
+    verifyAccess.mutate({ code, password });
   };
 
   // Stay in the "verifying" state through the refresh so the form doesn't flash back

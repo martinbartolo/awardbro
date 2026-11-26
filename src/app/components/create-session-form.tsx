@@ -34,7 +34,6 @@ export function CreateSessionForm() {
     resolver: zodResolver(sessionFormSchema),
     defaultValues: {
       name: "",
-      slug: "",
       password: "",
     },
   });
@@ -43,7 +42,7 @@ export function CreateSessionForm() {
   const createSession = useMutation(
     trpc.award.createSession.mutationOptions({
       onSuccess: data => {
-        router.push(`/manage/${data.slug}`);
+        router.push(`/manage/${data.code}`);
       },
       onError: error => {
         if (error instanceof TRPCClientError) {
@@ -59,18 +58,13 @@ export function CreateSessionForm() {
     createSession.mutate(values);
   };
 
-  // Generate a URL-friendly slug from the name
-  const handleNameChange = (value: string) => {
-    form.setValue("name", value);
-    form.setValue("slug", value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Create Award Show</CardTitle>
         <CardDescription>
-          Create a new award show and share it with your friends
+          Give your show a name. It gets a room code that your guests enter to
+          vote.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -83,33 +77,8 @@ export function CreateSessionForm() {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      onChange={e => handleNameChange(e.target.value)}
-                      placeholder="e.g., Movie Awards 2024"
-                    />
+                    <Input {...field} placeholder="e.g., Movie Awards 2024" />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="slug"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="movie-awards-2024"
-                      autoCapitalize="off"
-                    />
-                  </FormControl>
-                  <p className="text-muted-foreground text-xs">
-                    Your award show will be available at: /vote/{field.value}
-                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -120,17 +89,12 @@ export function CreateSessionForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Password</FormLabel>
-                    <span className="text-muted-foreground text-xs">
-                      (Optional)
-                    </span>
-                  </div>
+                  <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       type="password"
-                      placeholder="Password for management access"
+                      placeholder="At least 4 characters"
                       autoCapitalize="off"
                       autoComplete="new-password"
                     />
@@ -143,9 +107,9 @@ export function CreateSessionForm() {
             <div className="bg-muted flex items-start gap-2 rounded-md p-3">
               <CircleExclamationPoint className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
               <p className="text-muted-foreground text-sm">
-                Save your management URL, and your password if you set one.
-                Without a password, anyone with the management URL can change
-                your award show.
+                The room code is on the big screen, so the password is what
+                keeps your show to you. You&apos;ll need it to manage the show
+                from another device.
               </p>
             </div>
 

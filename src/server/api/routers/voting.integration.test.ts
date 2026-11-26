@@ -4,6 +4,7 @@ import { testDb } from "~/test/integration/db";
 import {
   createShow,
   open,
+  reveal,
   scoresByName,
   type Show,
 } from "~/test/integration/show";
@@ -248,6 +249,60 @@ describe("ranking", () => {
   });
 });
 
+describe("after the host reveals the category", () => {
+  const closed = { message: "Voting has closed for this category" };
+
+  it("rejects a new or changed vote and keeps the voter's vote", async () => {
+    await open(host, show.normal.id);
+    await voteFor("Dune");
+    await reveal(host, show.normal.id);
+
+    await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
+    await expect(voteFor("Barbie", visitor())).rejects.toMatchObject(closed);
+
+    expect(await votesOf(voter)).toEqual({ "normal:Dune": null });
+    expect(await testDb.vote.count()).toBe(1);
+  });
+
+  it("rejects a new ranking and keeps the voter's ranking", async () => {
+    await open(host, show.ranking.id);
+    await rank("Dune", "Barbie");
+    await reveal(host, show.ranking.id);
+
+    await expect(rank("Oppenheimer", "Dune")).rejects.toMatchObject(closed);
+
+    expect(await votesOf(voter)).toEqual({
+      "ranking:Dune": 1,
+      "ranking:Barbie": 2,
+    });
+  });
+
+  it("stays closed when the host reveals again from an out-of-date page", async () => {
+    await open(host, show.normal.id);
+    await reveal(host, show.normal.id);
+    await reveal(host, show.normal.id);
+
+    await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
+  });
+
+  it("accepts votes and rankings again once the results are hidden", async () => {
+    await open(host, show.normal.id);
+    await reveal(host, show.normal.id);
+    await reveal(host, show.normal.id, false);
+    await voteFor("Barbie");
+    await open(host, show.ranking.id);
+    await reveal(host, show.ranking.id);
+    await reveal(host, show.ranking.id, false);
+    await rank("Oppenheimer", "Dune");
+
+    expect(await votesOf(voter)).toEqual({
+      "normal:Barbie": null,
+      "ranking:Oppenheimer": 1,
+      "ranking:Dune": 2,
+    });
+  });
+});
+
 describe("scores", () => {
   it("count votes, ranking points and aggregate totals from the database", async () => {
     await open(host, show.normal.id);
@@ -256,8 +311,8 @@ describe("scores", () => {
     await open(host, show.ranking.id);
     await rank("Barbie", "Dune");
 
-    const { categories } = await visitor().api.getSessionBySlug({
-      slug: show.show.slug,
+    const { categories } = await visitor().api.getSession({
+      code: show.show.code,
     });
     const scores = Object.fromEntries(
       categories.map(c => [c.name, scoresByName(c.nominations)]),
@@ -280,8 +335,8 @@ describe("scores", () => {
 
     const category = await visitor().api.getCategory({ id: show.aggregate.id });
     await open(host, show.aggregate.id);
-    const { categories } = await visitor().api.getSessionBySlug({
-      slug: show.show.slug,
+    const { categories } = await visitor().api.getSession({
+      code: show.show.code,
       activeOnly: true,
     });
 
@@ -320,14 +375,12 @@ describe("scores", () => {
     // The show with its categories, and its password to check access (in parallel);
     // aggregates are scored from sources loaded with the show
     expect(
-      await countOperations(api =>
-        api.getSessionBySlug({ slug: show.show.slug }),
-      ),
+      await countOperations(api => api.getSession({ code: show.show.code })),
     ).toBe(2);
     // Only the active aggregate is loaded, so its sources' nominations take one more
     expect(
       await countOperations(api =>
-        api.getSessionBySlug({ slug: show.show.slug, activeOnly: true }),
+        api.getSession({ code: show.show.code, activeOnly: true }),
       ),
     ).toBe(3);
     expect(

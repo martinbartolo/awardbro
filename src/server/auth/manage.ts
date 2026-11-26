@@ -15,7 +15,8 @@ import { db } from "~/server/db";
  * cookie with `assertCanManage` before touching the database. The token and cookie logic is in
  * `manage-token.ts`.
  *
- * Shows created without a password are intentionally open: anyone with the link can manage them.
+ * New shows need a password. Shows created before that may have none: they stay open, and anyone
+ * with the room code can manage them.
  */
 
 type ManageTarget =
@@ -63,10 +64,10 @@ export const isHost = (
   session: { id: string; password: string | null },
 ) => canManage(session, name => getCookie(ctx.headers, name));
 
-/** For Server Components: can the current visitor manage the show with this slug? */
-export const hasManageAccess = async (slug: string) => {
+/** For Server Components: can the current visitor manage the show with this room code? */
+export const hasManageAccess = async (code: string) => {
   const session = await db.session.findUnique({
-    where: { slug },
+    where: { code },
     select: { id: true, password: true },
   });
   if (!session) return false;

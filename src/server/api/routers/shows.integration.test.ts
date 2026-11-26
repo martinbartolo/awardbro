@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { findShowCode } from "~/server/shows";
 import { testDb } from "~/test/integration/db";
 import {
   awardPaths,
@@ -15,12 +16,13 @@ import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 
 /** Every query, called on a show the way its pages do */
 const queries = {
-  getSessionBySlug: (api, s) => api.getSessionBySlug({ slug: s.show.slug }),
+  getSession: (api, s) => api.getSession({ code: s.show.code }),
   getSessionCategories: (api, s) =>
     api.getSessionCategories({ sessionId: s.show.id }),
   getCategory: (api, s) => api.getCategory({ id: s.ranking.id }),
   getMyVotes: (api, s) => api.getMyVotes({ categoryId: s.ranking.id }),
   getPublicSessions: api => api.getPublicSessions(),
+  findShow: (api, s) => api.findShow({ code: s.show.code }),
 } satisfies Record<
   string,
   (api: Visitor["api"], show: Show) => Promise<unknown>
@@ -52,17 +54,79 @@ describe("the password hash", () => {
   it("is never in the response of the routes that create a show or grant access", async () => {
     const created = await visitor().api.createSession({
       name: "Movie Awards",
-      slug: "movie-awards",
       password: "secret1",
     });
     const access = await visitor().api.verifyManageAccess({
-      slug: "movie-awards",
+      code: created.code,
       password: "secret1",
     });
 
     for (const response of [created, access]) {
       expect(JSON.stringify(response)).not.toMatch(/password|\$2[aby]\$/);
     }
+  });
+});
+
+describe("a room code", () => {
+  const create = () =>
+    visitor().api.createSession({ name: "Awards", password: "secret1" });
+
+  it("is given to every new show: four characters from the alphabet, different for each, and no slug", async () => {
+    const shows = await Promise.all(Array.from({ length: 20 }, create));
+    for (const { code } of shows) {
+      // Four characters, without 0/O, 1/I/L or U
+      expect(code).toMatch(/^[2-9A-HJKMNP-TV-Z]{4}$/);
+    }
+    expect(new Set(shows.map(show => show.code)).size).toBe(shows.length);
+
+    // Slugs are only for shows from before room codes
+    const saved = await testDb.session.findMany({ select: { slug: true } });
+    for (const { slug } of saved) expect(slug).toBeNull();
+  });
+
+  it("finds a show by the code typed on the homepage, ignoring case and spaces", async () => {
+    const { api } = visitor();
+    const { code } = await create();
+    const spaced = `  ${code.slice(0, 2).toLowerCase()} ${code.slice(2)} `;
+
+    for (const typed of [code, spaced]) {
+      expect(await api.findShow({ code: typed }), typed).toEqual({ code });
+    }
+    await expectError(api.findShow({ code: "no-such-show" }), "NOT_FOUND");
+    await expectError(api.findShow({ code: " " }), "BAD_REQUEST");
+  });
+
+  describe("in a page's URL", () => {
+    /** A show from before room codes, with the slug it was created with */
+    const oldShow = (slug: string) =>
+      testDb.session.create({
+        data: { name: "Old Awards", slug },
+        select: { code: true },
+      });
+
+    it("finds the show by its code, also typed in lowercase", async () => {
+      const { code } = await create();
+      expect(await findShowCode(testDb, code)).toBe(code);
+      expect(await findShowCode(testDb, code.toLowerCase())).toBe(code);
+      expect(await findShowCode(testDb, "ZZZZZ")).toBeNull();
+    });
+
+    it("finds an older show by the slug in its old links", async () => {
+      const { code } = await oldShow("movie-awards");
+      expect(await findShowCode(testDb, "movie-awards")).toBe(code);
+    });
+
+    it("keeps an old link on its own show when its slug reads like another show's code", async () => {
+      // Two shows from before room codes, the first given a code that reads like the second's
+      // slug when codes were added (new codes avoid slugs)
+      const { code } = await oldShow("first-show");
+      const lookalike = await oldShow(code.toLowerCase());
+
+      expect(await findShowCode(testDb, code.toLowerCase())).toBe(
+        lookalike.code,
+      );
+      expect(await findShowCode(testDb, code)).toBe(code);
+    });
   });
 });
 

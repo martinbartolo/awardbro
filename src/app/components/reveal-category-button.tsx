@@ -18,8 +18,8 @@ export function RevealCategoryButton({
   const router = useRouter();
   const trpc = useTRPC();
   const onManageError = useManageErrorHandler();
-  const toggleReveal = useMutation(
-    trpc.award.toggleRevealCategory.mutationOptions({
+  const setRevealed = useMutation(
+    trpc.award.setCategoryRevealed.mutationOptions({
       onSuccess: () => {
         router.refresh();
       },
@@ -33,11 +33,13 @@ export function RevealCategoryButton({
     <Button
       size="sm"
       variant={revealed ? "destructive" : "default"}
-      onClick={() => toggleReveal.mutate({ id: categoryId })}
-      disabled={toggleReveal.isPending}
+      onClick={() =>
+        setRevealed.mutate({ id: categoryId, revealed: !revealed })
+      }
+      disabled={setRevealed.isPending}
       className="group"
     >
-      {toggleReveal.isPending ? (
+      {setRevealed.isPending ? (
         "Updating..."
       ) : revealed ? (
         <>
