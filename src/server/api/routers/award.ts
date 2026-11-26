@@ -72,6 +72,17 @@ const revealOptions = (
           ),
       };
 
+/**
+ * Categories in the show's running order. Positions only tie if code from before them added a
+ * category: while the release that added them was building, or after a rollback. Age then keeps
+ * the order stable, and the next move renumbers them.
+ */
+const runningOrder = [
+  { position: "asc" },
+  { createdAt: "asc" },
+  { id: "asc" },
+] satisfies Prisma.CategoryOrderByWithRelationInput[];
+
 /** A category as loaded for scoring, with its sources when it's an aggregate */
 type ScorableCategory = ScoredCategory &
   RevealOptions & {
@@ -540,14 +551,15 @@ export const awardRouter = createTRPCRouter({
           include: {
             categories: {
               where: input.activeOnly ? { isActive: true } : undefined,
-              orderBy: { createdAt: "asc" },
+              orderBy: runningOrder,
               include: {
                 nominations: {
                   orderBy: { createdAt: "asc" },
                   include: scoringFields,
                 },
-                sourceCategories: true,
+                sourceCategories: { orderBy: runningOrder },
                 aggregateOf: {
+                  orderBy: runningOrder,
                   select: { id: true, name: true },
                 },
               },
@@ -586,6 +598,7 @@ export const awardRouter = createTRPCRouter({
           sessionId: input.sessionId,
           type: { not: "AGGREGATE" }, // Only return non-aggregate categories as sources
         },
+        orderBy: runningOrder,
         select: {
           id: true,
           name: true,
@@ -600,17 +613,24 @@ export const awardRouter = createTRPCRouter({
       const sourceIds =
         input.type === "AGGREGATE" ? [...new Set(input.sourceCategories)] : [];
       try {
-        // One transaction, so an aggregate is created with all its nominations or not at all
+        // One transaction, so an aggregate is created with all its nominations or not at all.
+        // It holds the show's lock, so two categories added at once get different places.
         return await ctx.db.$transaction(
           async tx => {
+            await lockShow(tx, input.sessionId);
             if (sourceIds.length) {
-              await lockShow(tx, input.sessionId);
               await assertValidSources(tx, input.sessionId, sourceIds);
             }
 
+            // A new category goes to the end of the running order
+            const last = await tx.category.aggregate({
+              where: { sessionId: input.sessionId },
+              _max: { position: true },
+            });
             const category = await tx.category.create({
               data: {
                 sessionId: input.sessionId,
+                position: (last._max.position ?? -1) + 1,
                 name: input.name,
                 description: input.description,
                 type: input.type as CategoryType,
@@ -716,6 +736,59 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
+  /**
+   * Moves a category one place up or down in the show's running order, swapping it with its
+   * neighbour as the show is now. So a click from an out-of-date page moves it relative to the
+   * current order, rather than restoring an old one. At the top (or bottom) it stays where it is.
+   */
+  moveCategory: publicProcedure
+    .input(z.object({ id: z.string(), direction: z.enum(["up", "down"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await assertCanManage(ctx, { categoryId: input.id });
+      try {
+        // Holding the show's lock, so two moves (or a move and an add) don't interleave
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const order = await tx.category.findMany({
+              where: { sessionId: session.id },
+              orderBy: runningOrder,
+              select: { id: true, position: true },
+            });
+            const from = order.findIndex(c => c.id === input.id);
+            const to = from + (input.direction === "up" ? -1 : 1);
+            if (from === -1) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Category not found",
+              });
+            }
+            if (to >= 0 && to < order.length) {
+              [order[from], order[to]] = [order[to]!, order[from]!];
+            }
+            // Number them 0, 1, 2, … again, which also settles ties from older shows
+            await Promise.all(
+              order.flatMap((category, index) =>
+                category.position === index
+                  ? []
+                  : [
+                      tx.category.update({
+                        where: { id: category.id },
+                        data: { position: index },
+                      }),
+                    ],
+              ),
+            );
+            // The new running order
+            return order.map(c => c.id);
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
+      } catch (error) {
+        throw hostWriteError(error, "Failed to move category");
+      }
+    }),
+
   getCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -723,7 +796,7 @@ export const awardRouter = createTRPCRouter({
         where: { id: input.id },
         include: {
           nominations: { include: scoringFields },
-          sourceCategories: true,
+          sourceCategories: { orderBy: runningOrder },
           // Only to check access; never sent to the client
           session: { select: { id: true, password: true } },
         },
