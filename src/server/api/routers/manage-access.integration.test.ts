@@ -32,8 +32,8 @@ const writeRoutes = {
     api.addNomination({ categoryId: s.normal.id, name: "Poor Things" }),
   setActiveCategory: (api, s) =>
     api.setActiveCategory({ categoryId: s.normal.id, active: true }),
-  toggleRevealCategory: (api, s) =>
-    api.toggleRevealCategory({ id: s.normal.id }),
+  setCategoryRevealed: (api, s) =>
+    api.setCategoryRevealed({ id: s.normal.id, revealed: true }),
   toggleHideVoteCounts: (api, s) =>
     api.toggleHideVoteCounts({ categoryId: s.normal.id }),
   toggleWinnerOnly: (api, s) =>

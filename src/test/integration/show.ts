@@ -70,6 +70,10 @@ export type Show = Awaited<ReturnType<typeof createShow>>;
 export const open = (host: Visitor, categoryId: string) =>
   host.api.setActiveCategory({ categoryId, active: true });
 
+/** Reveals a category's results (or hides them again), as the host */
+export const reveal = (host: Visitor, categoryId: string, revealed = true) =>
+  host.api.setCategoryRevealed({ id: categoryId, revealed });
+
 /** A show with a vote for Dune in the normal category, and a ranking (Dune, Barbie), from one voter */
 export async function votedShow({ password = "" } = {}) {
   const host = visitor();
