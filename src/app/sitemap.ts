@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.9,
       },
       {
-        url: "https://awardbro.com/join",
+        url: "https://awardbro.com/help",
         lastModified: new Date(),
         changeFrequency: "monthly",
         priority: 0.9,
@@ -55,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.9,
       },
       {
-        url: "https://awardbro.com/join",
+        url: "https://awardbro.com/help",
         lastModified: new Date(),
         changeFrequency: "monthly",
         priority: 0.9,

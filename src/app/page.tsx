@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   CirclePlus,
   CircleQuestionMark,
   Heart,
   Lock,
   Presentation,
-  Search,
   Timer,
   Users,
   Vote,
@@ -15,6 +16,7 @@ import {
 import { motion } from "motion/react";
 import Link from "next/link";
 
+import { RoomCodeForm } from "~/app/components/room-code-form";
 import { AnimatedCounter } from "~/components/ui/animated-counter";
 import { Button } from "~/components/ui/button";
 
@@ -32,6 +34,8 @@ const stagger = {
 };
 
 export default function Page() {
+  const [isManaging, setIsManaging] = useState(false);
+
   return (
     <main className="bg-background text-foreground flex min-h-screen w-full flex-col items-center justify-start">
       {/* Header */}
@@ -83,19 +87,45 @@ export default function Page() {
             Add categories, collect votes, and present winners live!
           </motion.p>
           <motion.div
-            className="mt-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-center"
+            id="join"
+            className="mx-auto mt-8 w-full max-w-md scroll-mt-24 px-4 text-left"
             variants={fadeIn}
           >
-            <Button asChild size="lg" className="h-12 px-8">
+            <p className="mb-2 text-sm font-medium">
+              At a show? Enter the room code from the big screen
+            </p>
+            <RoomCodeForm page="vote" label="Room code from the big screen" />
+          </motion.div>
+          <motion.div
+            className="mx-auto mt-8 flex w-full max-w-md flex-col items-center gap-3 px-4"
+            variants={fadeIn}
+          >
+            <p className="text-muted-foreground text-sm">Hosting a show?</p>
+            <Button asChild size="lg" variant="outline" className="h-12 px-8">
               <Link href="/create">
                 Create Award Show <CirclePlus className="h-5 w-5" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-12 px-8">
-              <Link href="/join">
-                Access Existing Show <Search className="h-5 w-5" />
-              </Link>
-            </Button>
+            {isManaging ? (
+              <div className="w-full text-left">
+                <p className="text-muted-foreground mb-2 text-sm">
+                  Enter your show&apos;s room code to manage it
+                </p>
+                <RoomCodeForm
+                  page="manage"
+                  label="Your show's room code"
+                  focusOnMount
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsManaging(true)}
+                className="text-muted-foreground hover:text-primary text-sm underline underline-offset-4 transition-colors"
+              >
+                Already hosting? Manage your show
+              </button>
+            )}
           </motion.div>
           <motion.p
             className="text-muted-foreground mt-4 text-sm"
@@ -147,8 +177,8 @@ export default function Page() {
             />
             <FeatureCard
               icon={Lock}
-              title="Secure Management"
-              description="Control your event with a private management dashboard."
+              title="Host Controls"
+              description="Run the show from your own manage page, kept to you with a password."
             />
             <FeatureCard
               icon={Timer}
@@ -181,7 +211,7 @@ export default function Page() {
             <StepCard
               number="1"
               title="Create Your Event"
-              description="Set up your award show with a custom name and optional password protection."
+              description="Give your award show a name and a password, and get a room code for your guests."
             />
             <StepCard
               number="2"
@@ -191,7 +221,7 @@ export default function Page() {
             <StepCard
               number="3"
               title="Go Live"
-              description="Share the voting link, watch the votes roll in, and present winners on the big screen."
+              description="Put the big screen up: guests scan the QR code or enter the room code, and you reveal the winners."
             />
           </motion.div>
           <motion.div
@@ -227,12 +257,6 @@ export default function Page() {
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Create Show
-              </Link>
-              <Link
-                href="/join"
-                className="text-muted-foreground hover:text-primary text-sm transition-colors"
-              >
-                Access Show
               </Link>
               <Link
                 href="/help"

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { type CategoryType, Prisma } from "~/generated/prisma/client";
+import { normalizeRoomCode } from "~/lib/join";
 import {
   categoryFormSchema,
   nominationFormSchema,
@@ -311,6 +312,26 @@ export const awardRouter = createTRPCRouter({
           cause: error,
         });
       }
+    }),
+
+  /**
+   * Finds the show with the room code someone typed on the homepage, ignoring case and spaces.
+   * Returns only its code.
+   */
+  findShow: publicProcedure
+    .input(z.object({ code: z.string().trim().min(1).max(200) }))
+    .query(async ({ ctx, input }) => {
+      const show = await ctx.db.session.findUnique({
+        where: { code: normalizeRoomCode(input.code) },
+        select: { code: true },
+      });
+      if (!show) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No show has that code",
+        });
+      }
+      return show;
     }),
 
   getSession: publicProcedure

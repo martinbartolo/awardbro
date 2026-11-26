@@ -12,6 +12,7 @@ import { Badge } from "~/components/ui/badge";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
+import { JoinInfo } from "./join-info";
 import { LiveVoting } from "./live-voting";
 import { WinnerAnimation } from "./winner-animation";
 
@@ -76,6 +77,12 @@ export function LivePresentation({
     }
   }, [isSessionError]);
 
+  // Voters can join while waiting and during voting. During a reveal, or an aggregate (which
+  // takes no votes), the join details move to a corner.
+  const isVoting = session.categories.some(
+    category => !category.revealed && category.type !== "AGGREGATE",
+  );
+
   if (isSessionError) {
     return (
       <motion.div
@@ -103,189 +110,204 @@ export function LivePresentation({
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {session.categories.length === 0 ? (
-        <motion.div
-          key="waiting"
-          className="container mx-auto px-4 text-center"
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          variants={containerVariants}
-        >
-          <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
-          <p className="text-2xl">Waiting for the next award.</p>
-          <p className="text-muted-foreground mt-4">
-            The host will activate categories when ready.
-          </p>
-        </motion.div>
-      ) : (
-        <motion.div
-          key="active"
-          className="container mx-auto px-4 pt-16"
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          variants={containerVariants}
-        >
-          <h1 className="text-foreground mb-12 text-center text-6xl font-bold">
-            {session.name}
-          </h1>
+    <>
+      <AnimatePresence mode="wait">
+        {session.categories.length === 0 ? (
+          <motion.div
+            key="waiting"
+            className="container mx-auto px-4 text-center"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={containerVariants}
+          >
+            <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
+            <p className="text-2xl">Waiting for the next award.</p>
+            <p className="text-muted-foreground mt-4">
+              The host will activate categories when ready.
+            </p>
+            <div className="mt-16">
+              <JoinInfo code={code} variant="full" />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="active"
+            className="container mx-auto px-4 pt-16"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={containerVariants}
+          >
+            <h1 className="text-foreground mb-12 text-center text-6xl font-bold">
+              {session.name}
+            </h1>
 
-          <div className="space-y-8">
-            <AnimatePresence mode="wait">
-              {session.categories.map(category => (
-                <motion.div
-                  key={category.id}
-                  className={`bg-background rounded-lg p-8 transition-all duration-500 ${
-                    !category.revealed && "opacity-50"
-                  }`}
-                  variants={categoryVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <h2 className="text-foreground mb-6 text-center text-4xl font-semibold">
-                    {category.name}
-                  </h2>
-                  {category.description && (
-                    <p className="text-muted-foreground mb-8 text-center text-xl">
-                      {category.description}
-                    </p>
-                  )}
-                  {category.aggregateOf.length > 0 && (
-                    <div className="mb-8 flex flex-wrap items-center justify-center gap-1">
-                      <span className="text-muted-foreground text-sm">
-                        Counts towards:
-                      </span>
-                      {category.aggregateOf.map(aggregate => (
-                        <Badge key={aggregate.id} variant="secondary">
-                          {aggregate.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+            <div className="space-y-8">
+              <AnimatePresence mode="wait">
+                {session.categories.map(category => (
+                  <motion.div
+                    key={category.id}
+                    className={`bg-background rounded-lg p-8 transition-all duration-500 ${
+                      !category.revealed && "opacity-50"
+                    }`}
+                    variants={categoryVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                  >
+                    <h2 className="text-foreground mb-6 text-center text-4xl font-semibold">
+                      {category.name}
+                    </h2>
+                    {category.description && (
+                      <p className="text-muted-foreground mb-8 text-center text-xl">
+                        {category.description}
+                      </p>
+                    )}
+                    {category.aggregateOf.length > 0 && (
+                      <div className="mb-8 flex flex-wrap items-center justify-center gap-1">
+                        <span className="text-muted-foreground text-sm">
+                          Counts towards:
+                        </span>
+                        {category.aggregateOf.map(aggregate => (
+                          <Badge key={aggregate.id} variant="secondary">
+                            {aggregate.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
 
-                  {category.revealed ? (
-                    <motion.div
-                      className={`grid grid-cols-1 gap-8 ${
-                        category.winnerOnly
-                          ? "min-h-[200px] place-items-center"
-                          : ""
-                      }`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      {(() => {
-                        const sortedNominations = [
-                          ...category.nominations,
-                        ].sort((a, b) => b._count.votes - a._count.votes);
+                    {category.revealed ? (
+                      <motion.div
+                        className={`grid grid-cols-1 gap-8 ${
+                          category.winnerOnly
+                            ? "min-h-[200px] place-items-center"
+                            : ""
+                        }`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        {(() => {
+                          const sortedNominations = [
+                            ...category.nominations,
+                          ].sort((a, b) => b._count.votes - a._count.votes);
 
-                        const topNomination = sortedNominations[0];
-                        if (!topNomination) {
-                          return (
-                            <div className="text-muted-foreground w-full rounded-xl border border-dashed p-10 text-center text-xl">
-                              No nominations yet.
-                            </div>
+                          const topNomination = sortedNominations[0];
+                          if (!topNomination) {
+                            return (
+                              <div className="text-muted-foreground w-full rounded-xl border border-dashed p-10 text-center text-xl">
+                                No nominations yet.
+                              </div>
+                            );
+                          }
+
+                          const totalScore = sortedNominations.reduce(
+                            (sum, nom) => sum + nom._count.votes,
+                            0,
                           );
-                        }
+                          const highestVoteCount = topNomination._count.votes;
+                          const winners = sortedNominations.filter(
+                            n => n._count.votes === highestVoteCount,
+                          );
 
-                        const totalScore = sortedNominations.reduce(
-                          (sum, nom) => sum + nom._count.votes,
-                          0,
-                        );
-                        const highestVoteCount = topNomination._count.votes;
-                        const winners = sortedNominations.filter(
-                          n => n._count.votes === highestVoteCount,
-                        );
+                          // Only crown a winner when at least one vote/point has been cast
+                          // (or there's only one nominee).
+                          const hasWinner =
+                            totalScore > 0 || sortedNominations.length === 1;
+                          const isTied = hasWinner && winners.length > 1;
+                          const isCompleteTie =
+                            hasWinner &&
+                            sortedNominations.length > 1 &&
+                            winners.length === sortedNominations.length;
 
-                        // Only crown a winner when at least one vote/point has been cast
-                        // (or there's only one nominee).
-                        const hasWinner =
-                          totalScore > 0 || sortedNominations.length === 1;
-                        const isTied = hasWinner && winners.length > 1;
-                        const isCompleteTie =
-                          hasWinner &&
-                          sortedNominations.length > 1 &&
-                          winners.length === sortedNominations.length;
+                          // Filter to winners only if winnerOnly is enabled
+                          const displayNominations = category.winnerOnly
+                            ? hasWinner
+                              ? winners
+                              : []
+                            : sortedNominations;
 
-                        // Filter to winners only if winnerOnly is enabled
-                        const displayNominations = category.winnerOnly
-                          ? hasWinner
-                            ? winners
-                            : []
-                          : sortedNominations;
-
-                        return (
-                          <>
-                            {!hasWinner && (
-                              <div className="w-full rounded-xl border border-dashed p-10 text-center">
-                                <div className="text-foreground text-2xl font-semibold">
-                                  No votes yet
+                          return (
+                            <>
+                              {!hasWinner && (
+                                <div className="w-full rounded-xl border border-dashed p-10 text-center">
+                                  <div className="text-foreground text-2xl font-semibold">
+                                    No votes yet
+                                  </div>
+                                  <div className="text-muted-foreground mt-2 text-lg">
+                                    Cast at least one vote to reveal a winner.
+                                  </div>
                                 </div>
-                                <div className="text-muted-foreground mt-2 text-lg">
-                                  Cast at least one vote to reveal a winner.
-                                </div>
-                              </div>
-                            )}
+                              )}
 
-                            {isCompleteTie && (
-                              <div className="w-full rounded-xl border border-dashed p-6 text-center">
-                                <div className="text-foreground text-lg font-semibold">
-                                  It&apos;s a tie!
+                              {isCompleteTie && (
+                                <div className="w-full rounded-xl border border-dashed p-6 text-center">
+                                  <div className="text-foreground text-lg font-semibold">
+                                    It&apos;s a tie!
+                                  </div>
+                                  <div className="text-muted-foreground mt-1 text-sm">
+                                    All nominees share the top score.
+                                  </div>
                                 </div>
-                                <div className="text-muted-foreground mt-1 text-sm">
-                                  All nominees share the top score.
-                                </div>
-                              </div>
-                            )}
+                              )}
 
-                            {displayNominations.map((nomination, index) => {
-                              const isWinner =
-                                hasWinner &&
-                                nomination._count.votes === highestVoteCount;
+                              {displayNominations.map((nomination, index) => {
+                                const isWinner =
+                                  hasWinner &&
+                                  nomination._count.votes === highestVoteCount;
 
-                              return (
-                                <div
-                                  key={nomination.id}
-                                  className={`${
-                                    isWinner
-                                      ? "col-span-1 w-full md:px-12"
-                                      : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
-                                  }`}
-                                >
-                                  <WinnerAnimation
-                                    nomination={nomination}
-                                    index={index}
-                                    isWinner={isWinner}
-                                    isTied={isTied}
-                                    category={category}
-                                    hideVoteCounts={category.hideVoteCounts}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </>
-                        );
-                      })()}
-                    </motion.div>
-                  ) : category.type === "AGGREGATE" ? (
-                    <AggregateInfo
-                      sourceCategories={category.sourceCategories}
-                    />
-                  ) : (
-                    <LiveVoting
-                      categoryId={category.id}
-                      initialVoteCount={category.estimatedVoters ?? 0}
-                    />
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+                                return (
+                                  <div
+                                    key={nomination.id}
+                                    className={`${
+                                      isWinner
+                                        ? "col-span-1 w-full md:px-12"
+                                        : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
+                                    }`}
+                                  >
+                                    <WinnerAnimation
+                                      nomination={nomination}
+                                      index={index}
+                                      isWinner={isWinner}
+                                      isTied={isTied}
+                                      category={category}
+                                      hideVoteCounts={category.hideVoteCounts}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </motion.div>
+                    ) : category.type === "AGGREGATE" ? (
+                      <AggregateInfo
+                        sourceCategories={category.sourceCategories}
+                      />
+                    ) : (
+                      <LiveVoting
+                        categoryId={category.id}
+                        initialVoteCount={category.estimatedVoters ?? 0}
+                      />
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            {/* Outside the category, which is dimmed while voting is open */}
+            {isVoting && (
+              <div className="mt-4 mb-16">
+                <JoinInfo code={code} variant="full" />
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Outside the animated view, whose transform would move a fixed element with it */}
+      {session.categories.length > 0 && !isVoting && (
+        <JoinInfo code={code} variant="corner" />
       )}
-    </AnimatePresence>
+    </>
   );
 }
