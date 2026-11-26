@@ -207,7 +207,26 @@ const withShowLocked = async <T>(
   }
 };
 
-const VOTE_NOT_ACTIVE = "Voting is not currently active for this category";
+/**
+ * Refuses a vote in a category that isn't open: not active, or already
+ * revealed (so the results on the big screen can't change after the reveal).
+ */
+const assertVotingOpen = (
+  category: { isActive: boolean; revealed: boolean } | undefined,
+) => {
+  if (!category?.isActive) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Voting is not currently active for this category",
+    });
+  }
+  if (category.revealed) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Voting has closed for this category",
+    });
+  }
+};
 
 /**
  * Saves a voter's vote or ranking in one transaction that holds the show's
@@ -232,17 +251,14 @@ const saveVote = async <T>(
       async tx => {
         // Show lock first, then the device lock, always in this order
         await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0))`;
-        const [category] = await tx.$queryRaw<{ isActive: boolean }[]>`
-          SELECT c."isActive"
+        const [category] = await tx.$queryRaw<
+          { isActive: boolean; revealed: boolean }[]
+        >`
+          SELECT c."isActive", c."revealed"
           FROM pg_advisory_xact_lock(hashtext(${deviceId}), hashtext(${categoryId})),
             "Category" c
           WHERE c."id" = ${categoryId}`;
-        if (!category?.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: VOTE_NOT_ACTIVE,
-          });
-        }
+        assertVotingOpen(category);
         const found = await tx.nomination.count({
           where: { id: { in: nominationIds }, categoryId },
         });
@@ -482,9 +498,10 @@ export const awardRouter = createTRPCRouter({
     }),
 
   /**
-   * Reveals a category's results, or hides them again. Sets the state the
-   * host saw rather than toggling, so a click from an out-of-date page
-   * (another device, a double click) can't undo the reveal by mistake.
+   * Reveals a category's results, which closes voting in it, or hides them
+   * again, which reopens it. Sets the state the host saw rather than toggling,
+   * so a click from an out-of-date page (another device, a double click)
+   * can't hide the results and reopen voting by mistake.
    */
   setCategoryRevealed: publicProcedure
     .input(z.object({ id: z.string(), revealed: z.boolean() }))
@@ -716,7 +733,12 @@ export const awardRouter = createTRPCRouter({
           select: {
             categoryId: true,
             category: {
-              select: { type: true, isActive: true, sessionId: true },
+              select: {
+                type: true,
+                isActive: true,
+                revealed: true,
+                sessionId: true,
+              },
             },
           },
         });
@@ -743,12 +765,7 @@ export const awardRouter = createTRPCRouter({
         }
 
         // Fail fast; saveVote checks again while holding the locks
-        if (!nomination.category.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: VOTE_NOT_ACTIVE,
-          });
-        }
+        assertVotingOpen(nomination.category);
 
         return await saveVote(
           ctx.db,
@@ -792,6 +809,7 @@ export const awardRouter = createTRPCRouter({
             type: true,
             rankingTop: true,
             isActive: true,
+            revealed: true,
             sessionId: true,
             nominations: { select: { id: true } },
           },
@@ -813,12 +831,7 @@ export const awardRouter = createTRPCRouter({
 
         // Fail fast, before validating a stale form; saveVote checks again
         // while holding the locks
-        if (!category.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: VOTE_NOT_ACTIVE,
-          });
-        }
+        assertVotingOpen(category);
 
         if (!category.rankingTop) {
           throw new TRPCError({

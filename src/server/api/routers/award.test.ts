@@ -45,12 +45,12 @@ const prismaError = (code: string) =>
     clientVersion: "test",
   });
 
-/** Whether the category is open, as seen inside saveVote's transaction */
-let categoryOpen = true;
+/** The category as seen inside saveVote's transaction */
+let lockedCategory = { isActive: true, revealed: false };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  categoryOpen = true;
+  lockedCategory = { isActive: true, revealed: false };
   db.session.findFirst.mockResolvedValue({ id: "show", password: null });
   // Stand-ins for the queries, so the tests can see what was batched
   db.$queryRaw.mockReturnValue("lock-show");
@@ -68,7 +68,7 @@ beforeEach(() => {
   // The show lock returns nothing; the device lock query returns the category
   tx.$queryRaw.mockImplementation((sql: TemplateStringsArray) =>
     Promise.resolve(
-      sql.join("").includes('"isActive"') ? [{ isActive: categoryOpen }] : [],
+      sql.join("").includes('"isActive"') ? [lockedCategory] : [],
     ),
   );
   tx.nomination.count.mockImplementation(
@@ -79,15 +79,27 @@ beforeEach(() => {
   tx.vote.createManyAndReturn.mockResolvedValue("new-ranking");
 });
 
+const VOTING_CLOSED = { message: "Voting has closed for this category" };
+
 const callOrder = (...fns: { mock: { invocationCallOrder: number[] } }[]) =>
   fns.map(fn => fn.mock.invocationCallOrder[0]);
 
 describe("vote", () => {
-  beforeEach(() => {
+  /** The nomination's category, as `vote` loads it before the transaction */
+  const loadCategory = (state: { isActive?: boolean; revealed?: boolean }) =>
     db.nomination.findUnique.mockResolvedValue({
       categoryId: "cat",
-      category: { type: "NORMAL", isActive: true, sessionId: "show" },
+      category: {
+        type: "NORMAL",
+        isActive: true,
+        revealed: false,
+        sessionId: "show",
+        ...state,
+      },
     });
+
+  beforeEach(() => {
+    loadCategory({});
   });
 
   it("takes the locks, checks, then replaces the device's vote in one transaction", async () => {
@@ -118,7 +130,7 @@ describe("vote", () => {
   });
 
   it("rejects without changing anything once the category is closed", async () => {
-    categoryOpen = false;
+    lockedCategory.isActive = false;
 
     await expect(
       caller.award.vote({ nominationId: "nom-a" }),
@@ -130,17 +142,30 @@ describe("vote", () => {
     expect(tx.vote.create).not.toHaveBeenCalled();
   });
 
-  it("fails fast, without a transaction, when the category is already closed", async () => {
-    db.nomination.findUnique.mockResolvedValue({
-      categoryId: "cat",
-      category: { type: "NORMAL", isActive: false, sessionId: "show" },
-    });
+  it("refuses a vote that waited for the reveal, without changing anything", async () => {
+    lockedCategory.revealed = true;
 
     await expect(
       caller.award.vote({ nominationId: "nom-a" }),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    expect(db.$transaction).not.toHaveBeenCalled();
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", ...VOTING_CLOSED });
+    expect(tx.vote.deleteMany).not.toHaveBeenCalled();
+    expect(tx.vote.create).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["inactive", { isActive: false }],
+    ["revealed", { revealed: true }],
+  ])(
+    "fails fast, without a transaction, when the category is already %s",
+    async (_, state) => {
+      loadCategory(state);
+
+      await expect(
+        caller.award.vote({ nominationId: "nom-a" }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(db.$transaction).not.toHaveBeenCalled();
+    },
+  );
 
   it("says to reload, without changing anything, if the nomination was removed", async () => {
     tx.nomination.count.mockResolvedValue(0);
@@ -180,6 +205,7 @@ describe("submitRanking", () => {
       type: "RANKING",
       rankingTop: 2,
       isActive: true,
+      revealed: false,
       sessionId: "show",
       nominations: [{ id: "nom-a" }, { id: "nom-b" }],
     });
@@ -204,11 +230,21 @@ describe("submitRanking", () => {
   });
 
   it("rejects without changing anything once the category is closed", async () => {
-    categoryOpen = false;
+    lockedCategory.isActive = false;
 
     await expect(
       caller.award.submitRanking({ categoryId: "cat", rankings }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(tx.vote.deleteMany).not.toHaveBeenCalled();
+    expect(tx.vote.createManyAndReturn).not.toHaveBeenCalled();
+  });
+
+  it("refuses a ranking that waited for the reveal, without changing anything", async () => {
+    lockedCategory.revealed = true;
+
+    await expect(
+      caller.award.submitRanking({ categoryId: "cat", rankings }),
+    ).rejects.toMatchObject(VOTING_CLOSED);
     expect(tx.vote.deleteMany).not.toHaveBeenCalled();
     expect(tx.vote.createManyAndReturn).not.toHaveBeenCalled();
   });
@@ -218,6 +254,7 @@ describe("submitRanking", () => {
       type: "RANKING",
       rankingTop: 3,
       isActive: false,
+      revealed: false,
       sessionId: "show",
       nominations: [{ id: "nom-a" }, { id: "nom-b" }],
     });

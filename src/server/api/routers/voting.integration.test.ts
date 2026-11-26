@@ -4,6 +4,7 @@ import { testDb } from "~/test/integration/db";
 import {
   createShow,
   open,
+  reveal,
   scoresByName,
   type Show,
 } from "~/test/integration/show";
@@ -244,6 +245,60 @@ describe("ranking", () => {
     expect(await votesOf(voter)).toEqual({
       "ranking:Dune": 1,
       "ranking:Barbie": 2,
+    });
+  });
+});
+
+describe("after the host reveals the category", () => {
+  const closed = { message: "Voting has closed for this category" };
+
+  it("rejects a new or changed vote and keeps the voter's vote", async () => {
+    await open(host, show.normal.id);
+    await voteFor("Dune");
+    await reveal(host, show.normal.id);
+
+    await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
+    await expect(voteFor("Barbie", visitor())).rejects.toMatchObject(closed);
+
+    expect(await votesOf(voter)).toEqual({ "normal:Dune": null });
+    expect(await testDb.vote.count()).toBe(1);
+  });
+
+  it("rejects a new ranking and keeps the voter's ranking", async () => {
+    await open(host, show.ranking.id);
+    await rank("Dune", "Barbie");
+    await reveal(host, show.ranking.id);
+
+    await expect(rank("Oppenheimer", "Dune")).rejects.toMatchObject(closed);
+
+    expect(await votesOf(voter)).toEqual({
+      "ranking:Dune": 1,
+      "ranking:Barbie": 2,
+    });
+  });
+
+  it("stays closed when the host reveals again from an out-of-date page", async () => {
+    await open(host, show.normal.id);
+    await reveal(host, show.normal.id);
+    await reveal(host, show.normal.id);
+
+    await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
+  });
+
+  it("accepts votes and rankings again once the results are hidden", async () => {
+    await open(host, show.normal.id);
+    await reveal(host, show.normal.id);
+    await reveal(host, show.normal.id, false);
+    await voteFor("Barbie");
+    await open(host, show.ranking.id);
+    await reveal(host, show.ranking.id);
+    await reveal(host, show.ranking.id, false);
+    await rank("Oppenheimer", "Dune");
+
+    expect(await votesOf(voter)).toEqual({
+      "normal:Barbie": null,
+      "ranking:Oppenheimer": 1,
+      "ranking:Dune": 2,
     });
   });
 });
