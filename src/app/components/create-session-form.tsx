@@ -89,17 +89,12 @@ export function CreateSessionForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Password</FormLabel>
-                    <span className="text-muted-foreground text-xs">
-                      (Optional)
-                    </span>
-                  </div>
+                  <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       type="password"
-                      placeholder="Password for management access"
+                      placeholder="At least 4 characters"
                       autoCapitalize="off"
                       autoComplete="new-password"
                     />
@@ -112,9 +107,9 @@ export function CreateSessionForm() {
             <div className="bg-muted flex items-start gap-2 rounded-md p-3">
               <CircleExclamationPoint className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
               <p className="text-muted-foreground text-sm">
-                Save your management link, and your password if you set one.
-                Without a password, anyone who knows your room code can change
-                your award show.
+                The room code is on the big screen, so the password is what
+                keeps your show to you. You&apos;ll need it to manage the show
+                from another device.
               </p>
             </div>
 

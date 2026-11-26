@@ -66,6 +66,7 @@ describe("manage cookie over the client links", () => {
 
     await client.award.createSession.mutate({
       name: SESSION.name,
+      password: PASSWORD,
     });
 
     expect(setCookies).toEqual([
@@ -107,6 +108,7 @@ describe("streamed mutations from an out-of-date page", () => {
     await expect(
       client.award.createSession.mutate({
         name: SESSION.name,
+        password: PASSWORD,
       }),
     ).rejects.toThrow("Please reload it");
     expect(db.session.create).not.toHaveBeenCalled();
@@ -126,16 +128,12 @@ describe("streamed mutations from an out-of-date page", () => {
 });
 
 describe("createSession", () => {
-  it("creates an open show when the password is left empty", async () => {
+  it("refuses a show without a password", async () => {
     const { client } = createClient();
 
-    await client.award.createSession.mutate({
-      name: SESSION.name,
-      password: "",
-    });
-
-    expect(db.session.create.mock.calls[0]?.[0]).toMatchObject({
-      data: { password: null },
-    });
+    await expect(
+      client.award.createSession.mutate({ name: SESSION.name, password: "" }),
+    ).rejects.toThrow("Password is required");
+    expect(db.session.create).not.toHaveBeenCalled();
   });
 });

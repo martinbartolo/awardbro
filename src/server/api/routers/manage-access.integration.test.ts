@@ -161,6 +161,7 @@ describe("a show with a password", () => {
   });
 
   it.each([
+    ["nothing (it's required)", ""],
     ["only spaces", "    "],
     ["a leading space", " secret1"],
     ["over 72 bytes", "a".repeat(73)],

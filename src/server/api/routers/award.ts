@@ -290,9 +290,10 @@ export const awardRouter = createTRPCRouter({
   createSession: publicProcedure
     .input(sessionFormSchema)
     .mutation(async ({ ctx, input }) => {
-      const password = input.password
-        ? await bcrypt.hash(normalizePassword(input.password), SALT_ROUNDS)
-        : null;
+      const password = await bcrypt.hash(
+        normalizePassword(input.password),
+        SALT_ROUNDS,
+      );
       try {
         // The database picks the room code (the column's default, generate_room_code())
         const session = await ctx.db.session.create({

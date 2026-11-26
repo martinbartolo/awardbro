@@ -10,12 +10,24 @@ export const FILMS = ["Dune", "Barbie", "Oppenheimer"];
 /**
  * A show as a host builds it: a normal category, a top-2 ranking category (each with three
  * films), and an aggregate category of both. The host keeps the manage cookie from creating it.
+ *
+ * With `password: null` (the default) it's an open show, like those from before passwords were
+ * required: anyone can manage it, so tests can act as host from any visitor.
  */
-export async function createShow(host: Visitor, { password = "" } = {}) {
+export async function createShow(
+  host: Visitor,
+  { password = null }: { password?: string | null } = {},
+) {
   const show = await host.api.createSession({
     name: "Movie Awards",
-    password,
+    password: password ?? "temporary",
   });
+  if (password === null) {
+    await testDb.session.update({
+      where: { id: show.id },
+      data: { password: null },
+    });
+  }
   type CategoryInput = Parameters<Visitor["api"]["addCategory"]>[0];
   const addCategory = (category: Omit<CategoryInput, "sessionId">) =>
     host.api.addCategory({ sessionId: show.id, ...category });
@@ -73,7 +85,9 @@ export const reveal = (host: Visitor, categoryId: string, revealed = true) =>
   host.api.setCategoryRevealed({ id: categoryId, revealed });
 
 /** A show with a vote for Dune in the normal category, and a ranking (Dune, Barbie), from one voter */
-export async function votedShow({ password = "" } = {}) {
+export async function votedShow({
+  password = null,
+}: { password?: string | null } = {}) {
   const host = visitor();
   const voter = visitor();
   const show = await createShow(host, { password });

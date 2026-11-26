@@ -19,30 +19,27 @@ export const normalizePassword = (password: string) =>
 // Reuse the exact schemas from award.ts
 export const sessionFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  // The form sends "" when the field is left empty, which means no password
+  // Required: the room code is on the big screen, so the password is what keeps the audience out
+  // of the manage page. (Shows from before it was required may have none, and are open.)
   password: z
-    .literal("")
-    .or(
-      z
-        .string()
-        // Counts characters, not UTF-16 code units, so two emoji aren't enough
-        .refine(
-          password => [...password].length >= 4,
-          "Password must be at least 4 characters",
-        )
-        // Also rejects a password of only spaces, which would look like no password at all
-        .refine(
-          password => password.trim() === password,
-          "Password can't start or end with a space or line break",
-        )
-        .refine(
-          password =>
-            new TextEncoder().encode(normalizePassword(password)).length <=
-            MAX_PASSWORD_BYTES,
-          `Password is too long: use at most ${MAX_PASSWORD_BYTES} characters (fewer with accents or emoji)`,
-        ),
+    .string({ error: "Password is required" })
+    .min(1, "Password is required")
+    // Counts characters, not UTF-16 code units, so two emoji aren't enough
+    .refine(
+      password => [...password].length >= 4,
+      "Password must be at least 4 characters",
     )
-    .optional(),
+    // Also rejects a password of only spaces, which would look like no password at all
+    .refine(
+      password => password.trim() === password,
+      "Password can't start or end with a space or line break",
+    )
+    .refine(
+      password =>
+        new TextEncoder().encode(normalizePassword(password)).length <=
+        MAX_PASSWORD_BYTES,
+      `Password is too long: use at most ${MAX_PASSWORD_BYTES} characters (fewer with accents or emoji)`,
+    ),
 });
 
 export const categoryFormSchema = z
