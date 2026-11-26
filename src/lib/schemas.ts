@@ -6,6 +6,9 @@ import { CategoryType } from "~/generated/prisma/enums";
 const categoryTypeValues = Object.values(CategoryType) as [string, ...string[]];
 export const categoryTypeEnum = z.enum(categoryTypeValues);
 
+/** The longest description a category or nomination can have, a picture link included */
+export const MAX_DESCRIPTION = 500;
+
 /** bcrypt ignores everything after the first 72 bytes of a password */
 const MAX_PASSWORD_BYTES = 72;
 
@@ -42,21 +45,38 @@ export const sessionFormSchema = z.object({
     ),
 });
 
+/** What a host fills in for a category, whether creating or editing it */
+const categoryFields = {
+  // Trimmed, so a stray space doesn't end up on the big screen
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name is too long"),
+  description: z
+    .string()
+    .trim()
+    .max(MAX_DESCRIPTION, "Description is too long")
+    .optional(),
+  /** Ranking categories only */
+  rankingTop: z
+    .number()
+    .int()
+    .min(2, "Must rank at least 2 options")
+    .max(10, "Cannot rank more than 10 options")
+    .optional(),
+};
+
+const sourceCategoriesField = z
+  .array(z.string())
+  .max(100, "Too many source categories");
+
 export const categoryFormSchema = z
   .object({
     sessionId: z.string().min(1, "Session ID is required"),
-    name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-    description: z.string().max(500, "Description is too long").optional(),
+    ...categoryFields,
     type: categoryTypeEnum,
-    sourceCategories: z
-      .array(z.string())
-      .max(100, "Too many source categories"),
-    rankingTop: z
-      .number()
-      .int()
-      .min(2, "Must rank at least 2 options")
-      .max(10, "Cannot rank more than 10 options")
-      .optional(),
+    sourceCategories: sourceCategoriesField,
     hideVoteCounts: z.boolean().optional(),
     winnerOnly: z.boolean().optional(),
   })
@@ -77,15 +97,41 @@ export const categoryFormSchema = z
     },
   );
 
-export const nominationFormSchema = z.object({
-  categoryId: z.string().min(1, "Category ID is required"),
+/** The fields a host can change on a category after creating it. Its type stays as it is. */
+export const categoryUpdateSchema = z.object({
+  id: z.string().min(1, "Category ID is required"),
+  ...categoryFields,
+  /** Aggregate categories only */
+  sourceCategories: sourceCategoriesField
+    .min(1, "Aggregate categories must have at least one source category")
+    .optional(),
+});
+
+const nominationFields = {
   // Trimmed, so "Dune " and "Dune" are the same name
   name: z
     .string()
     .trim()
     .min(1, "Name is required")
     .max(100, "Name is too long"),
-  description: z.string().trim().max(500, "Description is too long").optional(),
+  description: z
+    .string()
+    .trim()
+    .max(MAX_DESCRIPTION, "Description is too long")
+    .optional(),
+};
+
+/** The fields of the add and edit nomination forms */
+export const nominationFieldsSchema = z.object(nominationFields);
+
+export const nominationFormSchema = z.object({
+  categoryId: z.string().min(1, "Category ID is required"),
+  ...nominationFields,
+});
+
+export const nominationUpdateSchema = z.object({
+  id: z.string().min(1, "Nomination ID is required"),
+  ...nominationFields,
 });
 
 export const rankingSubmissionSchema = z.object({
@@ -102,5 +148,6 @@ export const rankingSubmissionSchema = z.object({
 
 export type SessionFormValues = z.infer<typeof sessionFormSchema>;
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
-export type NominationFormValues = z.infer<typeof nominationFormSchema>;
+export type CategoryUpdateValues = z.infer<typeof categoryUpdateSchema>;
+export type NominationFieldValues = z.infer<typeof nominationFieldsSchema>;
 export type RankingSubmissionValues = z.infer<typeof rankingSubmissionSchema>;

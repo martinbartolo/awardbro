@@ -303,6 +303,11 @@ export default function HelpPage() {
                       <Badge variant="outline">Most Helpful</Badge>
                     </div>
                   </div>
+                  <p className="text-muted-foreground text-sm">
+                    Categories run in the order they&apos;re listed. Use the
+                    arrows next to a category&apos;s name to move it, for
+                    example to save the biggest award for last.
+                  </p>
                   <div className="flex items-start gap-3 rounded-lg border p-4">
                     <CircleCheck className="text-accent mt-0.5 h-5 w-5 shrink-0" />
                     <div>
@@ -349,11 +354,17 @@ export default function HelpPage() {
                     <div className="bg-secondary rounded-lg p-4">
                       <h4 className="mb-2 font-medium">Image Support</h4>
                       <p className="text-muted-foreground text-sm">
-                        Paste an image URL (jpg, png, gif, webp) or Google Drive
-                        link to show a photo
+                        Paste a link to the picture: right-click it and choose
+                        &quot;Copy image address&quot;. Share links from Google
+                        Drive, Dropbox and imgur work too. A preview shows
+                        straight away whether it works.
                       </p>
                     </div>
                   </div>
+                  <p className="text-muted-foreground text-sm">
+                    Made a typo? Click the pencil next to a nomination or
+                    category to fix it, even during voting: its votes are kept.
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>

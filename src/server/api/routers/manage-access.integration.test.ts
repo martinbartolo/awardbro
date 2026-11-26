@@ -30,6 +30,20 @@ const writeRoutes = {
     }),
   addNomination: (api, s) =>
     api.addNomination({ categoryId: s.normal.id, name: "Poor Things" }),
+  // The aggregate is always last, so moving it up changes the show
+  moveCategory: (api, s) =>
+    api.moveCategory({ id: s.aggregate.id, direction: "up" }),
+  updateCategory: (api, s) =>
+    api.updateCategory({
+      id: s.normal.id,
+      name: "Best Picture",
+      description: "",
+    }),
+  updateNomination: (api, s) =>
+    api.updateNomination({
+      id: s.film("normal", "Dune").id,
+      name: "Dune: Part Two",
+    }),
   setActiveCategory: (api, s) =>
     api.setActiveCategory({ categoryId: s.normal.id, active: true }),
   setCategoryRevealed: (api, s) =>

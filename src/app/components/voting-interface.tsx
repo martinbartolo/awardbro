@@ -150,8 +150,10 @@ export function VotingInterface({
                 {/* The description tells apart nominations with the same name */}
                 <NominationDescription
                   description={selectedNomination.description ?? null}
+                  isImage={categoryType === "IMAGE"}
                   className="text-muted-foreground line-clamp-1 text-xs"
                   imageClassName="relative mt-1 h-10 w-16"
+                  thumbnail
                 />
               </div>
             </div>
@@ -205,6 +207,7 @@ export function VotingInterface({
                         {nomination.description && (
                           <NominationDescription
                             description={nomination.description}
+                            isImage={categoryType === "IMAGE"}
                             className="text-muted-foreground text-sm wrap-break-word"
                           />
                         )}
