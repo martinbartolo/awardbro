@@ -22,11 +22,11 @@ import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
 
 type SessionActionsProps = {
-  slug: string;
+  code: string;
   sessionId: string;
 };
 
-export function SessionActions({ slug, sessionId }: SessionActionsProps) {
+export function SessionActions({ code, sessionId }: SessionActionsProps) {
   const router = useRouter();
 
   const trpc = useTRPC();
@@ -52,7 +52,7 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
   );
 
   const copyVotingUrl = () => {
-    const votingUrl = `${window.location.origin}/vote/${slug}`;
+    const votingUrl = `${window.location.origin}/vote/${code}`;
     void navigator.clipboard.writeText(votingUrl);
     toast.success("URL Copied!", {
       icon: <CopyIcon className="size-4" />,
@@ -70,7 +70,7 @@ export function SessionActions({ slug, sessionId }: SessionActionsProps) {
         </Button>
 
         <Button asChild className="group flex-1 sm:flex-none">
-          <Link href={`/present/${slug}`} target="_blank">
+          <Link href={`/present/${code}`} target="_blank">
             Presentation
             <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
           </Link>

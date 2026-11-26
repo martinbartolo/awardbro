@@ -19,14 +19,6 @@ export const normalizePassword = (password: string) =>
 // Reuse the exact schemas from award.ts
 export const sessionFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  slug: z
-    .string()
-    .min(1, "Slug is required")
-    .max(100, "Slug is too long")
-    .regex(
-      /^[a-z0-9-]+$/,
-      "Slug can only contain lowercase letters, numbers, and hyphens",
-    ),
   // The form sends "" when the field is left empty, which means no password
   password: z
     .literal("")

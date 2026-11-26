@@ -24,5 +24,5 @@ const createContext = cache(async () => {
   });
 });
 
-/** Calls the API directly from Server Components, e.g. `await api.award.getSessionBySlug(...)` */
+/** Calls the API directly from Server Components, e.g. `await api.award.getSession(...)` */
 export const api = createCaller(createContext);

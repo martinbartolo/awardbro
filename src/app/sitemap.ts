@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const sessions = await api.award.getPublicSessions();
 
     const sessionUrls = sessions.map(session => ({
-      url: `https://awardbro.com/vote/${session.slug}`,
+      url: `https://awardbro.com/vote/${session.code}`,
       lastModified: new Date(session.updatedAt),
       changeFrequency: "hourly" as const,
       priority: 0.8,

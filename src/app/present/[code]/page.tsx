@@ -2,6 +2,7 @@ import { type Metadata } from "next";
 
 import { FullscreenButton } from "~/app/components/fullscreen-button";
 import { LivePresentation } from "~/app/components/live-presentation";
+import { showPageCode } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 import ogImage from "./opengraph-image.png";
@@ -9,10 +10,10 @@ import ogImage from "./opengraph-image.png";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ code: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
+  const code = await showPageCode("present", (await params).code);
+  const session = await api.award.getSession({ code, activeOnly: true });
 
   return {
     metadataBase: new URL("https://awardbro.com"),
@@ -31,7 +32,7 @@ export async function generateMetadata({
       title: `${session.name} - Live Presentation`,
       description: `Live presentation of ${session.name}. Watch the results unfold in real-time!`,
       type: "website",
-      url: `/present/${slug}`,
+      url: `/present/${code}`,
       images: [
         {
           url: ogImage.src,
@@ -58,15 +59,15 @@ export async function generateMetadata({
 export default async function PresentPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ code: string }>;
 }) {
-  const { slug } = await params;
-  const session = await api.award.getSessionBySlug({ slug, activeOnly: true });
+  const code = await showPageCode("present", (await params).code);
+  const session = await api.award.getSession({ code, activeOnly: true });
 
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
       <FullscreenButton />
-      <LivePresentation initialSession={session} slug={slug} />
+      <LivePresentation initialSession={session} code={code} />
     </main>
   );
 }

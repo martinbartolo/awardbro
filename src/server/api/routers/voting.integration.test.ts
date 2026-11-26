@@ -311,8 +311,8 @@ describe("scores", () => {
     await open(host, show.ranking.id);
     await rank("Barbie", "Dune");
 
-    const { categories } = await visitor().api.getSessionBySlug({
-      slug: show.show.slug,
+    const { categories } = await visitor().api.getSession({
+      code: show.show.code,
     });
     const scores = Object.fromEntries(
       categories.map(c => [c.name, scoresByName(c.nominations)]),
@@ -335,8 +335,8 @@ describe("scores", () => {
 
     const category = await visitor().api.getCategory({ id: show.aggregate.id });
     await open(host, show.aggregate.id);
-    const { categories } = await visitor().api.getSessionBySlug({
-      slug: show.show.slug,
+    const { categories } = await visitor().api.getSession({
+      code: show.show.code,
       activeOnly: true,
     });
 
@@ -375,14 +375,12 @@ describe("scores", () => {
     // The show with its categories, and its password to check access (in parallel);
     // aggregates are scored from sources loaded with the show
     expect(
-      await countOperations(api =>
-        api.getSessionBySlug({ slug: show.show.slug }),
-      ),
+      await countOperations(api => api.getSession({ code: show.show.code })),
     ).toBe(2);
     // Only the active aggregate is loaded, so its sources' nominations take one more
     expect(
       await countOperations(api =>
-        api.getSessionBySlug({ slug: show.show.slug, activeOnly: true }),
+        api.getSession({ code: show.show.code, activeOnly: true }),
       ),
     ).toBe(3);
     expect(

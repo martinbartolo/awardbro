@@ -20,9 +20,11 @@ enum CategoryType {
 model Session {
     id            String        @id @default(cuid())
     name          String
-    slug          String        @unique
-    // The show's room code, e.g. "K7QF". The database picks an unused one
-    // (generate_room_code(), see the room code migrations).
+    // The URL name of shows from before room codes, kept so their old links redirect to the
+    // code. New shows have none.
+    slug          String?       @unique
+    // The show's room code, e.g. "K7QF": in its URLs and typed by voters on the homepage. The database
+    // picks an unused one (generate_room_code(), see the room code migrations).
     code          String        @unique @default(dbgenerated("generate_room_code()"))
     password      String? // Optional password for managing the session
     createdAt     DateTime      @default(now())

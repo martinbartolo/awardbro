@@ -69,9 +69,7 @@ export function CategoryActions({
         // Sync with server response
         setOptimisticValue(data.hideVoteCounts);
         // Invalidate to update presentation view live
-        void queryClient.invalidateQueries(
-          trpc.award.getSessionBySlug.pathFilter(),
-        );
+        void queryClient.invalidateQueries(trpc.award.getSession.pathFilter());
         router.refresh();
         toast.success(
           data.hideVoteCounts
@@ -94,9 +92,7 @@ export function CategoryActions({
       },
       onSuccess: data => {
         setOptimisticWinnerOnly(data.winnerOnly);
-        void queryClient.invalidateQueries(
-          trpc.award.getSessionBySlug.pathFilter(),
-        );
+        void queryClient.invalidateQueries(trpc.award.getSession.pathFilter());
         router.refresh();
         toast.success(
           data.winnerOnly

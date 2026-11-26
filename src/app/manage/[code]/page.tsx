@@ -21,6 +21,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getScoreLabel } from "~/lib/scoring";
 import { hasManageAccess } from "~/server/auth/manage";
+import { showPageCode } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -40,19 +41,19 @@ export const metadata: Metadata = {
 export default async function ManagePage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ code: string }>;
 }) {
-  const { slug } = await params;
+  const code = await showPageCode("manage", (await params).code);
 
-  const session = await api.award.getSessionBySlug({
-    slug,
+  const session = await api.award.getSession({
+    code,
   });
 
-  if (!(await hasManageAccess(slug))) {
+  if (!(await hasManageAccess(code))) {
     return (
       <main className="bg-background text-foreground min-h-screen">
         <div className="container mx-auto px-4 py-8">
-          <PasswordVerification slug={slug} />
+          <PasswordVerification code={code} />
         </div>
       </main>
     );
@@ -82,7 +83,7 @@ export default async function ManagePage({
               </Button>
             </div>
             {/* Actions Row */}
-            <SessionActions slug={slug} sessionId={session.id} />
+            <SessionActions code={code} sessionId={session.id} />
           </div>
         </div>
 

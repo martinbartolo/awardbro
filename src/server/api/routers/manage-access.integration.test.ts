@@ -114,7 +114,7 @@ describe("a show with a password", () => {
     const cohost = visitor();
 
     await cohost.api.verifyManageAccess({
-      slug: show.show.slug,
+      code: show.show.code,
       password: "secret1",
     });
 
@@ -132,7 +132,7 @@ describe("a show with a password", () => {
     const cohost = visitor();
 
     await cohost.api.verifyManageAccess({
-      slug: show.show.slug,
+      code: show.show.code,
       password: entered,
     });
 
@@ -151,7 +151,7 @@ describe("a show with a password", () => {
     const cohost = visitor();
 
     await cohost.api.verifyManageAccess({
-      slug: show.show.slug,
+      code: show.show.code,
       password: " secret1 ",
     });
 
@@ -168,7 +168,6 @@ describe("a show with a password", () => {
     await expectError(
       visitor().api.createSession({
         name: "Movie Awards",
-        slug: "movie-awards",
         password,
       }),
       "BAD_REQUEST",
@@ -182,7 +181,7 @@ describe("a show with a password", () => {
 
     await expectError(
       stranger.api.verifyManageAccess({
-        slug: show.show.slug,
+        code: show.show.code,
         password: "guess",
       }),
       "UNAUTHORIZED",
@@ -196,7 +195,7 @@ describe("password attempts", () => {
   const guesser = (show: Show, ip = "203.0.113.7") => {
     const client = visitor({ ip });
     const guess = (password = "guess") =>
-      client.api.verifyManageAccess({ slug: show.show.slug, password });
+      client.api.verifyManageAccess({ code: show.show.code, password });
     const guessWrong = async (times = CLIENT_LIMIT) => {
       for (let i = 0; i < times; i++) {
         await expectError(guess(), "UNAUTHORIZED");
@@ -329,7 +328,7 @@ describe("password attempts", () => {
 
   it("aren't recorded for a show that doesn't exist", async () => {
     await expectError(
-      visitor().api.verifyManageAccess({ slug: "no-such-show", password: "x" }),
+      visitor().api.verifyManageAccess({ code: "ZZZZ", password: "x" }),
       "NOT_FOUND",
     );
 

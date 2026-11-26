@@ -1,5 +1,4 @@
 import { type AnyProcedure } from "@trpc/server";
-import { randomUUID } from "node:crypto";
 
 import { appRouter } from "~/server/api/root";
 
@@ -15,7 +14,6 @@ export const FILMS = ["Dune", "Barbie", "Oppenheimer"];
 export async function createShow(host: Visitor, { password = "" } = {}) {
   const show = await host.api.createSession({
     name: "Movie Awards",
-    slug: `show-${randomUUID().slice(0, 8)}`,
     password,
   });
   type CategoryInput = Parameters<Visitor["api"]["addCategory"]>[0];
