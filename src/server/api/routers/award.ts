@@ -3,10 +3,13 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { type CategoryType, Prisma } from "~/generated/prisma/client";
+import { imageLinkError } from "~/lib/images";
 import { normalizeRoomCode } from "~/lib/join";
 import {
   categoryFormSchema,
+  categoryUpdateSchema,
   nominationFormSchema,
+  nominationUpdateSchema,
   normalizePassword,
   rankingSubmissionSchema,
   sessionFormSchema,
@@ -209,6 +212,180 @@ const withShowLocked = async <T>(
 };
 
 /**
+ * Refuses a nomination that isn't valid in its category: an image category needs an image link,
+ * and no category takes a repeat. The same name and description twice
+ * is an accidental double-add. The same name with a different description (or image) is allowed:
+ * hosts use it on purpose. Names are compared ignoring case, which is stricter than aggregates
+ * (they match exact names). Compared here rather than in SQL: older rows may have untrimmed text.
+ */
+const assertValidNomination = async (
+  tx: Prisma.TransactionClient,
+  nomination: {
+    categoryId: string;
+    categoryType: CategoryType;
+    name: string;
+    description?: string;
+    /** The nomination being edited, which can't repeat itself */
+    exceptId?: string;
+  },
+) => {
+  const { name, categoryType, exceptId } = nomination;
+  const description = nomination.description ?? "";
+  const imageError =
+    categoryType === "IMAGE" && imageLinkError(nomination.description);
+  if (imageError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: imageError });
+  }
+  const existing = await tx.nomination.findMany({
+    where: {
+      categoryId: nomination.categoryId,
+      id: exceptId ? { not: exceptId } : undefined,
+    },
+    select: { name: true, description: true },
+  });
+  const repeated = existing.some(
+    n =>
+      n.name.trim().toLowerCase() === name.toLowerCase() &&
+      (n.description ?? "").trim() === description,
+  );
+  if (repeated) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: !description
+        ? `"${name}" is already in this category`
+        : categoryType === "IMAGE"
+          ? `"${name}" with this image is already in this category`
+          : `"${name}" with this description is already in this category`,
+    });
+  }
+};
+
+/**
+ * Refuses aggregate sources that aren't non-aggregate categories of this show. Call it holding
+ * the show's lock, so a source can't be deleted between the check and the link.
+ */
+const assertValidSources = async (
+  tx: Prisma.TransactionClient,
+  sessionId: string,
+  sourceIds: string[],
+) => {
+  const validSources = await tx.category.count({
+    where: { id: { in: sourceIds }, sessionId, type: { not: "AGGREGATE" } },
+  });
+  if (validSources !== sourceIds.length) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Source categories must be non-aggregate categories in this show",
+    });
+  }
+};
+
+/**
+ * Brings an aggregate's nominations in line with its sources. Aggregates match source nominations
+ * by exact name and keep one copy per name, with the description of the first one added. Copies of
+ * names no source has any more are removed; aggregates take no votes, so none are lost.
+ *
+ * With `names`, only copies of those names are touched: a host may have deleted an aggregate's
+ * copy on purpose, and adding or editing an unrelated nomination shouldn't bring it back.
+ *
+ * Call it holding the show's lock, so two changes can't copy the same name twice.
+ */
+const reconcileAggregate = async (
+  tx: Prisma.TransactionClient,
+  aggregateId: string,
+  sourceIds: string[],
+  names?: string[],
+) => {
+  const name = names ? { in: names } : undefined;
+  const [wanted, copies] = await Promise.all([
+    tx.nomination.findMany({
+      where: { categoryId: { in: sourceIds }, name },
+      distinct: ["name"],
+      orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+      select: { name: true, description: true },
+    }),
+    tx.nomination.findMany({
+      where: { categoryId: aggregateId, name },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, description: true },
+    }),
+  ]);
+  const wantedDescription = new Map(wanted.map(n => [n.name, n.description]));
+  // The oldest copy of each name stays (if the name is still wanted); any others go
+  const kept = new Map<string, (typeof copies)[number]>();
+  const stale: string[] = [];
+  for (const copy of copies) {
+    if (wantedDescription.has(copy.name) && !kept.has(copy.name)) {
+      kept.set(copy.name, copy);
+    } else {
+      stale.push(copy.id);
+    }
+  }
+
+  let missing = wanted.filter(n => !kept.has(n.name));
+  // A rename (one name gone, one new): rename the copy, so it keeps its place in the list
+  if (names && stale.length === 1 && missing.length === 1) {
+    await tx.nomination.update({
+      where: { id: stale.pop() },
+      data: missing[0]!,
+    });
+    missing = [];
+  }
+  if (stale.length) {
+    await tx.nomination.deleteMany({ where: { id: { in: stale } } });
+  }
+  if (missing.length) {
+    await tx.nomination.createMany({
+      data: missing.map(n => ({ ...n, categoryId: aggregateId })),
+    });
+  }
+  for (const copy of kept.values()) {
+    const description = wantedDescription.get(copy.name);
+    if (copy.description !== description) {
+      await tx.nomination.update({
+        where: { id: copy.id },
+        data: { description },
+      });
+    }
+  }
+};
+
+/** The aggregates that use a category as a source, with all their sources */
+const aggregatesOf = (tx: Prisma.TransactionClient, categoryId: string) =>
+  tx.category.findMany({
+    where: { sourceCategories: { some: { id: categoryId } } },
+    select: {
+      id: true,
+      name: true,
+      sourceCategories: { select: { id: true } },
+    },
+  });
+
+/** Reconciles these names in every aggregate that uses the category (see reconcileAggregate) */
+const reconcileAggregatesOf = async (
+  tx: Prisma.TransactionClient,
+  aggregates: Awaited<ReturnType<typeof aggregatesOf>>,
+  names: string[],
+) => {
+  for (const aggregate of aggregates) {
+    await reconcileAggregate(
+      tx,
+      aggregate.id,
+      aggregate.sourceCategories.map(s => s.id),
+      names,
+    );
+  }
+};
+
+/** Turns an error from a host's transaction into one for the client */
+const hostWriteError = (error: unknown, message: string) => {
+  if (error instanceof TRPCError) return error;
+  if (isBusy(error)) return hostBusy();
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+};
+
+/**
  * Refuses a vote in a category that isn't open: not active, or already
  * revealed (so the results on the big screen can't change after the reveal).
  */
@@ -243,6 +420,8 @@ const saveVote = async <T>(
     sessionId: string;
     categoryId: string;
     nominationIds: string[];
+    /** For a ranking: the number of places it was checked against */
+    rankingTop?: number;
   },
   write: (tx: Prisma.TransactionClient) => Promise<T>,
 ) => {
@@ -253,13 +432,24 @@ const saveVote = async <T>(
         // Show lock first, then the device lock, always in this order
         await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0))`;
         const [category] = await tx.$queryRaw<
-          { isActive: boolean; revealed: boolean }[]
+          { isActive: boolean; revealed: boolean; rankingTop: number | null }[]
         >`
-          SELECT c."isActive", c."revealed"
+          SELECT c."isActive", c."revealed", c."rankingTop"
           FROM pg_advisory_xact_lock(hashtext(${deviceId}), hashtext(${categoryId})),
             "Category" c
           WHERE c."id" = ${categoryId}`;
         assertVotingOpen(category);
+        // The host may have changed the number of places since the ranking was checked
+        if (
+          target.rankingTop !== undefined &&
+          category?.rankingTop !== target.rankingTop
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "The number of places to rank has changed. Please reload the page.",
+          });
+        }
         const found = await tx.nomination.count({
           where: { id: { in: nominationIds }, categoryId },
         });
@@ -414,22 +604,8 @@ export const awardRouter = createTRPCRouter({
         return await ctx.db.$transaction(
           async tx => {
             if (sourceIds.length) {
-              // The show's lock keeps a source from being deleted between the check and the link
               await lockShow(tx, input.sessionId);
-              const validSources = await tx.category.count({
-                where: {
-                  id: { in: sourceIds },
-                  sessionId: input.sessionId,
-                  type: { not: "AGGREGATE" },
-                },
-              });
-              if (validSources !== sourceIds.length) {
-                throw new TRPCError({
-                  code: "BAD_REQUEST",
-                  message:
-                    "Source categories must be non-aggregate categories in this show",
-                });
-              }
+              await assertValidSources(tx, input.sessionId, sourceIds);
             }
 
             const category = await tx.category.create({
@@ -447,22 +623,9 @@ export const awardRouter = createTRPCRouter({
               },
             });
 
-            // An aggregate starts with a copy of its sources' nominations, one per name. A name
-            // can appear more than once; the first one added gives the copy its description.
+            // An aggregate starts with a copy of its sources' nominations
             if (sourceIds.length) {
-              const sourceNominations = await tx.nomination.findMany({
-                where: { categoryId: { in: sourceIds } },
-                distinct: ["name"],
-                orderBy: [{ name: "asc" }, { createdAt: "asc" }],
-                select: { name: true, description: true },
-              });
-              await tx.nomination.createMany({
-                data: sourceNominations.map(nom => ({
-                  name: nom.name,
-                  description: nom.description,
-                  categoryId: category.id,
-                })),
-              });
+              await reconcileAggregate(tx, category.id, sourceIds);
             }
 
             return category;
@@ -470,12 +633,86 @@ export const awardRouter = createTRPCRouter({
           { maxWait: 5000, timeout: 10000 },
         );
       } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        if (isBusy(error)) throw hostBusy();
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create category",
-        });
+        throw hostWriteError(error, "Failed to create category");
+      }
+    }),
+
+  /**
+   * Changes a category's name and description, a ranking category's number of places (only before
+   * anyone has voted, since it changes everyone's points), or an aggregate's sources. Its type
+   * stays as it is.
+   */
+  updateCategory: publicProcedure
+    .input(categoryUpdateSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await assertCanManage(ctx, { categoryId: input.id });
+      try {
+        // Holding the show's lock: changing sources rewrites the aggregate's copies, like adding a
+        // nomination does, and votes can't arrive between counting them and changing the places
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const category = await tx.category.findUnique({
+              where: { id: input.id },
+              select: {
+                type: true,
+                rankingTop: true,
+                sourceCategories: { select: { id: true } },
+              },
+            });
+            if (!category) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Category not found",
+              });
+            }
+
+            const rankingTop =
+              category.type === "RANKING" ? input.rankingTop : undefined;
+            if (rankingTop && rankingTop !== category.rankingTop) {
+              const votes = await tx.vote.count({
+                where: { nomination: { categoryId: input.id } },
+              });
+              if (votes > 0) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message:
+                    "People have already voted in this category. Reset its votes to change how many places they rank.",
+                });
+              }
+            }
+
+            // Only when they change: the form sends an aggregate's sources with every edit
+            const sourceIds =
+              category.type === "AGGREGATE" && input.sourceCategories
+                ? [...new Set(input.sourceCategories)]
+                : undefined;
+            const current = new Set(category.sourceCategories.map(s => s.id));
+            const sourcesChanged =
+              sourceIds &&
+              (sourceIds.length !== current.size ||
+                sourceIds.some(id => !current.has(id)));
+            if (sourcesChanged) {
+              await assertValidSources(tx, session.id, sourceIds);
+              await reconcileAggregate(tx, input.id, sourceIds);
+            }
+
+            return tx.category.update({
+              where: { id: input.id },
+              data: {
+                name: input.name,
+                description: input.description,
+                rankingTop,
+                sourceCategories: sourcesChanged
+                  ? { set: sourceIds.map(id => ({ id })) }
+                  : undefined,
+              },
+            });
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
+      } catch (error) {
+        throw hostWriteError(error, "Failed to update category");
       }
     }),
 
@@ -588,7 +825,7 @@ export const awardRouter = createTRPCRouter({
             await lockShow(tx, session.id);
             const category = await tx.category.findUnique({
               where: { id: input.categoryId },
-              include: { aggregateOf: { select: { id: true } } },
+              select: { type: true },
             });
             if (!category) {
               throw new TRPCError({
@@ -604,30 +841,10 @@ export const awardRouter = createTRPCRouter({
               });
             }
 
-            // The same name and description twice is an accidental double-add. The same name with
-            // a different description (or image) is allowed: hosts use it on purpose. Names are
-            // compared ignoring case, which is stricter than aggregates (they match exact names).
-            // Compared here rather than in SQL: older rows may have untrimmed text.
-            const existing = await tx.nomination.findMany({
-              where: { categoryId: input.categoryId },
-              select: { name: true, description: true },
+            await assertValidNomination(tx, {
+              ...input,
+              categoryType: category.type,
             });
-            const sameName = existing.filter(
-              n => n.name.trim().toLowerCase() === input.name.toLowerCase(),
-            );
-            const description = input.description ?? "";
-            if (
-              sameName.some(n => (n.description ?? "").trim() === description)
-            ) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: !description
-                  ? `"${input.name}" is already in this category`
-                  : category.type === "IMAGE"
-                    ? `"${input.name}" with this image is already in this category`
-                    : `"${input.name}" with this description is already in this category`,
-              });
-            }
 
             const nomination = await tx.nomination.create({
               data: {
@@ -637,36 +854,111 @@ export const awardRouter = createTRPCRouter({
               },
             });
 
-            // Copy it to the aggregates that use this category, unless one already has that name
-            const aggregateIds = category.aggregateOf.map(a => a.id);
-            if (aggregateIds.length) {
-              const haveName = await tx.nomination.findMany({
-                where: { categoryId: { in: aggregateIds }, name: input.name },
-                select: { categoryId: true },
-              });
-              const skip = new Set(haveName.map(n => n.categoryId));
-              await tx.nomination.createMany({
-                data: aggregateIds
-                  .filter(id => !skip.has(id))
-                  .map(categoryId => ({
-                    categoryId,
-                    name: input.name,
-                    description: input.description,
-                  })),
-              });
-            }
+            // Copy it to the aggregates that use this category
+            await reconcileAggregatesOf(
+              tx,
+              await aggregatesOf(tx, input.categoryId),
+              [input.name],
+            );
 
             return nomination;
           },
           { maxWait: 5000, timeout: 10000 },
         );
       } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        if (isBusy(error)) throw hostBusy();
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create nomination",
-        });
+        throw hostWriteError(error, "Failed to create nomination");
+      }
+    }),
+
+  /**
+   * Renames a nomination or changes its description, keeping its votes. Its copies in aggregates
+   * follow (see reconcileAggregate); `mergedIn` lists the aggregates where it now counts
+   * together with another nomination of the new name.
+   */
+  updateNomination: publicProcedure
+    .input(nominationUpdateSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await assertCanManage(ctx, { nominationId: input.id });
+      try {
+        // Holding the show's lock, like addNomination, since it changes aggregates' copies
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const before = await tx.nomination.findUnique({
+              where: { id: input.id },
+              select: {
+                name: true,
+                description: true,
+                categoryId: true,
+                category: { select: { type: true } },
+              },
+            });
+            if (!before) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Nomination not found",
+              });
+            }
+            if (before.category.type === "AGGREGATE") {
+              // Its nominations are copies matched to its sources by name
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Edit nominations in the source categories instead",
+              });
+            }
+
+            // Left out, the description stays as it is
+            const description =
+              input.description ?? before.description ?? undefined;
+            await assertValidNomination(tx, {
+              ...input,
+              description,
+              categoryId: before.categoryId,
+              categoryType: before.category.type,
+              exceptId: input.id,
+            });
+
+            const nomination = await tx.nomination.update({
+              where: { id: input.id },
+              data: {
+                name: input.name,
+                description,
+              },
+            });
+            const aggregates = await aggregatesOf(tx, before.categoryId);
+            // Aggregates where another source nomination already has the new name: the two now
+            // count together there, which the host should know
+            const sameName =
+              before.name === input.name || !aggregates.length
+                ? []
+                : await tx.nomination.findMany({
+                    where: {
+                      name: input.name,
+                      id: { not: input.id },
+                      categoryId: {
+                        in: aggregates.flatMap(a =>
+                          a.sourceCategories.map(s => s.id),
+                        ),
+                      },
+                    },
+                    select: { categoryId: true },
+                  });
+            const mergedIn = aggregates
+              .filter(a =>
+                a.sourceCategories.some(s =>
+                  sameName.some(n => n.categoryId === s.id),
+                ),
+              )
+              .map(a => a.name);
+            await reconcileAggregatesOf(tx, aggregates, [
+              ...new Set([before.name, input.name]),
+            ]);
+            return { nomination, mergedIn };
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
+      } catch (error) {
+        throw hostWriteError(error, "Failed to update nomination");
       }
     }),
 
@@ -902,6 +1194,7 @@ export const awardRouter = createTRPCRouter({
             sessionId: category.sessionId,
             categoryId: input.categoryId,
             nominationIds: input.rankings.map(r => r.nominationId),
+            rankingTop: category.rankingTop,
           },
           tx =>
             tx.vote.createManyAndReturn({
@@ -951,18 +1244,25 @@ export const awardRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { nominationId: input.id });
       try {
-        // Votes are removed by the onDelete: Cascade relation
-        return await withShowLocked(
-          ctx.db,
-          session.id,
-          ctx.db.nomination.delete({ where: { id: input.id } }),
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            // Votes are removed by the onDelete: Cascade relation
+            const nomination = await tx.nomination.delete({
+              where: { id: input.id },
+            });
+            // Its aggregates drop their copy unless another source has the name
+            await reconcileAggregatesOf(
+              tx,
+              await aggregatesOf(tx, nomination.categoryId),
+              [nomination.name],
+            );
+            return nomination;
+          },
+          { maxWait: 5000, timeout: 10000 },
         );
       } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to delete nomination",
-        });
+        throw hostWriteError(error, "Failed to delete nomination");
       }
     }),
 
@@ -971,18 +1271,37 @@ export const awardRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { categoryId: input.id });
       try {
-        // Nominations and votes are removed by the onDelete: Cascade relations
-        return await withShowLocked(
-          ctx.db,
-          session.id,
-          ctx.db.category.delete({ where: { id: input.id } }),
+        return await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const [aggregates, nominations] = await Promise.all([
+              aggregatesOf(tx, input.id),
+              tx.nomination.findMany({
+                where: { categoryId: input.id },
+                select: { name: true },
+              }),
+            ]);
+            // Nominations and votes are removed by the onDelete: Cascade relations
+            const category = await tx.category.delete({
+              where: { id: input.id },
+            });
+            // Its aggregates drop the copies only it had
+            await reconcileAggregatesOf(
+              tx,
+              aggregates.map(a => ({
+                ...a,
+                sourceCategories: a.sourceCategories.filter(
+                  s => s.id !== input.id,
+                ),
+              })),
+              [...new Set(nominations.map(n => n.name))],
+            );
+            return category;
+          },
+          { maxWait: 5000, timeout: 10000 },
         );
       } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to delete category",
-        });
+        throw hostWriteError(error, "Failed to delete category");
       }
     }),
 

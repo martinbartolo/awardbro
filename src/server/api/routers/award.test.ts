@@ -19,10 +19,15 @@ const { db, tx } = vi.hoisted(() => ({
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   },
-  // The client passed to interactive transactions (saveVote)
+  // The client passed to interactive transactions (saveVote, deletes)
   tx: {
     $queryRaw: vi.fn(),
-    nomination: { count: vi.fn() },
+    category: { findMany: vi.fn(), delete: vi.fn() },
+    nomination: {
+      count: vi.fn(),
+      delete: vi.fn(),
+      findMany: vi.fn(),
+    },
     vote: {
       deleteMany: vi.fn(),
       create: vi.fn(),
@@ -46,11 +51,15 @@ const prismaError = (code: string) =>
   });
 
 /** The category as seen inside saveVote's transaction */
-let lockedCategory = { isActive: true, revealed: false };
+let lockedCategory: {
+  isActive: boolean;
+  revealed: boolean;
+  rankingTop: number | null;
+} = { isActive: true, revealed: false, rankingTop: null };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  lockedCategory = { isActive: true, revealed: false };
+  lockedCategory = { isActive: true, revealed: false, rankingTop: null };
   db.session.findFirst.mockResolvedValue({ id: "show", password: null });
   // Stand-ins for the queries, so the tests can see what was batched
   db.$queryRaw.mockReturnValue("lock-show");
@@ -75,6 +84,11 @@ beforeEach(() => {
     ({ where }: { where: { id: { in: string[] } } }) =>
       Promise.resolve(where.id.in.length),
   );
+  // A category with no aggregates, so deletes have no copies to reconcile
+  tx.category.findMany.mockResolvedValue([]);
+  tx.nomination.findMany.mockResolvedValue([]);
+  tx.nomination.delete.mockResolvedValue({ categoryId: "b", name: "Dune" });
+  tx.category.delete.mockResolvedValue({ id: "b" });
   tx.vote.create.mockResolvedValue("new-vote");
   tx.vote.createManyAndReturn.mockResolvedValue("new-ranking");
 });
@@ -209,6 +223,18 @@ describe("submitRanking", () => {
       sessionId: "show",
       nominations: [{ id: "nom-a" }, { id: "nom-b" }],
     });
+    lockedCategory.rankingTop = 2;
+  });
+
+  it("rejects a ranking whose number of places changed before it was saved", async () => {
+    // The host changed it after the ranking was checked, before the locks were taken
+    lockedCategory.rankingTop = 3;
+
+    await expect(
+      caller.award.submitRanking({ categoryId: "cat", rankings }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(tx.vote.deleteMany).not.toHaveBeenCalled();
+    expect(tx.vote.createManyAndReturn).not.toHaveBeenCalled();
   });
 
   it("replaces the device's ranking inside one locked transaction", async () => {
@@ -342,16 +368,6 @@ describe("host actions that take the show's lock", () => {
       "delete-votes",
     ],
     [
-      "deleteNomination",
-      () => caller.award.deleteNomination({ id: "n" }),
-      "delete-nomination",
-    ],
-    [
-      "deleteCategory",
-      () => caller.award.deleteCategory({ id: "b" }),
-      "delete-category",
-    ],
-    [
       "deleteSession",
       () => caller.award.deleteSession({ id: "show" }),
       "delete-show",
@@ -365,6 +381,27 @@ describe("host actions that take the show's lock", () => {
     await run();
 
     expect(db.$transaction).toHaveBeenCalledWith(["lock-show", query]);
+  });
+
+  it.each([
+    [
+      "deleteNomination",
+      () => caller.award.deleteNomination({ id: "n" }),
+      tx.nomination.delete,
+    ],
+    [
+      "deleteCategory",
+      () => caller.award.deleteCategory({ id: "b" }),
+      tx.category.delete,
+    ],
+  ])("%s takes the show's lock before deleting", async (_, run, remove) => {
+    await run();
+
+    expect(String(tx.$queryRaw.mock.calls[0]?.[0])).toContain(
+      "pg_advisory_xact_lock(",
+    );
+    const [lock, deleted] = callOrder(tx.$queryRaw, remove);
+    expect(lock).toBeLessThan(deleted!);
   });
 
   it.each([
