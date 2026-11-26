@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { NominationFields } from "~/app/components/nomination-fields";
+import {
+  NominationFields,
+  usePicture,
+} from "~/app/components/nomination-fields";
 import { Button } from "~/components/ui/button";
 import { Form } from "~/components/ui/form";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
-import { imageLinkError } from "~/lib/images";
 import {
   nominationFieldsSchema,
   type NominationFieldValues,
@@ -48,22 +50,17 @@ export function AddNominationForm({
 
   const isImageCategory = categoryType === "IMAGE";
 
+  const { picture, canSave } = usePicture(form, isImageCategory);
+
   const onSubmit = (values: NominationFieldValues) => {
-    const imageError = isImageCategory && imageLinkError(values.description);
-    if (imageError) {
-      toast.error(imageError);
-      return;
-    }
+    if (!canSave()) return;
     addNomination.mutate({ ...values, categoryId });
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <NominationFields
-          control={form.control}
-          isImageCategory={isImageCategory}
-        />
+        <NominationFields control={form.control} picture={picture} />
 
         <Button
           type="submit"

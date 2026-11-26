@@ -6,6 +6,9 @@ import { CategoryType } from "~/generated/prisma/enums";
 const categoryTypeValues = Object.values(CategoryType) as [string, ...string[]];
 export const categoryTypeEnum = z.enum(categoryTypeValues);
 
+/** The longest description a category or nomination can have, a picture link included */
+export const MAX_DESCRIPTION = 500;
+
 /** bcrypt ignores everything after the first 72 bytes of a password */
 const MAX_PASSWORD_BYTES = 72;
 
@@ -50,7 +53,11 @@ const categoryFields = {
     .trim()
     .min(1, "Name is required")
     .max(100, "Name is too long"),
-  description: z.string().trim().max(500, "Description is too long").optional(),
+  description: z
+    .string()
+    .trim()
+    .max(MAX_DESCRIPTION, "Description is too long")
+    .optional(),
   /** Ranking categories only */
   rankingTop: z
     .number()
@@ -107,7 +114,11 @@ const nominationFields = {
     .trim()
     .min(1, "Name is required")
     .max(100, "Name is too long"),
-  description: z.string().trim().max(500, "Description is too long").optional(),
+  description: z
+    .string()
+    .trim()
+    .max(MAX_DESCRIPTION, "Description is too long")
+    .optional(),
 };
 
 /** The fields of the add and edit nomination forms */
