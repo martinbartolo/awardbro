@@ -481,22 +481,15 @@ export const awardRouter = createTRPCRouter({
       return scored!;
     }),
 
-  toggleRevealCategory: publicProcedure
-    .input(z.object({ id: z.string() }))
+  /**
+   * Reveals a category's results, or hides them again. Sets the state the
+   * host saw rather than toggling, so a click from an out-of-date page
+   * (another device, a double click) can't undo the reveal by mistake.
+   */
+  setCategoryRevealed: publicProcedure
+    .input(z.object({ id: z.string(), revealed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { categoryId: input.id });
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.id },
-        select: { revealed: true },
-      });
-
-      if (!category) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
-        });
-      }
-
       // Holding the show's lock, so the results don't change after the reveal
       // as votes being saved land
       return withShowLocked(
@@ -504,7 +497,7 @@ export const awardRouter = createTRPCRouter({
         session.id,
         ctx.db.category.update({
           where: { id: input.id },
-          data: { revealed: !category.revealed },
+          data: { revealed: input.revealed },
         }),
       );
     }),

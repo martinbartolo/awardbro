@@ -320,13 +320,11 @@ describe("host actions that take the show's lock", () => {
       "delete-show",
     ],
     [
-      "toggleRevealCategory",
-      () => caller.award.toggleRevealCategory({ id: "b" }),
+      "setCategoryRevealed",
+      () => caller.award.setCategoryRevealed({ id: "b", revealed: true }),
       "update-one",
     ],
   ])("%s holds the show's lock", async (_, run, query) => {
-    db.category.findUnique.mockResolvedValue({ revealed: false });
-
     await run();
 
     expect(db.$transaction).toHaveBeenCalledWith(["lock-show", query]);
