@@ -354,6 +354,10 @@ export default function HelpPage() {
                       </p>
                     </div>
                   </div>
+                  <p className="text-muted-foreground text-sm">
+                    Made a typo? Click the pencil next to a nomination or
+                    category to fix it, even during voting: its votes are kept.
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
+import { SourceCategoryCheckboxes } from "~/app/components/source-category-checkboxes";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -326,7 +327,7 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                 <FormField
                   control={form.control}
                   name="sourceCategories"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>Select Source Categories</FormLabel>
                       <p className="text-muted-foreground mb-2 max-w-(--breakpoint-md) text-sm">
@@ -335,37 +336,11 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
                         will have their scores added together. If any source is
                         a ranking category, the totals are shown in points.
                       </p>
-                      <div className="space-y-2">
-                        {categories.map(category => (
-                          <FormField
-                            key={category.id}
-                            control={form.control}
-                            name="sourceCategories"
-                            render={({ field }) => (
-                              <FormItem
-                                key={category.id}
-                                className="flex flex-row items-center gap-2 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value.includes(category.id)}
-                                    onCheckedChange={checked => {
-                                      const currentValue = field.value;
-                                      const newValue = checked
-                                        ? [...currentValue, category.id]
-                                        : currentValue.filter(
-                                            id => id !== category.id,
-                                          );
-                                      field.onChange(newValue);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel>{category.name}</FormLabel>
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
+                      <SourceCategoryCheckboxes
+                        options={categories}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
