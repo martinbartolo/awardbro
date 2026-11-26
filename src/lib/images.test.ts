@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { getImageUrl, isImageUrl, isValidImageUrl } from "./images";
+import {
+  getImageUrl,
+  imageLinkError,
+  isImageUrl,
+  isValidImageUrl,
+} from "./images";
 
 const driveLink = "https://drive.google.com/file/d/1AbC-d_9/view?usp=sharing";
 
@@ -56,5 +61,19 @@ describe("getImageUrl", () => {
     expect(getImageUrl("https://example.com/cat.png")).toBe(
       "https://example.com/cat.png",
     );
+  });
+});
+
+describe("imageLinkError", () => {
+  it("accepts an image link", () => {
+    expect(imageLinkError("https://example.com/cat.png")).toBeNull();
+  });
+
+  it.each([undefined, ""])("asks for a link when there is none (%j)", url => {
+    expect(imageLinkError(url)).toMatch(/required/);
+  });
+
+  it("explains a link that isn't an image", () => {
+    expect(imageLinkError("https://example.com/cat")).toMatch(/valid image/);
   });
 });

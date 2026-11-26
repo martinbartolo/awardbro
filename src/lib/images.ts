@@ -24,6 +24,15 @@ export function isValidImageUrl(url: string): boolean {
   return isImageUrl(url);
 }
 
+/** Why an image nomination's link can't be saved, or null if it can */
+export function imageLinkError(url: string | undefined): string | null {
+  if (!url) return "Image URL is required for image categories";
+  if (!isValidImageUrl(url)) {
+    return "Please enter a valid image URL (e.g., ending in .jpg, .png, .gif, .webp, or from imgur, Google Drive, etc.)";
+  }
+  return null;
+}
+
 /**
  * The URL to load an image from. Google Drive file links become thumbnail URLs, which can be
  * embedded on other sites. Returns "" for a Drive link without a file ID.
