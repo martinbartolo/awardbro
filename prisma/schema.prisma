@@ -21,6 +21,9 @@ model Session {
     id            String        @id @default(cuid())
     name          String
     slug          String        @unique
+    // The show's room code, e.g. "K7QF". The database picks an unused one
+    // (generate_room_code(), see the room code migrations).
+    code          String        @unique @default(dbgenerated("generate_room_code()"))
     password      String? // Optional password for managing the session
     createdAt     DateTime      @default(now())
     updatedAt     DateTime      @updatedAt
