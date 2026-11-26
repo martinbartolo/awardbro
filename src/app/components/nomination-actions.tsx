@@ -25,12 +25,15 @@ type NominationActionsProps = {
   nominationName: string;
   /** Shown in the confirmation when it's text, to tell apart nominations with the same name */
   nominationDescription?: string | null;
+  /** Whether its category shows pictures, so the description is a picture link */
+  isImage?: boolean;
 };
 
 export function NominationActions({
   nominationId,
   nominationName,
   nominationDescription,
+  isImage = false,
 }: NominationActionsProps) {
   const router = useRouter();
 
@@ -63,7 +66,9 @@ export function NominationActions({
           <AlertDialogTitle>Delete nomination?</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to delete &quot;{nominationName}&quot;
-            {nominationDescription && !isImageUrl(nominationDescription)
+            {nominationDescription &&
+            !isImage &&
+            !isImageUrl(nominationDescription)
               ? ` (${nominationDescription})`
               : ""}
             ? This will permanently remove this nomination and all its votes.

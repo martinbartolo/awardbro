@@ -181,6 +181,7 @@ export function RankingInterface({
                       description={slot.nomination.description ?? null}
                       className="text-muted-foreground line-clamp-1 text-xs"
                       imageClassName="relative mt-1 h-10 w-16"
+                      thumbnail
                     />
                   </div>
                   {!closed && (

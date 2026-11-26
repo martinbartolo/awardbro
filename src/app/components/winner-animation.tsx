@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "motion/react";
 
+import { showsPictures } from "~/lib/images";
 import { getScoreLabel, type LabelledCategory } from "~/lib/scoring";
 
 import { NominationDescription } from "./nomination-description";
@@ -250,6 +251,7 @@ export function WinnerAnimation({
               <motion.div variants={descriptionVariants}>
                 <NominationDescription
                   description={nomination.description}
+                  isImage={showsPictures(category)}
                   className={`mt-2 ${isWinner ? "text-base" : "text-sm"} text-background/80`}
                 />
               </motion.div>

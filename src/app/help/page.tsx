@@ -354,8 +354,10 @@ export default function HelpPage() {
                     <div className="bg-secondary rounded-lg p-4">
                       <h4 className="mb-2 font-medium">Image Support</h4>
                       <p className="text-muted-foreground text-sm">
-                        Paste an image URL (jpg, png, gif, webp) or Google Drive
-                        link to show a photo
+                        Paste a link to the picture: right-click it and choose
+                        &quot;Copy image address&quot;. Share links from Google
+                        Drive, Dropbox and imgur work too. A preview shows
+                        straight away whether it works.
                       </p>
                     </div>
                   </div>

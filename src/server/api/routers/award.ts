@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { type CategoryType, Prisma } from "~/generated/prisma/client";
-import { imageLinkError } from "~/lib/images";
+import { imageAddress, parseImageLink } from "~/lib/images";
 import { normalizeRoomCode } from "~/lib/join";
 import {
   categoryFormSchema,
@@ -223,8 +223,10 @@ const withShowLocked = async <T>(
 };
 
 /**
- * Refuses a nomination that isn't valid in its category: an image category needs an image link,
- * and no category takes a repeat. The same name and description twice
+ * Refuses a nomination that isn't valid in its category, and returns the description to store.
+ * An image category needs a picture link, stored as the address the picture loads from (a share
+ * link becomes the picture's own address; whether it opens is only checked by the host's browser,
+ * never fetched here). No category takes a repeat. The same name and description twice
  * is an accidental double-add. The same name with a different description (or image) is allowed:
  * hosts use it on purpose. Names are compared ignoring case, which is stricter than aggregates
  * (they match exact names). Compared here rather than in SQL: older rows may have untrimmed text.
@@ -241,12 +243,20 @@ const assertValidNomination = async (
   },
 ) => {
   const { name, categoryType, exceptId } = nomination;
-  const description = nomination.description ?? "";
-  const imageError =
-    categoryType === "IMAGE" && imageLinkError(nomination.description);
-  if (imageError) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: imageError });
+  const isImage = categoryType === "IMAGE";
+  // An image category's description is a picture link, stored as the address the picture loads
+  // from (see parseImageLink), so a share link and the address it leads to are the same picture
+  let description = nomination.description ?? "";
+  if (isImage) {
+    const parsed = parseImageLink(description);
+    if ("error" in parsed) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: parsed.error });
+    }
+    description = parsed.url;
   }
+  /** A stored description as it compares with this one */
+  const comparable = (text: string | null) =>
+    (isImage ? imageAddress(text ?? "") : null) ?? (text ?? "").trim();
   const existing = await tx.nomination.findMany({
     where: {
       categoryId: nomination.categoryId,
@@ -257,7 +267,7 @@ const assertValidNomination = async (
   const repeated = existing.some(
     n =>
       n.name.trim().toLowerCase() === name.toLowerCase() &&
-      (n.description ?? "").trim() === description,
+      comparable(n.description) === description,
   );
   if (repeated) {
     throw new TRPCError({
@@ -269,6 +279,8 @@ const assertValidNomination = async (
           : `"${name}" with this description is already in this category`,
     });
   }
+  // What to store as the description
+  return isImage ? description : nomination.description;
 };
 
 /**
@@ -914,7 +926,7 @@ export const awardRouter = createTRPCRouter({
               });
             }
 
-            await assertValidNomination(tx, {
+            const description = await assertValidNomination(tx, {
               ...input,
               categoryType: category.type,
             });
@@ -923,7 +935,7 @@ export const awardRouter = createTRPCRouter({
               data: {
                 categoryId: input.categoryId,
                 name: input.name,
-                description: input.description,
+                description,
               },
             });
 
@@ -981,11 +993,9 @@ export const awardRouter = createTRPCRouter({
             }
 
             // Left out, the description stays as it is
-            const description =
-              input.description ?? before.description ?? undefined;
-            await assertValidNomination(tx, {
+            const description = await assertValidNomination(tx, {
               ...input,
-              description,
+              description: input.description ?? before.description ?? undefined,
               categoryId: before.categoryId,
               categoryType: before.category.type,
               exceptId: input.id,

@@ -168,6 +168,60 @@ describe("editing a nomination", () => {
     expect(await showState(show.show.id)).toEqual(before);
   });
 
+  it("stores an image category's share link as the picture's own address", async () => {
+    const host = visitor();
+    const show = await createShow(host);
+    const photos = await show.addCategory({
+      name: "Best Photo",
+      type: "IMAGE",
+      sourceCategories: [],
+    });
+
+    const [imgur, anyLink] = await Promise.all([
+      show.addNomination({
+        categoryId: photos.id,
+        name: "Sunset",
+        description: "https://imgur.com/AbC12xY",
+      }),
+      // Whether a link opens as a picture is up to the browser, whatever it ends in
+      show.addNomination({
+        categoryId: photos.id,
+        name: "Dawn",
+        description: "https://images.example.com/photo/123",
+      }),
+    ]);
+
+    expect(imgur.description).toBe("https://i.imgur.com/AbC12xY.jpg");
+    expect(anyLink.description).toBe("https://images.example.com/photo/123");
+    // The same picture again, by its own address, is a repeat
+    await expectError(
+      show.addNomination({
+        categoryId: photos.id,
+        name: "Sunset",
+        description: "https://i.imgur.com/AbC12xY.jpg",
+      }),
+      "BAD_REQUEST",
+    );
+  });
+
+  it("refuses a Google Photos link, which only opens for the host", async () => {
+    const host = visitor();
+    const show = await createShow(host);
+    const photos = await show.addCategory({
+      name: "Best Photo",
+      type: "IMAGE",
+      sourceCategories: [],
+    });
+
+    await expect(
+      show.addNomination({
+        categoryId: photos.id,
+        name: "Sunset",
+        description: "https://photos.app.goo.gl/AbC123",
+      }),
+    ).rejects.toThrow(/^Google Photos links only open/);
+  });
+
   it("merges with another source's nomination of the new name, and says so", async () => {
     const { host, show } = await votedShow();
     await rename(host, show, "normal", "Dune", "Dune: Part Two");

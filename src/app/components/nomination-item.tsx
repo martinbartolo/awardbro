@@ -14,11 +14,13 @@ import {
 } from "~/app/components/inline-edit-form";
 import { NominationActions } from "~/app/components/nomination-actions";
 import { NominationDescription } from "~/app/components/nomination-description";
-import { NominationFields } from "~/app/components/nomination-fields";
+import {
+  NominationFields,
+  usePicture,
+} from "~/app/components/nomination-fields";
 import { Button } from "~/components/ui/button";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
-import { imageLinkError } from "~/lib/images";
 import {
   nominationFieldsSchema,
   type NominationFieldValues,
@@ -35,10 +37,13 @@ type Nomination = { id: string; name: string; description: string | null };
 export function NominationItem({
   nomination,
   categoryType,
+  isImage,
   score,
 }: {
   nomination: Nomination;
   categoryType: CategoryType;
+  /** Whether its category shows pictures (see showsPictures) */
+  isImage: boolean;
   /** Its score with its unit, such as "3 votes" */
   score: string;
 }) {
@@ -60,6 +65,7 @@ export function NominationItem({
             </div>
             <NominationDescription
               description={nomination.description}
+              isImage={isImage}
               className="text-muted-foreground mt-1 text-sm"
               imageClassName="mt-1 h-48"
             />
@@ -81,6 +87,7 @@ export function NominationItem({
               nominationId={nomination.id}
               nominationName={nomination.name}
               nominationDescription={nomination.description}
+              isImage={isImage}
             />
           </div>
         </div>
@@ -126,12 +133,14 @@ function EditNominationForm({
     }),
   );
 
+  const { picture, canSave } = usePicture(
+    form,
+    isImageCategory,
+    nomination.description,
+  );
+
   const onSubmit = (values: NominationFieldValues) => {
-    const imageError = isImageCategory && imageLinkError(values.description);
-    if (imageError) {
-      toast.error(imageError);
-      return;
-    }
+    if (!canSave()) return;
     update.mutate({ ...values, id: nomination.id });
   };
 
@@ -142,10 +151,7 @@ function EditNominationForm({
       onCancel={onDone}
       isSaving={update.isPending || isRefreshing}
     >
-      <NominationFields
-        control={form.control}
-        isImageCategory={isImageCategory}
-      />
+      <NominationFields control={form.control} picture={picture} />
       <p className="text-muted-foreground text-sm">
         Votes for this nomination are kept.
       </p>

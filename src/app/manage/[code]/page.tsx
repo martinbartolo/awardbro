@@ -23,6 +23,7 @@ import { DangerZone, RunShowCard } from "~/app/components/show-controls";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { showsPictures } from "~/lib/images";
 import { getScoreLabel } from "~/lib/scoring";
 import { hasManageAccess } from "~/server/auth/manage";
 import { showPageCode } from "~/server/shows";
@@ -257,6 +258,7 @@ export default async function ManagePage({
                         key={nomination.id}
                         nomination={nomination}
                         categoryType={category.type}
+                        isImage={showsPictures(category)}
                         score={`${nomination._count.votes} ${getScoreLabel(category, nomination._count.votes)}`}
                       />
                     ))}
