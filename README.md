@@ -6,17 +6,17 @@ Run your own interactive award show. Create categories, let everyone vote from t
 
 ## Features
 
-- **No sign-up for voters.** Share a link and people vote from any device.
+- **No sign-up for voters.** Guests scan the QR code on the big screen, or type a short room code, and vote from any device.
 - **Live big-screen presentation** with vote tracking and animated winner reveals.
 - **Four category types:** classic votes, image votes, ranked top-N, and aggregate categories that combine results from others.
 - **Host controls:** open one category at a time, reveal when ready, hide vote counts or show only the winner.
-- **Password-protected management** for each show.
+- **Password-protected** manage page for each show.
 
 ## How it works
 
-1. **Create a show** with a name, a URL and an optional management password.
+1. **Create a show** with a name and a password. It gets a room code, such as `K7QF`.
 2. **Add categories and nominations.**
-3. **Go live:** share `/vote/<your-show>` with voters, put `/present/<your-show>` on the big screen, and run the show from `/manage/<your-show>`.
+3. **Go live:** put `/present/K7QF` on the big screen, where guests scan the QR code or enter the code on the homepage, and run the show from `/manage/K7QF`.
 
 ## Development
 
