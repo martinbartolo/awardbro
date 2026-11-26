@@ -5,7 +5,7 @@ import { env } from "~/env";
 import { type db } from "~/server/db";
 
 /**
- * Manage password attempts. Show slugs are public, so a limit per show alone would let anyone
+ * Manage password attempts. Room codes are public, so a limit per show alone would let anyone
  * lock the host out by guessing wrong. Instead each client (IP address) gets a few attempts per
  * show, and the show as a whole gets a much higher cap, against guessing spread over many
  * addresses. Both are counted in the database, so they hold across server instances.

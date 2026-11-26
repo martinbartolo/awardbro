@@ -290,50 +290,39 @@ export const awardRouter = createTRPCRouter({
   createSession: publicProcedure
     .input(sessionFormSchema)
     .mutation(async ({ ctx, input }) => {
+      const password = input.password
+        ? await bcrypt.hash(normalizePassword(input.password), SALT_ROUNDS)
+        : null;
       try {
+        // The database picks the room code (the column's default, generate_room_code())
         const session = await ctx.db.session.create({
-          data: {
-            name: input.name,
-            slug: input.slug,
-            password: input.password
-              ? await bcrypt.hash(
-                  normalizePassword(input.password),
-                  SALT_ROUNDS,
-                )
-              : null,
-          },
-          select: { id: true, name: true, slug: true },
+          data: { name: input.name, password },
+          select: { id: true, name: true, code: true },
         });
         // The creator can manage the show straight away without re-entering the password
         setManageCookie(ctx.resHeaders, session.id);
         return session;
       } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          if (error.code === "P2002") {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "That URL is already in use. Please try another one",
-            });
-          }
-        }
+        if (isBusy(error)) throw hostBusy();
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create session",
+          cause: error,
         });
       }
     }),
 
-  getSessionBySlug: publicProcedure
+  getSession: publicProcedure
     .input(
       z.object({
-        slug: z.string(),
+        code: z.string(),
         activeOnly: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const [session, access] = await Promise.all([
         ctx.db.session.findUnique({
-          where: { slug: input.slug },
+          where: { code: input.code },
           // Never send the password hash to the client
           omit: { password: true },
           include: {
@@ -355,7 +344,7 @@ export const awardRouter = createTRPCRouter({
         }),
         // Only to check access; never sent to the client
         ctx.db.session.findUnique({
-          where: { slug: input.slug },
+          where: { code: input.code },
           select: { id: true, password: true },
         }),
       ]);
@@ -1048,7 +1037,7 @@ export const awardRouter = createTRPCRouter({
     try {
       return await ctx.db.session.findMany({
         select: {
-          slug: true,
+          code: true,
           updatedAt: true,
         },
         orderBy: {
@@ -1067,14 +1056,14 @@ export const awardRouter = createTRPCRouter({
   verifyManageAccess: publicProcedure
     .input(
       z.object({
-        slug: z.string(),
+        code: z.string(),
         // Shows created before BAR-49 allowed up to 100 characters; this only stops huge inputs
         password: z.string().max(1000, "Invalid password"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const session = await ctx.db.session.findUnique({
-        where: { slug: input.slug },
+        where: { code: input.code },
         select: { id: true, password: true },
       });
 

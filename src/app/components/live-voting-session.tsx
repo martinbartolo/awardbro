@@ -15,7 +15,7 @@ import { type RouterOutputs, useTRPC } from "~/trpc/react";
 import { type MyVotes } from "./ranking-interface";
 import { VotingInterface } from "./voting-interface";
 
-type Session = RouterOutputs["award"]["getSessionBySlug"];
+type Session = RouterOutputs["award"]["getSession"];
 
 type LiveVotingSessionProps = {
   initialSession: Session;
@@ -24,7 +24,7 @@ type LiveVotingSessionProps = {
     categoryId: string;
     votes: MyVotes;
   };
-  slug: string;
+  code: string;
 };
 
 const containerVariants = {
@@ -44,7 +44,7 @@ const containerVariants = {
 export function LiveVotingSession({
   initialSession,
   initialMyVotes,
-  slug,
+  code,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -53,8 +53,8 @@ export function LiveVotingSession({
     error: sessionError,
     isError: isSessionError,
   } = useQuery(
-    trpc.award.getSessionBySlug.queryOptions(
-      { slug, activeOnly: true },
+    trpc.award.getSession.queryOptions(
+      { code, activeOnly: true },
       {
         refetchInterval: 5000,
         initialData: initialSession,

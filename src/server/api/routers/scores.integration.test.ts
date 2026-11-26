@@ -50,10 +50,10 @@ describe("scores before a category is revealed", () => {
   });
 });
 
-it("are the same in getSessionBySlug as in getCategory", async () => {
+it("are the same in getSession as in getCategory", async () => {
   for (const who of [visitor(), host]) {
-    const { categories } = await who.api.getSessionBySlug({
-      slug: show.show.slug,
+    const { categories } = await who.api.getSession({
+      code: show.show.code,
     });
     const normal = categories.find(c => c.id === show.normal.id)!;
 

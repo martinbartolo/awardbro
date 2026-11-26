@@ -1,6 +1,7 @@
 import { type Metadata } from "next";
 
 import { LiveVotingSession } from "~/app/components/live-voting-session";
+import { showPageCode } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 import ogImage from "./opengraph-image.png";
@@ -8,10 +9,10 @@ import ogImage from "./opengraph-image.png";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ code: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const session = await api.award.getSessionBySlug({ slug });
+  const code = await showPageCode("vote", (await params).code);
+  const session = await api.award.getSession({ code });
 
   return {
     metadataBase: new URL("https://awardbro.com"),
@@ -30,7 +31,7 @@ export async function generateMetadata({
       title: `Vote Now: ${session.name}`,
       description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
       type: "website",
-      url: `/vote/${slug}`,
+      url: `/vote/${code}`,
       images: [
         {
           url: ogImage.src,
@@ -57,11 +58,11 @@ export async function generateMetadata({
 export default async function VotePage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ code: string }>;
 }) {
-  const { slug } = await params;
-  const session = await api.award.getSessionBySlug({
-    slug,
+  const code = await showPageCode("vote", (await params).code);
+  const session = await api.award.getSession({
+    code,
     activeOnly: true,
   });
   // The voter's own votes in the active category, so a voter who has voted
@@ -80,7 +81,7 @@ export default async function VotePage({
       <LiveVotingSession
         initialSession={session}
         initialMyVotes={initialMyVotes}
-        slug={slug}
+        code={code}
       />
     </main>
   );

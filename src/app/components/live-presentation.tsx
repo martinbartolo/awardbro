@@ -15,11 +15,11 @@ import { AggregateInfo } from "./aggregate-info";
 import { LiveVoting } from "./live-voting";
 import { WinnerAnimation } from "./winner-animation";
 
-type Session = RouterOutputs["award"]["getSessionBySlug"];
+type Session = RouterOutputs["award"]["getSession"];
 
 type LivePresentationProps = {
   initialSession: Session;
-  slug: string;
+  code: string;
 };
 
 const containerVariants = {
@@ -52,7 +52,7 @@ const categoryVariants = {
 
 export function LivePresentation({
   initialSession,
-  slug,
+  code,
 }: LivePresentationProps) {
   const trpc = useTRPC();
   const {
@@ -60,8 +60,8 @@ export function LivePresentation({
     error: sessionError,
     isError: isSessionError,
   } = useQuery(
-    trpc.award.getSessionBySlug.queryOptions(
-      { slug, activeOnly: true },
+    trpc.award.getSession.queryOptions(
+      { code, activeOnly: true },
       {
         refetchInterval: 5000,
         initialData: initialSession,

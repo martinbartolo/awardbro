@@ -7,7 +7,7 @@ import {
   sessionFormSchema,
 } from "./schemas";
 
-const show = { name: "Movie Awards", slug: "movie-awards" };
+const show = { name: "Movie Awards" };
 
 /** The fields a parse rejected, each listed once */
 const errorPaths = (result: {
@@ -16,24 +16,6 @@ const errorPaths = (result: {
   result.error && [
     ...new Set(result.error.issues.map(issue => issue.path.join("."))),
   ];
-
-describe("sessionFormSchema slug", () => {
-  it.each(["movie-awards", "awards2026", "a"])("accepts %s", slug => {
-    expect(sessionFormSchema.safeParse({ ...show, slug }).success).toBe(true);
-  });
-
-  it.each([
-    ["empty", ""],
-    ["with capitals", "Movie-Awards"],
-    ["with spaces", "movie awards"],
-    ["with other symbols", "movie_awards!"],
-    ["over 100 characters", "a".repeat(101)],
-  ])("rejects a slug %s", (_, slug) => {
-    expect(errorPaths(sessionFormSchema.safeParse({ ...show, slug }))).toEqual([
-      "slug",
-    ]);
-  });
-});
 
 describe("sessionFormSchema password", () => {
   it.each([
