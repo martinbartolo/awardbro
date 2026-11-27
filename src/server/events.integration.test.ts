@@ -48,23 +48,6 @@ const listen = async (hub: EventHub, sessionId: string) => {
  */
 const settle = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
 
-/** The event each write route sends, for the show the route is called on (see writeRoutes) */
-const expectedEvents = (normalId: string) =>
-  ({
-    addCategory: { type: "show" },
-    addNomination: { type: "show" },
-    moveCategory: { type: "show" },
-    updateCategory: { type: "show" },
-    updateNomination: { type: "show" },
-    setCategoryStage: { type: "show" },
-    setRevealOptions: { type: "show" },
-    resetCategoryVotes: { type: "votes", categoryId: normalId },
-    resetAllVotes: { type: "votes" },
-    deleteNomination: { type: "show" },
-    deleteCategory: { type: "show" },
-    deleteSession: { type: "show" },
-  }) satisfies Record<keyof typeof writeRoutes, ShowEvent>;
-
 it("covers every route that changes a show", () => {
   // Creating a show and entering its password change nothing a page shows; voting is tested below
   const silent = ["createSession", "verifyManageAccess"];
@@ -77,7 +60,7 @@ it("covers every route that changes a show", () => {
 describe("write routes", () => {
   it.each(Object.entries(writeRoutes))(
     "%s tells the show's pages, and no other show's",
-    async (route, call) => {
+    async (_, call) => {
       const { host, show } = await votedShow();
       const other = await votedShow();
       const hub = newHub();
@@ -89,9 +72,8 @@ describe("write routes", () => {
 
       await call(host.api, show);
 
-      const expected = expectedEvents(show.normal.id)[
-        route as keyof typeof writeRoutes
-      ];
+      // Every host action is a show event, resetting votes too (events.ts)
+      const expected = { type: "show" };
       await vi.waitFor(() => expect(mine.events).toEqual([expected]));
       await settle();
       expect(mine.events).toEqual([expected]);
@@ -257,6 +239,24 @@ describe("the event stream", () => {
     reader.releaseLock();
     return text;
   };
+
+  it("leaves out votes events for a page that shows no live counts", async () => {
+    const host = visitor();
+    const show = await createShow(host);
+    await open(host, show.normal.id);
+    const response = await streamShowEvents({
+      hub: newHub(),
+      sessionId: show.show.id,
+      signal: new AbortController().signal,
+      votes: false,
+    });
+
+    await visitor().api.vote({ nominationId: show.film("normal", "Dune").id });
+    await writeRoutes.setRevealOptions(host.api, show);
+
+    const text = await readUntil(response, t => t.includes("event: show"));
+    expect(text).not.toContain("event: votes");
+  });
 
   it("streams the show's events as Server-Sent Events", async () => {
     const host = visitor();

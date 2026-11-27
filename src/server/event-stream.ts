@@ -18,6 +18,9 @@ const HEARTBEAT_MS = 20_000;
  */
 const retryMs = () => 1_000 + Math.round(Math.random() * 1_000);
 
+/** Events queued for a page that isn't reading them, before its stream is ended */
+const MAX_QUEUED = 100;
+
 const encoder = new TextEncoder();
 const PING = encoder.encode(": ping\n\n");
 
@@ -30,6 +33,7 @@ export async function streamShowEvents({
   hub,
   sessionId,
   signal,
+  votes = true,
   streamMs = STREAM_MS - Math.random() * STREAM_JITTER_MS,
   heartbeatMs = HEARTBEAT_MS,
 }: {
@@ -37,6 +41,8 @@ export async function streamShowEvents({
   sessionId: string;
   /** Aborts when the page goes away */
   signal: AbortSignal;
+  /** Whether to send `votes` events: pages that show no live counts (voters' phones) don't need them */
+  votes?: boolean;
   streamMs?: number;
   heartbeatMs?: number;
 }) {
@@ -61,6 +67,11 @@ export async function streamShowEvents({
   };
   const send = (bytes: Uint8Array) => {
     if (ended) return;
+    // A page that stopped reading (but kept the connection) catches up when it connects again
+    if ((controller.desiredSize ?? 0) < -MAX_QUEUED) {
+      end();
+      return;
+    }
     try {
       controller.enqueue(bytes);
     } catch {
@@ -77,8 +88,10 @@ export async function streamShowEvents({
 
   unsubscribe = await hub.subscribe(
     sessionId,
-    ({ type, ...data }) =>
-      send(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`)),
+    ({ type, ...data }) => {
+      if (type === "votes" && !votes) return;
+      send(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
+    },
     end,
   );
   if (signal.aborted) end();

@@ -86,6 +86,8 @@ export function createEventHub(connectionString: string) {
     client.on("error", lost);
     client.on("end", lost);
     ready.then(() => {
+      // Lost as it opened
+      if (current !== connection) return;
       healthCheck = setInterval(() => {
         // No answer in time counts as lost too
         const timeout = setTimeout(lost, CONNECT_TIMEOUT_MS);
@@ -100,7 +102,7 @@ export function createEventHub(connectionString: string) {
       if (!notification || !shows.has(notification.sessionId)) return;
       const { sessionId, ...event } = notification;
       if (event.type === "votes") {
-        throttle.run(`${sessionId}:${event.categoryId ?? ""}`, () =>
+        throttle.run(`${sessionId}:${event.categoryId}`, () =>
           deliver(sessionId, event),
         );
       } else {

@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * A show's live events (see src/server/events.ts), for its open pages. Anyone with the room code
+ * A show's live events (see src/server/events.ts), for its open pages; without `votes` events with
+ * `?votes=0` (pages that show no live counts). Anyone with the room code
  * can listen, as anyone can load the show: events say only what changed, never scores or votes.
  */
 export async function GET(
@@ -27,12 +28,14 @@ export async function GET(
       hub: eventHub(),
       sessionId: show.id,
       signal: request.signal,
+      votes: new URL(request.url).searchParams.get("votes") !== "0",
     });
   } catch (error) {
     console.error("Couldn't listen for live events:", error);
-    // An empty stream, not an error status: `EventSource` gives up for good on an error status,
-    // but connects again (after `retry`) when a stream ends
-    const retryMs = 5_000 + Math.round(Math.random() * 5_000);
+    // An empty stream, not an error status: `EventSource` gives up on an error status, but
+    // connects again (after `retry`) when a stream ends
+    // 20–30 s, like the page's fallback fetch, so pages don't retry a struggling database faster
+    const retryMs = 20_000 + Math.round(Math.random() * 10_000);
     return new Response(`retry: ${retryMs}\n\n`, {
       headers: { "Content-Type": "text/event-stream; charset=utf-8" },
     });
