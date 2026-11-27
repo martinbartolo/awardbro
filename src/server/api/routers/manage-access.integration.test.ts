@@ -38,6 +38,28 @@ it("covers every route that changes a show", () => {
   );
 });
 
+describe("getSession's canManage", () => {
+  it("is true for the host and false for anyone else", async () => {
+    const host = visitor();
+    const { show } = await createShow(host, { password: "secret1" });
+
+    expect((await host.api.getSession({ code: show.code })).canManage).toBe(
+      true,
+    );
+    expect(
+      (await visitor().api.getSession({ code: show.code })).canManage,
+    ).toBe(false);
+  });
+
+  it("is true for anyone on a show without a password", async () => {
+    const { show } = await createShow(visitor());
+
+    expect(
+      (await visitor().api.getSession({ code: show.code })).canManage,
+    ).toBe(true);
+  });
+});
+
 describe("a show with a password", () => {
   it.each(
     Object.entries(writeRoutes).flatMap(([route, call]) =>
