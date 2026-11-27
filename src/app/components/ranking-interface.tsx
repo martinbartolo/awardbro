@@ -189,6 +189,7 @@ export function RankingInterface({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveRanking(slot.nomination!.id)}
+                      aria-label={`Remove ${slot.nomination.name} from ${getOrdinal(slot.rank)} place`}
                       disabled={isSubmitting}
                       className="h-8 w-8 p-0"
                     >

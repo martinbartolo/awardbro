@@ -252,31 +252,49 @@ export function LivePresentation({
                                 </div>
                               )}
 
-                              {displayNominations.map((nomination, index) => {
-                                const isWinner =
-                                  hasWinner &&
-                                  nomination._count.votes === highestVoteCount;
+                              {displayNominations.length > 0 && (
+                                <ol
+                                  // Safari drops the list role of a list without bullets
+                                  role="list"
+                                  aria-label={`${category.name} results`}
+                                  className={`grid w-full grid-cols-1 gap-8 ${
+                                    category.winnerOnly
+                                      ? "place-items-center"
+                                      : ""
+                                  }`}
+                                >
+                                  {displayNominations.map(
+                                    (nomination, index) => {
+                                      const isWinner =
+                                        hasWinner &&
+                                        nomination._count.votes ===
+                                          highestVoteCount;
 
-                                return (
-                                  <div
-                                    key={nomination.id}
-                                    className={`${
-                                      isWinner
-                                        ? "col-span-1 w-full md:px-12"
-                                        : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
-                                    }`}
-                                  >
-                                    <WinnerAnimation
-                                      nomination={nomination}
-                                      index={index}
-                                      isWinner={isWinner}
-                                      isTied={isTied}
-                                      category={category}
-                                      hideVoteCounts={category.hideVoteCounts}
-                                    />
-                                  </div>
-                                );
-                              })}
+                                      return (
+                                        <li
+                                          key={nomination.id}
+                                          className={`${
+                                            isWinner
+                                              ? "col-span-1 w-full md:px-12"
+                                              : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
+                                          }`}
+                                        >
+                                          <WinnerAnimation
+                                            nomination={nomination}
+                                            index={index}
+                                            isWinner={isWinner}
+                                            isTied={isTied}
+                                            category={category}
+                                            hideVoteCounts={
+                                              category.hideVoteCounts
+                                            }
+                                          />
+                                        </li>
+                                      );
+                                    },
+                                  )}
+                                </ol>
+                              )}
                             </>
                           );
                         })()}
