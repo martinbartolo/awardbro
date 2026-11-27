@@ -89,3 +89,4 @@ Validated in `src/env.js`:
 | `DATABASE_URL`        | Pooled Neon connection, used by the app                                         |
 | `DATABASE_DIRECT_URL` | Direct Neon connection, used by Prisma migrations (`prisma.config.ts`)          |
 | `AUTH_SECRET`         | Signs manage-access cookies. At least 32 characters, different per environment. |
+| `DATABASE_DRIVER`     | Optional. `pg` for plain Postgres (the end-to-end tests); else Neon's driver    |
