@@ -1,5 +1,6 @@
 import { type AnyProcedure } from "@trpc/server";
 
+import { type ServerStage } from "~/lib/stages";
 import { appRouter } from "~/server/api/root";
 
 import { testDb } from "./db";
@@ -76,13 +77,20 @@ export async function createShow(
 
 export type Show = Awaited<ReturnType<typeof createShow>>;
 
-/** Opens a category for voting, as the host */
-export const open = (host: Visitor, categoryId: string) =>
-  host.api.setActiveCategory({ categoryId, active: true });
+/** Moves a category to a stage of the show (open, closed, revealed or off), as the host */
+export const setStage = (
+  host: Visitor,
+  categoryId: string,
+  stage: ServerStage,
+) => host.api.setCategoryStage({ id: categoryId, stage });
 
-/** Reveals a category's results (or hides them again), as the host */
-export const reveal = (host: Visitor, categoryId: string, revealed = true) =>
-  host.api.setCategoryRevealed({ id: categoryId, revealed });
+/** Opens voting in a category, putting it on the big screen, as the host */
+export const open = (host: Visitor, categoryId: string) =>
+  setStage(host, categoryId, "open");
+
+/** Reveals a category's results, as the host */
+export const reveal = (host: Visitor, categoryId: string) =>
+  setStage(host, categoryId, "revealed");
 
 /** A show with a vote for Dune in the normal category, and a ranking (Dune, Barbie), from one voter */
 export async function votedShow({

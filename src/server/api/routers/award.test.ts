@@ -22,7 +22,13 @@ const { db, tx } = vi.hoisted(() => ({
   // The client passed to interactive transactions (saveVote, deletes)
   tx: {
     $queryRaw: vi.fn(),
-    category: { findMany: vi.fn(), delete: vi.fn() },
+    category: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+    },
     nomination: {
       count: vi.fn(),
       delete: vi.fn(),
@@ -53,13 +59,19 @@ const prismaError = (code: string) =>
 /** The category as seen inside saveVote's transaction */
 let lockedCategory: {
   isActive: boolean;
+  votingClosed: boolean;
   revealed: boolean;
   rankingTop: number | null;
-} = { isActive: true, revealed: false, rankingTop: null };
+} = { isActive: true, votingClosed: false, revealed: false, rankingTop: null };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  lockedCategory = { isActive: true, revealed: false, rankingTop: null };
+  lockedCategory = {
+    isActive: true,
+    votingClosed: false,
+    revealed: false,
+    rankingTop: null,
+  };
   db.session.findFirst.mockResolvedValue({ id: "show", password: null });
   // Stand-ins for the queries, so the tests can see what was batched
   db.$queryRaw.mockReturnValue("lock-show");
@@ -100,12 +112,17 @@ const callOrder = (...fns: { mock: { invocationCallOrder: number[] } }[]) =>
 
 describe("vote", () => {
   /** The nomination's category, as `vote` loads it before the transaction */
-  const loadCategory = (state: { isActive?: boolean; revealed?: boolean }) =>
+  const loadCategory = (state: {
+    isActive?: boolean;
+    votingClosed?: boolean;
+    revealed?: boolean;
+  }) =>
     db.nomination.findUnique.mockResolvedValue({
       categoryId: "cat",
       category: {
         type: "NORMAL",
         isActive: true,
+        votingClosed: false,
         revealed: false,
         sessionId: "show",
         ...state,
@@ -156,18 +173,25 @@ describe("vote", () => {
     expect(tx.vote.create).not.toHaveBeenCalled();
   });
 
-  it("refuses a vote that waited for the reveal, without changing anything", async () => {
-    lockedCategory.revealed = true;
+  it.each([
+    ["the host closed voting", { votingClosed: true }],
+    ["the reveal", { revealed: true }],
+  ])(
+    "refuses a vote that waited for %s, without changing anything",
+    async (_, state) => {
+      Object.assign(lockedCategory, state);
 
-    await expect(
-      caller.award.vote({ nominationId: "nom-a" }),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST", ...VOTING_CLOSED });
-    expect(tx.vote.deleteMany).not.toHaveBeenCalled();
-    expect(tx.vote.create).not.toHaveBeenCalled();
-  });
+      await expect(
+        caller.award.vote({ nominationId: "nom-a" }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST", ...VOTING_CLOSED });
+      expect(tx.vote.deleteMany).not.toHaveBeenCalled();
+      expect(tx.vote.create).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ["inactive", { isActive: false }],
+    ["closed", { votingClosed: true }],
     ["revealed", { revealed: true }],
   ])(
     "fails fast, without a transaction, when the category is already %s",
@@ -293,66 +317,97 @@ describe("submitRanking", () => {
   });
 });
 
-describe("setActiveCategory", () => {
-  it("activates the category and deactivates the others, holding the show's lock", async () => {
-    const result = await caller.award.setActiveCategory({
-      categoryId: "b",
-      active: true,
+describe("setCategoryStage", () => {
+  /** The category as setCategoryStage finds it, holding the show's lock */
+  const found = (category: Record<string, unknown>) =>
+    tx.category.findUnique.mockResolvedValue({
+      type: "NORMAL",
+      isActive: false,
+      votingClosed: false,
+      revealed: false,
+      ...category,
     });
 
-    expect(db.category.updateMany).toHaveBeenCalledWith({
-      where: { sessionId: "show" },
-      data: { isActive: false },
-    });
-    expect(db.category.update).toHaveBeenCalledWith({
-      where: { id: "b" },
-      data: { isActive: true },
-    });
-    expect(db.$transaction).toHaveBeenCalledWith([
-      "lock-show",
-      "deactivate-all",
-      "update-one",
-    ]);
-    expect(result).toBe("update-one");
+  beforeEach(() => {
+    found({});
   });
 
-  it("only deactivates the category when asked to stop", async () => {
-    await caller.award.setActiveCategory({ categoryId: "b", active: false });
+  it.each([
+    ["open", { isActive: true, votingClosed: false, revealed: false }],
+    ["closed", { isActive: true, votingClosed: true, revealed: false }],
+    ["revealed", { isActive: true, votingClosed: true, revealed: true }],
+  ] as const)(
+    "%s: puts the category on the big screen and takes the others off, holding the show's lock",
+    async (stage, data) => {
+      await caller.award.setCategoryStage({ id: "b", stage });
 
-    expect(db.category.update).toHaveBeenCalledWith({
-      where: { id: "b" },
-      data: { isActive: false },
-    });
-    expect(db.category.updateMany).not.toHaveBeenCalled();
-    expect(db.$transaction).toHaveBeenCalledWith(["lock-show", "update-one"]);
-  });
-
-  it.each([true, false])(
-    "sets the same state when repeated (active: %s)",
-    async active => {
-      await caller.award.setActiveCategory({ categoryId: "b", active });
-      await caller.award.setActiveCategory({ categoryId: "b", active });
-
-      const setTo = { where: { id: "b" }, data: { isActive: active } };
-      expect(db.category.update).toHaveBeenCalledTimes(2);
-      expect(db.category.update).toHaveBeenNthCalledWith(1, setTo);
-      expect(db.category.update).toHaveBeenNthCalledWith(2, setTo);
-    },
-  );
-
-  it.each([true, false])(
-    "reports a category deleted mid-click as not found (active: %s)",
-    async active => {
-      db.$transaction.mockRejectedValue(prismaError("P2025"));
-
-      await expect(
-        caller.award.setActiveCategory({ categoryId: "b", active }),
-      ).rejects.toMatchObject({
-        code: "NOT_FOUND",
-        message: "Category not found",
+      expect(String(tx.$queryRaw.mock.calls[0]?.[0])).toContain(
+        "pg_advisory_xact_lock(",
+      );
+      expect(tx.category.updateMany).toHaveBeenCalledWith({
+        where: { sessionId: "show", isActive: true, id: { not: "b" } },
+        data: { isActive: false },
       });
+      expect(tx.category.update).toHaveBeenCalledWith({
+        where: { id: "b" },
+        data,
+      });
+      const [lock, update] = callOrder(tx.$queryRaw, tx.category.update);
+      expect(lock).toBeLessThan(update!);
     },
   );
+
+  it("off: only takes the category off the big screen", async () => {
+    await caller.award.setCategoryStage({ id: "b", stage: "off" });
+
+    expect(tx.category.update).toHaveBeenCalledWith({
+      where: { id: "b" },
+      data: { isActive: false },
+    });
+    expect(tx.category.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to open voting in an aggregate, which takes no votes", async () => {
+    found({ type: "AGGREGATE" });
+
+    await expect(
+      caller.award.setCategoryStage({ id: "b", stage: "open" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(tx.category.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses a step from an out-of-date page, without changing anything", async () => {
+    // Another device revealed it after this page showed it as voting
+    found({ isActive: true, votingClosed: true, revealed: true });
+
+    await expect(
+      caller.award.setCategoryStage({ id: "b", stage: "closed", from: "open" }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(tx.category.update).not.toHaveBeenCalled();
+  });
+
+  it("takes a step from the stage the page showed", async () => {
+    found({ isActive: true });
+
+    await caller.award.setCategoryStage({
+      id: "b",
+      stage: "closed",
+      from: "open",
+    });
+
+    expect(tx.category.update).toHaveBeenCalled();
+  });
+
+  it("reports a category deleted mid-click as not found", async () => {
+    tx.category.findUnique.mockResolvedValue(null);
+
+    await expect(
+      caller.award.setCategoryStage({ id: "b", stage: "open" }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Category not found",
+    });
+  });
 });
 
 describe("host actions that take the show's lock", () => {
@@ -371,11 +426,6 @@ describe("host actions that take the show's lock", () => {
       "deleteSession",
       () => caller.award.deleteSession({ id: "show" }),
       "delete-show",
-    ],
-    [
-      "setCategoryRevealed",
-      () => caller.award.setCategoryRevealed({ id: "b", revealed: true }),
-      "update-one",
     ],
   ])("%s holds the show's lock", async (_, run, query) => {
     await run();
@@ -411,8 +461,8 @@ describe("host actions that take the show's lock", () => {
     ],
     ["deleteNomination", () => caller.award.deleteNomination({ id: "n" })],
     [
-      "setActiveCategory",
-      () => caller.award.setActiveCategory({ categoryId: "b", active: true }),
+      "setCategoryStage",
+      () => caller.award.setCategoryStage({ id: "b", stage: "revealed" }),
     ],
   ])(
     "%s asks the host to try again when the database is busy",

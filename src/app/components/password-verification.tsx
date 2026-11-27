@@ -96,3 +96,14 @@ export function PasswordVerification({ code }: PasswordVerificationProps) {
     </div>
   );
 }
+
+/** A host page (manage or run) for a visitor without access to the show: only the password form */
+export function PasswordPage({ code }: { code: string }) {
+  return (
+    <main className="bg-background text-foreground min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        <PasswordVerification code={code} />
+      </div>
+    </main>
+  );
+}

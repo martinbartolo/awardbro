@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
+import { votingHasClosed } from "~/lib/stages";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
@@ -77,10 +78,10 @@ export function LivePresentation({
     }
   }, [isSessionError]);
 
-  // Voters can join while waiting and during voting. During a reveal, or an aggregate (which
-  // takes no votes), the join details move to a corner.
+  // Voters can join while waiting and during voting. Once voting has closed, during a reveal, or
+  // during an aggregate (which takes no votes), the join details move to a corner.
   const isVoting = session.categories.some(
-    category => !category.revealed && category.type !== "AGGREGATE",
+    category => !votingHasClosed(category) && category.type !== "AGGREGATE",
   );
 
   if (isSessionError) {
@@ -307,6 +308,7 @@ export function LivePresentation({
                       <LiveVoting
                         categoryId={category.id}
                         initialVoteCount={category.estimatedVoters ?? 0}
+                        closed={category.votingClosed}
                       />
                     )}
                   </motion.div>

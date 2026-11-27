@@ -12,24 +12,22 @@ import {
   CategoryEditor,
   EditCategoryButton,
 } from "~/app/components/category-editor";
-import { CategoryTypeBadge } from "~/app/components/category-fields";
+import {
+  CategoryStageBadge,
+  CategoryTypeBadge,
+} from "~/app/components/category-fields";
 import { MoveCategoryButtons } from "~/app/components/move-category-buttons";
 import { NominationItem } from "~/app/components/nomination-item";
-import { PasswordVerification } from "~/app/components/password-verification";
-import { RevealCategoryButton } from "~/app/components/reveal-category-button";
-import { SetActiveCategoryButton } from "~/app/components/set-active-category-button";
+import { PasswordPage } from "~/app/components/password-verification";
 import { DangerZone, RunShowCard } from "~/app/components/show-controls";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { showsPictures } from "~/lib/images";
 import { getScoreLabel } from "~/lib/scoring";
+import { listFormat } from "~/lib/utils";
 import { hasManageAccess } from "~/server/auth/manage";
 import { showPageCode } from "~/server/shows";
 import { api } from "~/trpc/server";
-
-/** Lists an aggregate's sources as "A, B and C" */
-const listFormat = new Intl.ListFormat("en");
 
 export const metadata: Metadata = {
   title: "Manage Award Show",
@@ -57,13 +55,7 @@ export default async function ManagePage({
   });
 
   if (!(await hasManageAccess(code))) {
-    return (
-      <main className="bg-background text-foreground min-h-screen">
-        <div className="container mx-auto px-4 py-8">
-          <PasswordVerification code={code} />
-        </div>
-      </main>
-    );
+    return <PasswordPage code={code} />;
   }
 
   // The categories an aggregate can add up
@@ -136,49 +128,35 @@ export default async function ManagePage({
                         hasVotes: category.nominations.some(
                           n => n._count.votes > 0,
                         ),
-                        hideVoteCounts: category.hideVoteCounts,
-                        winnerOnly: category.winnerOnly,
                       }}
                       sourceOptions={sourceOptions}
                     >
                       {/* Setting it up on the left, running it on the right (or below, on a phone) */}
-                      <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-2">
-                          <MoveCategoryButtons
-                            categoryId={category.id}
-                            categoryName={category.name}
-                            index={index}
-                            count={session.categories.length}
+                      <CardTitle className="flex items-center gap-2">
+                        <MoveCategoryButtons
+                          categoryId={category.id}
+                          categoryName={category.name}
+                          index={index}
+                          count={session.categories.length}
+                        />
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                          <span className="text-xl">{category.name}</span>
+                          <CategoryTypeBadge
+                            type={category.type}
+                            rankingTop={category.rankingTop}
                           />
-                          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                            <span className="text-xl">{category.name}</span>
-                            <CategoryTypeBadge
-                              type={category.type}
-                              rankingTop={category.rankingTop}
-                            />
-                            {/* Presentation options, set in the edit form */}
-                            {category.hideVoteCounts && (
-                              <Badge variant="outline">Counts hidden</Badge>
-                            )}
-                            {category.winnerOnly && (
-                              <Badge variant="outline">Winner only</Badge>
-                            )}
-                          </div>
-                          <div className="flex shrink-0 gap-1">
-                            <EditCategoryButton />
-                            <DeleteCategoryButton categoryId={category.id} />
-                          </div>
+                          {/* Where it is in the show, once it has started */}
+                          <CategoryStageBadge category={category} />
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <ResetCategoryVotesButton categoryId={category.id} />
-                          <SetActiveCategoryButton
-                            categoryId={category.id}
-                            isActive={category.isActive}
-                          />
-                          <RevealCategoryButton
-                            categoryId={category.id}
-                            revealed={category.revealed}
-                          />
+                        <div className="flex shrink-0 gap-1">
+                          {/* An aggregate takes no votes of its own */}
+                          {category.type !== "AGGREGATE" && (
+                            <ResetCategoryVotesButton
+                              categoryId={category.id}
+                            />
+                          )}
+                          <EditCategoryButton />
+                          <DeleteCategoryButton categoryId={category.id} />
                         </div>
                       </CardTitle>
                       {category.description && (
