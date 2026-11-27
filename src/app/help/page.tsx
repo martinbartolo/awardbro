@@ -3,12 +3,10 @@
 import {
   ArrowLeft,
   CircleCheck,
-  Eye,
   FolderPlus,
   ListPlus,
   Monitor,
   MousePointerClick,
-  Play,
   Settings,
   Share2,
   Sparkles,
@@ -381,52 +379,36 @@ export default function HelpPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                     <MousePointerClick className="text-accent h-6 w-6" />
-                    Controlling the Voting Flow
+                    Running the Show
                   </CardTitle>
                   <CardDescription>
-                    Manage which categories are active and revealed
+                    One category at a time, from your laptop or your phone
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="border-primary bg-primary/5 rounded-lg border-2 p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Play className="text-primary h-5 w-5" />
-                        <h4 className="font-medium">Set Active</h4>
-                      </div>
-                      <p className="text-muted-foreground text-sm">
-                        Only one category can be &quot;active&quot; at a time.
-                        The active category is what voters see on the voting
-                        page. Use this to guide the voting flow.
-                      </p>
-                    </div>
-                    <div className="border-accent bg-accent/5 rounded-lg border-2 p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Eye className="text-accent h-5 w-5" />
-                        <h4 className="font-medium">Reveal Winner</h4>
-                      </div>
-                      <p className="text-muted-foreground text-sm">
-                        Once voting is done, click &quot;Reveal Winner&quot; to
-                        show the winner on the big screen with a celebration
-                        animation!
-                      </p>
-                    </div>
-                  </div>
                   <p className="text-muted-foreground text-sm">
-                    To reveal only the order without vote counts, or only the
-                    winner, click the pencil next to the category and choose
-                    under &quot;Presentation&quot;.
+                    Click &quot;Run the Show&quot; on the manage page (or open
+                    it on your phone, with your password) while the big screen
+                    shows the show. It takes you through your categories in
+                    their running order, with one button for the next step.
                   </p>
                   <div className="bg-secondary flex items-start gap-3 rounded-lg p-4">
                     <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500" />
                     <div>
-                      <h4 className="font-medium">Recommended Flow</h4>
+                      <h4 className="font-medium">Each category</h4>
                       <p className="text-muted-foreground mt-1 text-sm">
-                        1. Set a category active → 2. Let people vote → 3. Click
-                        reveal to show winner → 4. Move to next category
+                        1. Open voting → 2. Close voting, to build suspense → 3.
+                        Reveal the winner, with a celebration on the big screen
+                        → 4. Next category
                       </p>
                     </div>
                   </div>
+                  <p className="text-muted-foreground text-sm">
+                    Before the reveal you can choose to show only the order
+                    without vote counts, or only the winner. An aggregate
+                    category goes straight to the reveal once the categories it
+                    adds up are revealed.
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>

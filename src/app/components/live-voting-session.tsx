@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { votingHasClosed } from "~/lib/stages";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { type MyVotes } from "./ranking-interface";
@@ -64,8 +65,9 @@ export function LiveVotingSession({
   );
 
   const activeCategory = session.categories[0];
-  // Revealing a category closes voting in it (the server refuses votes too)
-  const isClosed = !!activeCategory?.revealed;
+  // The host closes voting before the reveal, and revealing closes it too (the server refuses
+  // votes then)
+  const isClosed = !!activeCategory && votingHasClosed(activeCategory);
 
   // The server-rendered votes only describe the first category shown. Drop
   // them once the host moves on, so a category reopened later (and maybe

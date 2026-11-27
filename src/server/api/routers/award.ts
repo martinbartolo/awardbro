@@ -23,6 +23,13 @@ import {
   scoreNomination,
   type SourceNomination,
 } from "~/lib/scoring";
+import {
+  SERVER_STAGES,
+  STAGE_FLAGS,
+  stageOf,
+  STAGES,
+  votingHasClosed,
+} from "~/lib/stages";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   clearLoginAttempts,
@@ -409,11 +416,12 @@ const hostWriteError = (error: unknown, message: string) => {
 };
 
 /**
- * Refuses a vote in a category that isn't open: not active, or already
- * revealed (so the results on the big screen can't change after the reveal).
+ * Refuses a vote in a category that isn't open: not active, closed by the
+ * host, or already revealed (so the results on the big screen can't change).
  */
 const assertVotingOpen = (
-  category: { isActive: boolean; revealed: boolean } | undefined,
+  category:
+    { isActive: boolean; votingClosed: boolean; revealed: boolean } | undefined,
 ) => {
   if (!category?.isActive) {
     throw new TRPCError({
@@ -421,7 +429,7 @@ const assertVotingOpen = (
       message: "Voting is not currently active for this category",
     });
   }
-  if (category.revealed) {
+  if (votingHasClosed(category)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Voting has closed for this category",
@@ -455,9 +463,14 @@ const saveVote = async <T>(
         // Show lock first, then the device lock, always in this order
         await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0))`;
         const [category] = await tx.$queryRaw<
-          { isActive: boolean; revealed: boolean; rankingTop: number | null }[]
+          {
+            isActive: boolean;
+            votingClosed: boolean;
+            revealed: boolean;
+            rankingTop: number | null;
+          }[]
         >`
-          SELECT c."isActive", c."revealed", c."rankingTop"
+          SELECT c."isActive", c."votingClosed", c."revealed", c."rankingTop"
           FROM pg_advisory_xact_lock(hashtext(${deviceId}), hashtext(${categoryId})),
             "Category" c
           WHERE c."id" = ${categoryId}`;
@@ -717,8 +730,6 @@ export const awardRouter = createTRPCRouter({
                 name: input.name,
                 description: input.description,
                 rankingTop,
-                hideVoteCounts: input.hideVoteCounts,
-                winnerOnly: input.winnerOnly,
                 sourceCategories: sourcesChanged
                   ? { set: sourceIds.map(id => ({ id })) }
                   : undefined,
@@ -812,28 +823,6 @@ export const awardRouter = createTRPCRouter({
         isHost(ctx, session),
       );
       return scored!;
-    }),
-
-  /**
-   * Reveals a category's results, which closes voting in it, or hides them
-   * again, which reopens it. Sets the state the host saw rather than toggling,
-   * so a click from an out-of-date page (another device, a double click)
-   * can't hide the results and reopen voting by mistake.
-   */
-  setCategoryRevealed: publicProcedure
-    .input(z.object({ id: z.string(), revealed: z.boolean() }))
-    .mutation(async ({ ctx, input }) => {
-      const session = await assertCanManage(ctx, { categoryId: input.id });
-      // Holding the show's lock, so the results don't change after the reveal
-      // as votes being saved land
-      return withShowLocked(
-        ctx.db,
-        session.id,
-        ctx.db.category.update({
-          where: { id: input.id },
-          data: { revealed: input.revealed },
-        }),
-      );
     }),
 
   addNomination: publicProcedure
@@ -985,44 +974,103 @@ export const awardRouter = createTRPCRouter({
       }
     }),
 
-  // Sets the category to the state the host asked for, so repeating a click
-  // (or clicking on an out-of-date page) never flips it the other way
-  setActiveCategory: publicProcedure
-    .input(z.object({ categoryId: z.string(), active: z.boolean() }))
+  /**
+   * Moves a category to a stage of the show, as the host runs it:
+   *
+   * - `open`: on the big screen, taking votes (any other category leaves the screen)
+   * - `closed`: voting has stopped, ahead of the reveal (on the big screen)
+   * - `revealed`: its results are on the big screen (voting stays closed)
+   * - `off`: off the big screen, keeping whether it was closed or revealed
+   *
+   * Each stage sets the whole state (`STAGE_FLAGS`), so repeating a click never flips it the wrong
+   * way. With `from`, the stage the host's page showed, a step from an out-of-date page (another
+   * device moved the category on meanwhile) is refused rather than moving it back. Holds the
+   * show's lock: voting stops (or the results are shown) only once the votes being saved have
+   * landed.
+   */
+  setCategoryStage: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        stage: z.enum(SERVER_STAGES),
+        from: z.enum(STAGES).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const session = await assertCanManage(ctx, {
-        categoryId: input.categoryId,
-      });
+      const session = await assertCanManage(ctx, { categoryId: input.id });
+      const data = STAGE_FLAGS[input.stage];
 
       try {
-        if (!input.active) {
-          return await withShowLocked(
-            ctx.db,
-            session.id,
-            ctx.db.category.update({
-              where: { id: input.categoryId },
-              data: { isActive: false },
-            }),
-          );
-        }
-
-        // Deactivate all categories in the show and activate this one, holding
-        // the show's lock, so at most one category is ever active and votes
-        // being saved finish first
-        const [, , activated] = await ctx.db.$transaction([
-          lockShow(ctx.db, session.id),
-          ctx.db.category.updateMany({
-            where: { sessionId: session.id },
-            data: { isActive: false },
-          }),
-          ctx.db.category.update({
-            where: { id: input.categoryId },
-            data: { isActive: true },
-          }),
-        ]);
-        return activated;
+        await ctx.db.$transaction(
+          async tx => {
+            await lockShow(tx, session.id);
+            const category = await tx.category.findUnique({
+              where: { id: input.id },
+              select: {
+                type: true,
+                isActive: true,
+                votingClosed: true,
+                revealed: true,
+              },
+            });
+            // Deleted after the access check
+            if (!category) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Category not found",
+              });
+            }
+            if (category.type === "AGGREGATE" && input.stage === "open") {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "An aggregate category takes no votes. Reveal it instead.",
+              });
+            }
+            if (input.from && stageOf(category) !== input.from) {
+              throw new TRPCError({
+                code: "CONFLICT",
+                message:
+                  "This category has moved on since your page last updated. Check where it is, then try again.",
+              });
+            }
+            // At most one category is on the big screen
+            if (data.isActive) {
+              await tx.category.updateMany({
+                where: {
+                  sessionId: session.id,
+                  isActive: true,
+                  id: { not: input.id },
+                },
+                data: { isActive: false },
+              });
+            }
+            await tx.category.update({ where: { id: input.id }, data });
+          },
+          { maxWait: 5000, timeout: 10000 },
+        );
+        return { id: input.id, stage: input.stage };
       } catch (error) {
-        // The category was deleted after the access check
+        throw hostWriteError(error, "Failed to update the category");
+      }
+    }),
+
+  /** How a category's reveal shows it: set to the values given, at the reveal step */
+  setRevealOptions: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        hideVoteCounts: z.boolean().optional(),
+        winnerOnly: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { categoryId: input.id });
+      const { id, ...options } = input;
+      try {
+        return await ctx.db.category.update({ where: { id }, data: options });
+      } catch (error) {
+        // Deleted after the access check
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2025"
@@ -1032,8 +1080,7 @@ export const awardRouter = createTRPCRouter({
             message: "Category not found",
           });
         }
-        if (isBusy(error)) throw hostBusy();
-        throw error;
+        throw hostWriteError(error, "Failed to update the category");
       }
     }),
 
@@ -1062,6 +1109,7 @@ export const awardRouter = createTRPCRouter({
               select: {
                 type: true,
                 isActive: true,
+                votingClosed: true,
                 revealed: true,
                 sessionId: true,
               },
@@ -1135,6 +1183,7 @@ export const awardRouter = createTRPCRouter({
             type: true,
             rankingTop: true,
             isActive: true,
+            votingClosed: true,
             revealed: true,
             sessionId: true,
             nominations: { select: { id: true } },

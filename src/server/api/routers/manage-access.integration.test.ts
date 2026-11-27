@@ -44,10 +44,10 @@ const writeRoutes = {
       id: s.film("normal", "Dune").id,
       name: "Dune: Part Two",
     }),
-  setActiveCategory: (api, s) =>
-    api.setActiveCategory({ categoryId: s.normal.id, active: true }),
-  setCategoryRevealed: (api, s) =>
-    api.setCategoryRevealed({ id: s.normal.id, revealed: true }),
+  setCategoryStage: (api, s) =>
+    api.setCategoryStage({ id: s.normal.id, stage: "open" }),
+  setRevealOptions: (api, s) =>
+    api.setRevealOptions({ id: s.normal.id, winnerOnly: true }),
   resetCategoryVotes: (api, s) =>
     api.resetCategoryVotes({ categoryId: s.normal.id }),
   resetAllVotes: (api, s) => api.resetAllVotes({ sessionId: s.show.id }),

@@ -28,3 +28,6 @@ export function getOrdinal(n: number): string {
   const suffix = s[(v - 20) % 10] ?? s[v] ?? "th";
   return `${n}${suffix}`;
 }
+
+/** Lists names as "A, B and C" */
+export const listFormat = new Intl.ListFormat("en");

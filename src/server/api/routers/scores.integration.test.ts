@@ -37,11 +37,7 @@ const seenBy = async (who: Visitor) => {
 };
 /** The host sets how the normal category's reveal shows it */
 const present = (options: { hideVoteCounts?: boolean; winnerOnly?: boolean }) =>
-  host.api.updateCategory({
-    id: show.normal.id,
-    name: show.normal.name,
-    ...options,
-  });
+  host.api.setRevealOptions({ id: show.normal.id, ...options });
 const all = { Dune: 3, Barbie: 1, Oppenheimer: 0 };
 const none = { Dune: 0, Barbie: 0, Oppenheimer: 0 };
 
@@ -102,6 +98,22 @@ describe("scores after a category is revealed", () => {
     });
     expect((await seenBy(host)).scores).toEqual(all);
   });
+});
+
+it("sets the reveal options to the values given, leaving the others as they are", async () => {
+  const options = async () => {
+    const { hideVoteCounts, winnerOnly } = await host.api.getCategory({
+      id: show.normal.id,
+    });
+    return { hideVoteCounts, winnerOnly };
+  };
+
+  // Set to a value, not flipped, so a repeated click (or an out-of-date page) gives the same result
+  for (let i = 0; i < 2; i++) await present({ hideVoteCounts: true });
+  expect(await options()).toEqual({ hideVoteCounts: true, winnerOnly: false });
+
+  await present({ winnerOnly: true });
+  expect(await options()).toEqual({ hideVoteCounts: true, winnerOnly: true });
 });
 
 describe("an aggregate's scores", () => {

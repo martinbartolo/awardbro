@@ -5,11 +5,12 @@ import {
   createShow,
   expect,
   expectResults,
+  nextCategory,
   PICTURES,
-  presentCategory,
   rank,
-  revealCategory,
-  setPresentation,
+  runShow,
+  runStep,
+  setRevealOptions,
   test,
   vote,
   waitForCategory,
@@ -86,8 +87,11 @@ test("a show from setup to the last reveal", async ({ visit }) => {
     await expect(voter.getByText("Waiting for the next award.")).toBeVisible();
   }
 
+  // The host runs the show from the run view, one category at a time in the running order
+  await runShow(host);
+
   await test.step("a normal category, where a guest changes their vote", async () => {
-    await presentCategory(host, "Best Film");
+    await runStep(host, "Best Film", "Open voting", "Voting");
     for (const voter of voters) await waitForCategory(voter, "Best Film");
     // Guests vote at the same time; the third changes their mind
     await Promise.all([
@@ -96,20 +100,24 @@ test("a show from setup to the last reveal", async ({ visit }) => {
       vote(third, "Barbie").then(() => vote(third, "Oppenheimer")),
     ]);
 
-    await revealCategory(host, "Best Film");
+    // Closing voting before the reveal: phones and the big screen say so, with no results yet
+    await runStep(host, "Best Film", "Close voting", "Voting closed");
+    for (const voter of voters) {
+      await expect(voter.getByText("Voting has closed")).toBeVisible();
+    }
+    await expect(screen.getByText("Voting has closed")).toBeVisible();
+
+    await runStep(host, "Best Film", "Reveal the winner", "Revealed");
     await expectResults(screen, "Best Film", [
       ["Dune", "2 votes"],
       ["Oppenheimer", "1 vote"],
       ["Barbie", "0 votes"],
     ]);
-    // Revealing closes voting
-    for (const voter of voters) {
-      await expect(voter.getByText("Voting has closed")).toBeVisible();
-    }
+    await nextCategory(host, "Best Film", "Best Poster");
   });
 
   await test.step("an image category", async () => {
-    await presentCategory(host, "Best Poster");
+    await runStep(host, "Best Poster", "Open voting", "Voting");
     for (const voter of voters) await waitForCategory(voter, "Best Poster");
     await expect(
       first.locator(`img[src="${PICTURES}/pink.png"]`),
@@ -120,7 +128,8 @@ test("a show from setup to the last reveal", async ({ visit }) => {
       vote(third, "Desert"),
     ]);
 
-    await revealCategory(host, "Best Poster");
+    await runStep(host, "Best Poster", "Close voting", "Voting closed");
+    await runStep(host, "Best Poster", "Reveal the winner", "Revealed");
     await expectResults(screen, "Best Poster", [
       ["Pink", "2 votes"],
       ["Desert", "1 vote"],
@@ -129,10 +138,11 @@ test("a show from setup to the last reveal", async ({ visit }) => {
     await expect(
       screen.locator(`img[src="${PICTURES}/pink.png"]`),
     ).toBeVisible();
+    await nextCategory(host, "Best Poster", "Top Films");
   });
 
   await test.step("a ranking category, where a guest changes their ranking", async () => {
-    await presentCategory(host, "Top Films");
+    await runStep(host, "Top Films", "Open voting", "Voting");
     for (const voter of voters) await waitForCategory(voter, "Top Films");
     await Promise.all([
       rank(first, ["Barbie", "Dune"]),
@@ -142,24 +152,25 @@ test("a show from setup to the last reveal", async ({ visit }) => {
       ),
     ]);
 
-    await revealCategory(host, "Top Films");
+    await runStep(host, "Top Films", "Close voting", "Voting closed");
+    await runStep(host, "Top Films", "Reveal the winner", "Revealed");
     // 1st place gets 2 points, 2nd gets 1
     await expectResults(screen, "Top Films", [
       ["Barbie", "4 points"],
       ["Dune", "3 points"],
       ["Oppenheimer", "2 points"],
     ]);
+    await nextCategory(host, "Top Films", "Overall");
   });
 
   await test.step("an aggregate category, which takes no votes", async () => {
-    await presentCategory(host, "Overall");
+    // Its sources are all revealed, so it goes straight to the reveal
+    await runStep(host, "Overall", "Reveal", "Revealed");
     for (const voter of voters) {
       await waitForCategory(voter, "Overall");
-      await expect(voter.getByText(/Voting is not available/)).toBeVisible();
       await expect(voter.getByRole("button", { name: /Vote/ })).toHaveCount(0);
     }
 
-    await revealCategory(host, "Overall");
     // Best Film's votes plus Top Films' points
     await expectResults(screen, "Overall", [
       ["Dune", "5 points"],
@@ -169,17 +180,17 @@ test("a show from setup to the last reveal", async ({ visit }) => {
   });
 
   await test.step("presentation options change the reveal", async () => {
-    await setPresentation(host, "Overall", { hideVoteCounts: true });
+    await setRevealOptions(host, "Overall", { hideVoteCounts: true });
     await expectResults(screen, "Overall", [
       ["Dune", null],
       ["Barbie", null],
       ["Oppenheimer", null],
     ]);
 
-    await setPresentation(host, "Overall", { winnerOnly: true });
+    await setRevealOptions(host, "Overall", { winnerOnly: true });
     await expectResults(screen, "Overall", [["Dune", null]]);
 
-    await setPresentation(host, "Overall", { hideVoteCounts: false });
+    await setRevealOptions(host, "Overall", { hideVoteCounts: false });
     await expectResults(screen, "Overall", [["Dune", "5 points"]]);
   });
 });

@@ -17,14 +17,6 @@ import {
   useCloseAfterRefresh,
 } from "~/app/components/inline-edit-form";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "~/components/ui/form";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { categoryUpdateSchema, type CategoryUpdateValues } from "~/lib/schemas";
@@ -39,8 +31,6 @@ type EditableCategory = {
   sourceCategoryIds: string[];
   /** Whether anyone has voted in it, which fixes a ranking's number of places */
   hasVotes: boolean;
-  hideVoteCounts: boolean;
-  winnerOnly: boolean;
 };
 
 const EditingContext = createContext<(() => void) | null>(null);
@@ -113,8 +103,6 @@ function EditCategoryForm({
       // Only an aggregate has sources; sending none would be refused
       sourceCategories:
         category.type === "AGGREGATE" ? category.sourceCategoryIds : undefined,
-      hideVoteCounts: category.hideVoteCounts,
-      winnerOnly: category.winnerOnly,
     },
   });
   const { close, isRefreshing } = useCloseAfterRefresh(onDone);
@@ -144,62 +132,6 @@ function EditCategoryForm({
         sourceOptions={sourceOptions}
         lockedPlaces={category.hasVotes ? category.rankingTop : null}
       />
-
-      <fieldset className="space-y-3">
-        <legend className="mb-2 text-sm font-medium">Presentation</legend>
-        <PresentationOption
-          control={form.control}
-          name="hideVoteCounts"
-          label="Hide vote counts"
-          description="The reveal shows the order without numbers."
-        />
-        <PresentationOption
-          control={form.control}
-          name="winnerOnly"
-          label="Winner only"
-          description="The reveal shows only first place."
-        />
-        {category.type === "AGGREGATE" && (
-          <p className="text-muted-foreground text-sm">
-            The options of the categories it adds up apply too: if one hides its
-            counts or shows only its winner, this shows only the order.
-          </p>
-        )}
-      </fieldset>
     </InlineEditForm>
-  );
-}
-
-/** One of the options for how a category's reveal shows it on the big screen */
-function PresentationOption({
-  control,
-  name,
-  label,
-  description,
-}: {
-  control: Control<CategoryUpdateValues>;
-  name: "hideVoteCounts" | "winnerOnly";
-  label: string;
-  description: string;
-}) {
-  return (
-    <FormField
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <FormItem className="flex flex-row items-start gap-3 space-y-0">
-          <FormControl>
-            <Checkbox
-              checked={field.value ?? false}
-              onCheckedChange={checked => field.onChange(checked === true)}
-            />
-          </FormControl>
-          <div className="space-y-1 leading-none">
-            <FormLabel>{label}</FormLabel>
-            <FormDescription>{description}</FormDescription>
-          </div>
-        </FormItem>
-      )}
-    />
   );
 }

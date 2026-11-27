@@ -16,6 +16,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { type CategoryType } from "~/generated/prisma/enums";
+import { STAGE_LABELS, stageOf } from "~/lib/stages";
 import { cn } from "~/lib/utils";
 
 /** The category types, in the order they're offered, each with what it means for voters */
@@ -76,6 +77,17 @@ export function CategoryTypeBadge({
       {type === "RANKING" && ` (Top ${rankingTop})`}
     </Badge>
   );
+}
+
+/** Where a category is in the show, next to its name on the manage page, once it has started */
+export function CategoryStageBadge({
+  category,
+}: {
+  category: Parameters<typeof stageOf>[0];
+}) {
+  const stage = stageOf(category);
+  if (stage === "ready") return null;
+  return <Badge variant="outline">{STAGE_LABELS[stage]}</Badge>;
 }
 
 /** The fields the add and edit category forms have in common */

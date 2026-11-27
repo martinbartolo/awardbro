@@ -136,46 +136,62 @@ export async function addNomination(
   await expect(card.getByText(name, { exact: true })).toBeVisible();
 }
 
-/** The host sets a category active, so voters can vote in it and the big screen shows it */
-export async function presentCategory(host: Page, category: string) {
-  const card = categoryCard(host, category);
-  await card.getByRole("button", { name: "Present", exact: true }).click();
+/** The host opens the run view from the manage page */
+export async function runShow(host: Page) {
+  await host.getByRole("link", { name: "Run the Show" }).click();
   await expect(
-    card.getByRole("button", { name: "Stop Presenting" }),
+    host.getByRole("heading", { name: "Running order" }),
   ).toBeVisible();
 }
 
-/** The host reveals a category's results, which closes voting in it */
-export async function revealCategory(host: Page, category: string) {
-  const card = categoryCard(host, category);
-  await card.getByRole("button", { name: "Reveal Winner" }).click();
-  await expect(card.getByRole("button", { name: "Hide Winner" })).toBeVisible();
+/** The category the run view is on: its stage and the buttons for its next step */
+const currentCategory = (host: Page, category: string) =>
+  host.getByRole("region", { name: category, exact: true });
+
+/**
+ * The host takes a step of the show in the run view, for the category it's on: the button's name,
+ * and the stage the category is in afterwards ("Voting", "Voting closed", "Revealed")
+ */
+export async function runStep(
+  host: Page,
+  category: string,
+  button: string,
+  stage: string,
+) {
+  const current = currentCategory(host, category);
+  await current.getByRole("button", { name: button, exact: true }).click();
+  await expect(current.getByText(stage, { exact: true })).toBeVisible();
+}
+
+/** The host moves on from a revealed category to the next one */
+export async function nextCategory(host: Page, from: string, to: string) {
+  await currentCategory(host, from)
+    .getByRole("button", { name: `Next: ${to}` })
+    .click();
+  await expect(currentCategory(host, to)).toBeVisible();
 }
 
 /**
- * The host sets how a category's reveal shows it, in its edit form. Options left out stay as
+ * The host sets how the category's reveal shows it, in the run view. Options left out stay as
  * they are.
  */
-export async function setPresentation(
+export async function setRevealOptions(
   host: Page,
   category: string,
   options: { hideVoteCounts?: boolean; winnerOnly?: boolean },
 ) {
-  const card = categoryCard(host, category);
-  await card.getByRole("button", { name: "Edit category" }).click();
   const labels = {
     hideVoteCounts: "Hide vote counts",
     winnerOnly: "Winner only",
   };
   for (const [option, checked] of Object.entries(options)) {
-    await card
-      .getByRole("checkbox", { name: labels[option as keyof typeof labels] })
-      .setChecked(checked);
+    const box = currentCategory(host, category).getByRole("checkbox", {
+      name: labels[option as keyof typeof labels],
+    });
+    if ((await box.isChecked()) !== checked) await box.click();
+    // Saved once the run view shows the server's value
+    await expect(box).toBeChecked({ checked });
   }
-  await card.getByRole("button", { name: "Save" }).click();
-  await expect(
-    card.getByRole("button", { name: "Edit category" }),
-  ).toBeVisible();
 }
 
 /** A voter waits for the host to present a category */
