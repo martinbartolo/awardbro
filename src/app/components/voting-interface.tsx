@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
 import { type CategoryType } from "~/generated/prisma/enums";
+import { optimistic } from "~/lib/optimistic";
 import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
-import { type MyVotesProps, RankingInterface } from "./ranking-interface";
+import {
+  type MyVotes,
+  type MyVotesProps,
+  RankingInterface,
+} from "./ranking-interface";
 
 export function VotingInterface({
   nominations,
@@ -20,7 +25,7 @@ export function VotingInterface({
   categoryType,
   rankingTop,
   myVotes,
-  refetchMyVotes,
+  myVotesKey,
   closed,
 }: {
   nominations: {
@@ -55,18 +60,22 @@ export function VotingInterface({
     ? nominations.find(n => n.id === selectedNominationId)
     : null;
 
+  // The vote shows as saved straight away. If saving fails, it goes back to the
+  // voter's unsaved choice, so they can try again.
+  const queryClient = useQueryClient();
   const vote = useMutation(
     trpc.award.vote.mutationOptions({
-      onSuccess: async (_data, { nominationId }) => {
+      ...optimistic<{ nominationId: string }, MyVotes, { message: string }>({
+        queryClient,
+        queryKey: myVotesKey,
+        change: (_before, { nominationId }) => [{ nominationId, rank: null }],
+        onError: (error, { nominationId }) => {
+          setUserSelectedId(nominationId);
+          toast.error(error.message || "Error casting vote. Please try again.");
+        },
+      }),
+      onSuccess: () => {
         toast.success("Vote cast successfully!");
-        // Load the submitted vote before dropping the local selection, so the
-        // form never looks empty in between (the query only polls every 5 s).
-        // If loading it fails, keep the selection until the next poll.
-        const saved = await refetchMyVotes();
-        if (saved?.[0]?.nominationId === nominationId) setUserSelectedId(null);
-      },
-      onError: error => {
-        toast.error(error.message || "Error casting vote. Please try again.");
       },
     }),
   );
@@ -78,6 +87,7 @@ export function VotingInterface({
       return;
     }
     vote.mutate({ nominationId: selectedNominationId });
+    setUserSelectedId(null);
   };
 
   if (isAggregate) {
@@ -104,7 +114,7 @@ export function VotingInterface({
         categoryId={categoryId}
         rankingTop={rankingTop}
         myVotes={myVotes}
-        refetchMyVotes={refetchMyVotes}
+        myVotesKey={myVotesKey}
         closed={closed}
       />
     );

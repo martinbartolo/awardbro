@@ -1032,7 +1032,8 @@ export const awardRouter = createTRPCRouter({
                 "This category has moved on since your page last updated. Check where it is, then try again.",
             });
           }
-          // At most one category is on the big screen
+          // At most one category is on the big screen. Pages show the step straight away the
+          // same way (applyStage in stages.ts).
           if (data.isActive) {
             await tx.category.updateMany({
               where: {

@@ -13,7 +13,10 @@ import { Label } from "~/components/ui/label";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { showPaths } from "~/lib/join";
+import { type ManageError } from "~/lib/manage-error";
+import { optimistic } from "~/lib/optimistic";
 import {
+  applyStage,
   type ServerStage,
   STAGE_LABELS,
   stageOf,
@@ -59,22 +62,35 @@ export function RunShow({
     nextToReveal(categories);
 
   const onManageError = useManageErrorHandler();
-  const refresh = () =>
-    queryClient.invalidateQueries(trpc.award.getSession.queryFilter({ code }));
-  const setStage = useMutation(
-    trpc.award.setCategoryStage.mutationOptions({
-      onSuccess: async () => {
-        await refresh();
-        setSelectedId(null);
-      },
+  // Each step shows straight away, before the server confirms it (optimistic.ts)
+  const showStraightAway = <TVariables,>(
+    change: (categories: Category[], variables: TVariables) => Category[],
+  ) =>
+    optimistic<TVariables, Session, ManageError>({
+      queryClient,
+      queryKey: trpc.award.getSession.queryKey({ code }),
+      change: (before, variables) =>
+        before && {
+          ...before,
+          categories: change(before.categories, variables),
+        },
       onError: onManageError(),
-    }),
+    });
+  const setStage = useMutation(
+    trpc.award.setCategoryStage.mutationOptions(
+      showStraightAway(
+        (categories, { id, stage }: { id: string; stage: ServerStage }) =>
+          applyStage(categories, id, stage),
+      ),
+    ),
   );
   const setOptions = useMutation(
-    trpc.award.setRevealOptions.mutationOptions({
-      onSuccess: refresh,
-      onError: onManageError(),
-    }),
+    trpc.award.setRevealOptions.mutationOptions(
+      showStraightAway(
+        (categories, { id, ...options }: { id: string } & RevealOptions) =>
+          categories.map(c => (c.id === id ? { ...c, ...options } : c)),
+      ),
+    ),
   );
 
   return (
@@ -115,14 +131,21 @@ export function RunShow({
           category={current}
           categories={categories}
           isBusy={setStage.isPending || setOptions.isPending}
-          onStage={stage =>
-            setStage.mutate({
-              id: current.id,
-              stage,
-              // So a step from an out-of-date page is refused, not undone
-              from: stageOf(current),
-            })
-          }
+          onStage={stage => {
+            // On to whatever is on the big screen next (or the next to reveal), or back to the
+            // category the host picked if the step fails
+            const picked = selectedId;
+            setSelectedId(null);
+            setStage.mutate(
+              {
+                id: current.id,
+                stage,
+                // So a step from an out-of-date page is refused, not undone
+                from: stageOf(current),
+              },
+              { onError: () => setSelectedId(picked) },
+            );
+          }}
           onOptions={options =>
             setOptions.mutate({ id: current.id, ...options })
           }

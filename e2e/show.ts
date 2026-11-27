@@ -145,7 +145,7 @@ export async function runShow(host: Page) {
 }
 
 /** The category the run view is on: its stage and the buttons for its next step */
-const currentCategory = (host: Page, category: string) =>
+export const currentCategory = (host: Page, category: string) =>
   host.getByRole("region", { name: category, exact: true });
 
 /**
@@ -157,10 +157,11 @@ export async function runStep(
   category: string,
   button: string,
   stage: string,
+  options?: { timeout?: number },
 ) {
   const current = currentCategory(host, category);
   await current.getByRole("button", { name: button, exact: true }).click();
-  await expect(current.getByText(stage, { exact: true })).toBeVisible();
+  await expect(current.getByText(stage, { exact: true })).toBeVisible(options);
 }
 
 /** The host moves on from a revealed category to the next one */
@@ -213,12 +214,17 @@ const nominationButton = (voter: Page, name: string) =>
   });
 
 /** A voter votes (or changes their vote) in a normal or image category */
-export async function vote(voter: Page, nomination: string) {
+export async function vote(
+  voter: Page,
+  nomination: string,
+  options?: { timeout?: number },
+) {
   await nominationButton(voter, nomination).click();
   await voter.getByRole("button", { name: /^(Cast|Update) Vote$/ }).click();
-  // "Your Vote" marks the vote once it's saved
+  // "Your Vote" marks the vote as saved
   await expect(voter.getByText("(Submitted)").locator("..")).toContainText(
     nomination,
+    options,
   );
 }
 

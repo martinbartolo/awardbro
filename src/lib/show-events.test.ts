@@ -151,6 +151,58 @@ describe("connectShowEvents", () => {
     expect(invalidated()).toEqual([]);
   });
 
+  describe("while the page's own action is on its way", () => {
+    /** Starts an action that changed `holds` straight away, and settles when the returned function is called */
+    const startAction = (holds: readonly unknown[]) => {
+      let finish!: () => void;
+      const done = new Promise<void>(resolve => (finish = resolve));
+      const action = queryClient
+        .getMutationCache()
+        .build(queryClient, { mutationFn: () => done, meta: { holds } })
+        .execute(undefined);
+      return async () => {
+        finish();
+        await action;
+      };
+    };
+
+    it("fetches the query it changed only once it settles", async () => {
+      connect(true);
+      const finish = startAction(queries.show);
+      await vi.advanceTimersByTimeAsync(0);
+
+      stream().emit("show", {});
+      // Everything else straight away
+      expect(invalidated()).toEqual(["categoryA", "categoryB", "myVotes"]);
+
+      await finish();
+      expect(invalidated()).toEqual(WHOLE_SHOW);
+    });
+
+    it("fetches the others straight away, so a slow vote doesn't hold up the host's next step", async () => {
+      connect(false);
+      startAction(queries.myVotes);
+      await vi.advanceTimersByTimeAsync(0);
+
+      stream().emit("show", {});
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      expect(invalidated()).toEqual(["categoryA", "categoryB", "show"]);
+    });
+
+    it("holds a live count it changed until the action settles", async () => {
+      connect(true);
+      const finish = startAction(queries.categoryB);
+      await vi.advanceTimersByTimeAsync(0);
+
+      stream().emit("votes", { categoryId: "b" });
+      expect(invalidated()).toEqual([]);
+
+      await finish();
+      expect(invalidated()).toEqual(["categoryB"]);
+    });
+  });
+
   describe("the fallback", () => {
     it("fetches nothing while the stream is open", () => {
       connect(true);
