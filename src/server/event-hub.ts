@@ -20,6 +20,29 @@ const CONNECT_TIMEOUT_MS = 5_000;
  */
 const HEALTH_CHECK_MS = 30_000;
 
+/** Names the hub's connections in pg_stat_activity, so it shows how many instances listen */
+const APPLICATION_NAME = "awardbro-events";
+
+/**
+ * The hub's connection string. Its name goes in the string, as a name in it would win over the
+ * client's options. pg checks the server's certificate for `sslmode=require` (Neon's connection
+ * strings) as for `verify-full`, and warns at every cold start that this will change: asking for
+ * `verify-full` keeps that check and the logs quiet. With `uselibpqcompat`, pg gives those modes
+ * libpq's meaning, so they stay as they are.
+ */
+export function listenerConnectionString(connectionString: string) {
+  const url = new URL(connectionString);
+  url.searchParams.set("application_name", APPLICATION_NAME);
+  const mode = url.searchParams.get("sslmode");
+  if (
+    !url.searchParams.has("uselibpqcompat") &&
+    (mode === "prefer" || mode === "require" || mode === "verify-ca")
+  ) {
+    url.searchParams.set("sslmode", "verify-full");
+  }
+  return url.toString();
+}
+
 type Subscriber = {
   onEvent: (event: ShowEvent) => void;
   /** The hub lost its connection to the database: the page should connect again */
@@ -65,11 +88,9 @@ export function createEventHub(connectionString: string) {
     if (current) return current.ready;
 
     const client = new Client({
-      connectionString,
+      connectionString: listenerConnectionString(connectionString),
       connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
       keepAlive: true,
-      // Names it in pg_stat_activity, to count instances listening (scripts/load-test.ts)
-      application_name: "awardbro-events",
     });
     const ready = client
       .connect()
