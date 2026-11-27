@@ -113,6 +113,8 @@ Pages listen with `useShowEvents` (`connectShowEvents` in `src/lib/show-events.t
 - **While the stream isn't open** (and the page is visible), the page fetches the show every 30 s instead.
 - **The manage page** doesn't listen. It's server-rendered and refreshes after the host's own actions. During the show, the host uses the run view, which listens.
 
+The person who acts sees the result straight away, before the server answers (`optimistic` in `src/lib/optimistic.ts`): a host's step or reveal option in the run view (`applyStage` in `stages.ts` does what the server will), and a voter's vote or ranking. If the server refuses, the page goes back and says why; a step another device overtook shows where the category really is. Either way the page fetches the changed query once the server has answered. While the action is on its way, live events don't fetch that query (it's named in the mutation's `meta.holds`), so they can't bring back the data from before it; they fetch everything else straight away.
+
 ## Environment variables
 
 Validated in `src/env.js`:
