@@ -68,6 +68,8 @@ export function createEventHub(connectionString: string) {
       connectionString,
       connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
       keepAlive: true,
+      // Names it in pg_stat_activity, to count instances listening (scripts/load-test.ts)
+      application_name: "awardbro-events",
     });
     const ready = client
       .connect()
