@@ -9,6 +9,7 @@ import {
   presentCategory,
   rank,
   revealCategory,
+  setPresentation,
   test,
   vote,
   waitForCategory,
@@ -168,24 +169,17 @@ test("a show from setup to the last reveal", async ({ visit }) => {
   });
 
   await test.step("presentation options change the reveal", async () => {
-    const overall = categoryCard(host, "Overall");
-    await overall.getByRole("button", { name: "Hide vote counts" }).click();
-    await expect(
-      overall.getByRole("button", { name: "Show vote counts" }),
-    ).toBeVisible();
+    await setPresentation(host, "Overall", { hideVoteCounts: true });
     await expectResults(screen, "Overall", [
       ["Dune", null],
       ["Barbie", null],
       ["Oppenheimer", null],
     ]);
 
-    await overall.getByRole("button", { name: "Show winner only" }).click();
-    await expect(
-      overall.getByRole("button", { name: "Show all nominees" }),
-    ).toBeVisible();
+    await setPresentation(host, "Overall", { winnerOnly: true });
     await expectResults(screen, "Overall", [["Dune", null]]);
 
-    await overall.getByRole("button", { name: "Show vote counts" }).click();
+    await setPresentation(host, "Overall", { hideVoteCounts: false });
     await expectResults(screen, "Overall", [["Dune", "5 points"]]);
   });
 });

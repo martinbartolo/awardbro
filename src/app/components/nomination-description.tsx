@@ -81,7 +81,8 @@ function Picture({
         className={cn(
           "bg-muted/40 text-muted-foreground flex items-center justify-center rounded-md",
           thumbnail
-            ? "mt-1 h-10 w-16"
+            ? // The thumbnail's own box, so it lines up where a loaded one would be
+              cn("h-10 w-16", boxClassName)
             : "mt-2 h-24 w-36 flex-col gap-1 p-2 text-xs",
         )}
       >

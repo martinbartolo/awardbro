@@ -1,54 +1,86 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleQuestionMark } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
-import { toast } from "sonner";
+import { useId, useState } from "react";
 
-import { SourceCategoryCheckboxes } from "~/app/components/source-category-checkboxes";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { type Control, useForm, useWatch } from "react-hook-form";
+
+import {
+  CATEGORY_TYPES,
+  CategoryFields,
+  type CategoryFieldValues,
+} from "~/app/components/category-fields";
+import {
+  InlineEditForm,
+  useCloseAfterRefresh,
+} from "~/app/components/inline-edit-form";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Checkbox } from "~/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "~/components/ui/form";
-import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import { Textarea } from "~/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
+import { FormField } from "~/components/ui/form";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { categoryFormSchema, type CategoryFormValues } from "~/lib/schemas";
+import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
 
-const categoryTypeDescriptions: Record<CategoryType, string> = {
-  NORMAL: "Standard category with text-based nominations",
-  IMAGE: "Category for image-based nominations with captions",
-  AGGREGATE: "Adds up the scores from multiple source categories",
-  RANKING: "Voters rank their top X choices, points awarded by position",
-};
+type SourceOptions = { id: string; name: string }[];
 
-export function AddCategoryForm({ sessionId }: { sessionId: string }) {
-  const router = useRouter();
+/**
+ * Adding a category on the manage page: an "Add category" button that opens the form in place. A
+ * new category goes to the end of the running order, just above the button.
+ */
+export function AddCategory({
+  sessionId,
+  sourceOptions,
+}: {
+  sessionId: string;
+  /** The categories an aggregate can add up: the show's non-aggregate categories */
+  sourceOptions: SourceOptions;
+}) {
+  // Closed, open, or closed again after being open (focus goes back to the button)
+  const [state, setState] = useState<"closed" | "open" | "returned">("closed");
+
+  if (state !== "open") {
+    return (
+      <Button
+        variant="outline"
+        className="w-full border-dashed"
+        onClick={() => setState("open")}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- only when the host closes the form
+        autoFocus={state === "returned"}
+      >
+        <Plus className="size-4" />
+        Add category
+      </Button>
+    );
+  }
+  return (
+    <section
+      aria-labelledby="add-category"
+      className="bg-card rounded-xl border p-4 sm:p-6"
+    >
+      <h3 id="add-category" className="mb-4 text-lg font-semibold">
+        Add category
+      </h3>
+      <AddCategoryForm
+        sessionId={sessionId}
+        sourceOptions={sourceOptions}
+        onDone={() => setState("returned")}
+      />
+    </section>
+  );
+}
+
+function AddCategoryForm({
+  sessionId,
+  sourceOptions,
+  onDone,
+}: {
+  sessionId: string;
+  sourceOptions: SourceOptions;
+  onDone: () => void;
+}) {
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
@@ -58,301 +90,129 @@ export function AddCategoryForm({ sessionId }: { sessionId: string }) {
       type: "NORMAL",
       sourceCategories: [],
       rankingTop: 3,
-      hideVoteCounts: false,
-      winnerOnly: false,
     },
   });
+  const type = useWatch({ control: form.control, name: "type" });
+  // The form closes once the refreshed page shows the new category
+  const { close, isRefreshing } = useCloseAfterRefresh(onDone);
 
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const onManageError = useManageErrorHandler();
-  const { data: categories } = useQuery(
-    trpc.award.getSessionCategories.queryOptions({
-      sessionId,
-    }),
-  );
-
   const addCategory = useMutation(
     trpc.award.addCategory.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Category added successfully");
-        form.reset({
-          sessionId,
-          name: "",
-          description: "",
-          type: "NORMAL",
-          sourceCategories: [],
-          rankingTop: 3,
-          hideVoteCounts: false,
-          winnerOnly: false,
-        });
-        router.refresh();
-        await queryClient.invalidateQueries(
-          trpc.award.getSessionCategories.queryFilter({ sessionId }),
-        );
-      },
+      onSuccess: close,
       onError: onManageError(),
     }),
   );
 
-  const onSubmit = (values: CategoryFormValues) => {
-    if (values.type === "AGGREGATE" && values.sourceCategories.length === 0) {
-      toast.error("Please select at least one source category");
-      return;
-    }
-
-    if (
-      values.type === "RANKING" &&
-      (!values.rankingTop || values.rankingTop < 2)
-    ) {
-      toast.error("Please specify how many options to rank (at least 2)");
-      return;
-    }
-
+  const onSubmit = (values: CategoryFormValues) =>
     addCategory.mutate({
       ...values,
+      // Only the chosen type's own field is sent
       sourceCategories:
         values.type === "AGGREGATE" ? values.sourceCategories : [],
       rankingTop: values.type === "RANKING" ? values.rankingTop : undefined,
     });
-  };
-
-  const categoryType = useWatch({ control: form.control, name: "type" });
-  const sourceCategories = useWatch({
-    control: form.control,
-    name: "sourceCategories",
-  });
-  const rankingTop = useWatch({
-    control: form.control,
-    name: "rankingTop",
-  });
-  const isSubmitDisabled =
-    addCategory.isPending ||
-    (categoryType === "AGGREGATE" && sourceCategories.length === 0) ||
-    (categoryType === "RANKING" && (!rankingTop || rankingTop < 2));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add Category</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Category Type
-                    <TooltipProvider>
-                      <Tooltip delayDuration={0}>
-                        <TooltipTrigger asChild>
-                          <CircleQuestionMark className="text-muted-foreground h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          className="max-w-[280px] p-4 text-sm"
-                        >
-                          <div className="space-y-2">
-                            <p>
-                              <strong>Normal:</strong> Standard text-based
-                              nominations.
-                            </p>
-                            <p>
-                              <strong>Image:</strong> Image-based nominations
-                              with captions. Perfect for photo contests.
-                            </p>
-                            <p>
-                              <strong>Ranking:</strong> Voters rank their top X
-                              choices. Points are awarded based on position.
-                            </p>
-                            <p>
-                              <strong>Aggregate:</strong> Adds up the scores
-                              from multiple categories. Voting is disabled.
-                            </p>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </FormLabel>
-                  <Select
-                    onValueChange={value => {
-                      field.onChange(value);
-                      if (value !== "AGGREGATE") {
-                        form.setValue("sourceCategories", []);
-                      }
-                      if (value !== "RANKING") {
-                        form.setValue("rankingTop", undefined);
-                      } else {
-                        form.setValue("rankingTop", 3);
-                      }
-                    }}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="NORMAL">Normal</SelectItem>
-                      <SelectItem value="IMAGE">Image</SelectItem>
-                      <SelectItem value="RANKING">Ranking</SelectItem>
-                      <SelectItem value="AGGREGATE">Aggregate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {categoryTypeDescriptions[field.value as CategoryType]}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {categoryType === "RANKING" && (
-              <FormField
-                control={form.control}
-                name="rankingTop"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>How many to rank?</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={2}
-                        max={10}
-                        {...field}
-                        value={field.value ?? 3}
-                        onChange={e =>
-                          field.onChange(parseInt(e.target.value, 10) || 3)
-                        }
-                        placeholder="3"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Voters will rank their top {field.value ?? 3} choices. 1st
-                      place gets {field.value ?? 3} points, 2nd gets{" "}
-                      {(field.value ?? 3) - 1}, etc.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Best Performance" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      value={typeof field.value === "string" ? field.value : ""}
-                      placeholder="Describe what this category is about..."
-                      rows={3}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="hideVoteCounts"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="flex flex-col gap-1 leading-none">
-                    <FormLabel>Hide vote counts in presentation</FormLabel>
-                    <FormDescription>
-                      Only show rankings without revealing the actual vote
-                      numbers
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="winnerOnly"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="flex flex-col gap-1 leading-none">
-                    <FormLabel className="flex items-center gap-2">
-                      Winner only reveal
-                    </FormLabel>
-                    <FormDescription>
-                      Only show the winner when revealing results without
-                      revealing the runner-ups.
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            {categoryType === "AGGREGATE" &&
-              categories &&
-              categories.length > 0 && (
-                <FormField
-                  control={form.control}
-                  name="sourceCategories"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Source Categories</FormLabel>
-                      <p className="text-muted-foreground mb-2 max-w-(--breakpoint-md) text-sm">
-                        Choose the categories whose scores you want to add up.
-                        Nominations that appear in multiple source categories
-                        will have their scores added together. If any source is
-                        a ranking category, the totals are shown in points.
-                      </p>
-                      <SourceCategoryCheckboxes
-                        options={categories}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
+    <InlineEditForm
+      form={form}
+      onSubmit={onSubmit}
+      onCancel={onDone}
+      isSaving={addCategory.isPending || isRefreshing}
+      submitLabel="Add category"
+      savingLabel="Adding..."
+    >
+      <FormField
+        control={form.control}
+        name="type"
+        render={({ field }) => (
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium">Type</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(Object.keys(CATEGORY_TYPES) as CategoryType[]).map(option => (
+                <TypeChoice
+                  key={option}
+                  type={option}
+                  name={field.name}
+                  checked={field.value === option}
+                  onChange={() => {
+                    field.onChange(option);
+                    // Hidden for other types, so a bad value mustn't block them
+                    if (option !== "RANKING") form.resetField("rankingTop");
+                  }}
+                  // An aggregate needs other categories to add up
+                  unavailable={
+                    option === "AGGREGATE" && sourceOptions.length === 0
+                  }
                 />
-              )}
+              ))}
+            </div>
+          </fieldset>
+        )}
+      />
+      <CategoryFields
+        control={form.control as unknown as Control<CategoryFieldValues>}
+        type={type as CategoryType}
+        sourceOptions={sourceOptions}
+      />
+    </InlineEditForm>
+  );
+}
 
-            <Button type="submit" disabled={isSubmitDisabled}>
-              {addCategory.isPending ? "Adding..." : "Add Category"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+/**
+ * One category type as a card to pick: a radio button named after the type, with what the type
+ * does as its description
+ */
+function TypeChoice({
+  type,
+  name,
+  checked,
+  onChange,
+  unavailable,
+}: {
+  type: CategoryType;
+  name: string;
+  checked: boolean;
+  onChange: () => void;
+  unavailable: boolean;
+}) {
+  const id = useId();
+  const { label, description, icon: Icon } = CATEGORY_TYPES[type];
+  return (
+    <label
+      className={cn(
+        "flex gap-3 rounded-lg border p-3 transition-colors",
+        "has-checked:border-primary has-checked:bg-primary/10",
+        "has-focus-visible:ring-ring has-focus-visible:ring-2",
+        unavailable
+          ? "cursor-not-allowed opacity-50"
+          : "hover:bg-accent/50 cursor-pointer",
+      )}
+    >
+      <input
+        type="radio"
+        name={name}
+        value={type}
+        checked={checked}
+        onChange={onChange}
+        disabled={unavailable}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-description`}
+        className="sr-only"
+      />
+      <Icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+      <span>
+        <span id={`${id}-label`} className="block text-sm font-medium">
+          {label}
+        </span>
+        <span
+          id={`${id}-description`}
+          className="text-muted-foreground block text-xs"
+        >
+          {unavailable ? "Add the categories it adds up first." : description}
+        </span>
+      </span>
+    </label>
   );
 }

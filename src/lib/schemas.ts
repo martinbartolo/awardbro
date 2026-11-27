@@ -77,8 +77,6 @@ export const categoryFormSchema = z
     ...categoryFields,
     type: categoryTypeEnum,
     sourceCategories: sourceCategoriesField,
-    hideVoteCounts: z.boolean().optional(),
-    winnerOnly: z.boolean().optional(),
   })
   .refine(
     data => data.type !== "AGGREGATE" || data.sourceCategories.length > 0,
@@ -105,6 +103,9 @@ export const categoryUpdateSchema = z.object({
   sourceCategories: sourceCategoriesField
     .min(1, "Aggregate categories must have at least one source category")
     .optional(),
+  /** How the reveal shows it: left as they are when not given */
+  hideVoteCounts: z.boolean().optional(),
+  winnerOnly: z.boolean().optional(),
 });
 
 const nominationFields = {
