@@ -68,7 +68,7 @@ The host runs the show from the run view (`run-show.tsx`), one category at a tim
 3. An aggregate takes no votes, so it goes straight to the reveal, once every category it adds up is revealed (it shows no more than they do).
 4. At the reveal, the host sets how it shows the results (`setRevealOptions`): `hideVoteCounts` (the order without numbers) and `winnerOnly` (only first place). They can change while the results show. The run view says when nobody has voted.
 5. The host can step back: reopen voting from closed, hide the results (back to closed), or take a category off the screen.
-6. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: changing a category's stage, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `withShowLocked` in `award.ts`). Add new actions to this list if they close voting, change results or delete votes. Adding or editing a nomination, creating, editing or moving a category take it too, so aggregate copies are changed by one action at a time (a nomination added while an aggregate of its category is being created is copied into it exactly once), and a ranking's places can't change while a first vote is being saved.
+6. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: changing a category's stage, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `hostWrite` in `award.ts`). Every host write runs through `hostWrite`, so the others take it too: adding or editing a nomination, creating, editing or moving a category, and setting reveal options. So aggregate copies are changed by one action at a time (a nomination added while an aggregate of its category is being created is copied into it exactly once), and a ranking's places can't change while a first vote is being saved.
 
 ## Joining a show
 
@@ -89,20 +89,35 @@ The present page shows a QR code that opens the vote page, the site's address an
 
 ## Live updates
 
-Clients currently **poll** with TanStack Query `refetchInterval`:
+After every write, the server tells the show's open pages what changed (`src/server/events.ts`). Pages use the event as a signal to fetch again: events carry no scores or votes, so the database stays the only source of truth.
+
+| Event   | Sent by                                                                                                                                  |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `show`  | Any change to the show except its votes: categories, nominations, running order, a category's stage or reveal options, deleting the show |
+| `votes` | A vote, a ranking, or resetting a category's votes (with its `categoryId`); resetting all votes (without one)                            |
+
+How they travel, with no service besides the database:
+
+1. Every host write runs through `hostWrite` in `award.ts`, which takes the show's lock and sends the route's event (`notifyShow`, Postgres `NOTIFY`) in one statement. Votes do the same in `saveVote`. Postgres delivers a notification only when its transaction commits, so pages never hear of a write that was rolled back, and they hear of writes in the order they committed. `events.integration.test.ts` checks each mutation's event, and fails when a mutation isn't listed there.
+2. Each server instance with open pages holds one `LISTEN` connection (`event-hub.ts`). It connects when the first page subscribes and closes when the last one leaves. It uses `DATABASE_DIRECT_URL`, since Neon's pooler can't `LISTEN`. It throttles each category's `votes` events to one every 500 ms, folding the rest of a burst into one more at the end, so a burst of votes makes a few fetches rather than one per vote.
+3. Pages get the events as Server-Sent Events from `/api/shows/<code>/events` (`event-stream.ts`): `event: show` or `event: votes`, with the rest of the event as JSON data. The response starts only once the instance is listening, so a page that fetches when the stream opens misses nothing. A stream ends after 220–280 s, at random, before Vercel's 300 s limit on Hobby, and `EventSource` connects again by itself 1–2 s later. If an instance loses its database connection (it checks every 30 s), it ends every stream, so their pages connect again. If it can't listen at all, the route sends an empty stream that tells `EventSource` to try again in 5–10 s, since an error status would make it give up. Anyone with the room code can listen, as anyone can load the show.
+
+Why this rather than a hosted service (Ably, Pusher, Supabase Realtime): see BAR-17 in Linear. Their free plans can't hold a large show (connection limits), or charge per voter.
+
+Pages still **poll** with TanStack Query `refetchInterval` until they subscribe (Linear BAR-19):
 
 - **Present page:** the show every 5 s, and the active category's live count every 1 s (`live-voting.tsx`).
 - **Vote page:** the active category and the voter's own vote every 5 s.
 - **Run view:** the show every 5 s, for changes made on another device, and the current category's live count every 2 s while voting is open.
-- **Manage page:** no polling. It's server-rendered and refreshes after the host's own actions. Replacing polling with push updates is planned in Linear milestone "3. Real-time".
+- **Manage page:** no polling. It's server-rendered and refreshes after the host's own actions.
 
 ## Environment variables
 
 Validated in `src/env.js`:
 
-| Variable              | Used for                                                                        |
-| --------------------- | ------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | Pooled Neon connection, used by the app                                         |
-| `DATABASE_DIRECT_URL` | Direct Neon connection, used by Prisma migrations (`prisma.config.ts`)          |
-| `AUTH_SECRET`         | Signs manage-access cookies. At least 32 characters, different per environment. |
-| `DATABASE_DRIVER`     | Optional. `pg` for plain Postgres (the end-to-end tests); else Neon's driver    |
+| Variable              | Used for                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Pooled Neon connection, used by the app                                                                       |
+| `DATABASE_DIRECT_URL` | Direct Neon connection: Prisma migrations (`prisma.config.ts`) and listening for live events (`event-hub.ts`) |
+| `AUTH_SECRET`         | Signs manage-access cookies. At least 32 characters, different per environment.                               |
+| `DATABASE_DRIVER`     | Optional. `pg` for plain Postgres (the end-to-end tests); else Neon's driver                                  |
