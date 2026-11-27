@@ -51,8 +51,7 @@ export function LiveVoting({
     trpc.award.getCategory.queryOptions(
       { id: categoryId },
       {
-        // Once voting has closed the count is final
-        refetchInterval: closed ? false : 1000,
+        // Fetched again on each vote by the page's live events (LivePresentation)
         staleTime: 0,
         retry: MAX_RETRIES,
       },
@@ -147,6 +146,9 @@ export function LiveVoting({
             duration: 0.5,
           }}
           className="text-5xl font-bold text-white"
+          // Announced as it changes, and found by the end-to-end tests
+          role="status"
+          aria-label="Total votes"
         >
           {totalVotes.toLocaleString()}
         </motion.div>

@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { showPaths } from "~/lib/join";
 import {
   type ServerStage,
@@ -39,11 +40,12 @@ export function RunShow({
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  // Every 5 seconds, like the big screen, for changes made on another device
+  // Changes made on another device, and each vote for the live count (useLiveVoters)
+  useShowEvents(code, { liveCounts: true });
   const { data: session } = useQuery(
     trpc.award.getSession.queryOptions(
       { code },
-      { initialData: initialSession, refetchInterval: 5000 },
+      { initialData: initialSession },
     ),
   );
   const { categories } = session;
@@ -305,15 +307,15 @@ const nextToReveal = (categories: Category[]) => {
 };
 
 /**
- * How many people have voted in the category: every 2 seconds while voting is open (the show
- * itself is only reloaded every 5), and final once it has closed
+ * How many people have voted in the category: fetched again on each vote while voting is open
+ * (the run view's live events), and final once it has closed
  */
 function useLiveVoters(category: Category, isOpen: boolean) {
   const trpc = useTRPC();
   const { data } = useQuery(
     trpc.award.getCategory.queryOptions(
       { id: category.id },
-      { enabled: isOpen, refetchInterval: 2000 },
+      { enabled: isOpen },
     ),
   );
   return data?.estimatedVoters ?? category.estimatedVoters ?? 0;

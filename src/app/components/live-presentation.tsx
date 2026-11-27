@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
+import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { votingHasClosed } from "~/lib/stages";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
@@ -57,6 +58,7 @@ export function LivePresentation({
   code,
 }: LivePresentationProps) {
   const trpc = useTRPC();
+  useShowEvents(code, { liveCounts: true });
   const {
     data: session,
     error: sessionError,
@@ -65,7 +67,6 @@ export function LivePresentation({
     trpc.award.getSession.queryOptions(
       { code, activeOnly: true },
       {
-        refetchInterval: 5000,
         initialData: initialSession,
         retry: 3,
       },

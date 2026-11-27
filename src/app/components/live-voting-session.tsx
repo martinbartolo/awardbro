@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { votingHasClosed } from "~/lib/stages";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
@@ -49,6 +50,7 @@ export function LiveVotingSession({
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  useShowEvents(code, { liveCounts: false });
   const {
     data: session,
     error: sessionError,
@@ -57,7 +59,6 @@ export function LiveVotingSession({
     trpc.award.getSession.queryOptions(
       { code, activeOnly: true },
       {
-        refetchInterval: 5000,
         initialData: initialSession,
         retry: 3,
       },
@@ -86,7 +87,6 @@ export function LiveVotingSession({
   const myVotesOptions = trpc.award.getMyVotes.queryOptions(
     { categoryId: activeCategory?.id ?? "" },
     {
-      refetchInterval: 5000,
       retry: 3,
       gcTime: 0,
       staleTime: 0,

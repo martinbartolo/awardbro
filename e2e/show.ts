@@ -194,9 +194,13 @@ export async function setRevealOptions(
   }
 }
 
-/** A voter waits for the host to present a category */
-export async function waitForCategory(voter: Page, category: string) {
-  await expect(voter.getByText(category, { exact: true })).toBeVisible();
+/** A voter (or the big screen) waits for the host to present a category */
+export async function waitForCategory(
+  page: Page,
+  category: string,
+  options?: { timeout?: number },
+) {
+  await expect(page.getByText(category, { exact: true })).toBeVisible(options);
 }
 
 /** Text as a regular expression that matches it literally */
@@ -247,6 +251,7 @@ export async function expectResults(
   screen: Page,
   category: string,
   results: [name: string, score: string | null][],
+  options?: { timeout?: number },
 ) {
   const list = screen.getByRole("list", { name: `${category} results` });
   await expect(list.getByRole("listitem")).toHaveText(
@@ -255,5 +260,6 @@ export async function expectResults(
       const shown = score ? `\\s*${score.replace(" ", "\\s*")}` : "";
       return new RegExp(`^${winner}${literal(name)}${shown}$`);
     }),
+    options,
   );
 }
