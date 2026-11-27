@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -10,11 +10,10 @@ import { CategoryTypeBadge } from "~/app/components/category-fields";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
-import { useShowEvents } from "~/lib/hooks/useShowEvents";
+import { useHostShow } from "~/lib/hooks/useHostShow";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import { showPaths } from "~/lib/join";
-import { type ManageError } from "~/lib/manage-error";
-import { optimistic } from "~/lib/optimistic";
+import { updateCategory } from "~/lib/show-changes";
 import {
   applyStage,
   type ServerStage,
@@ -42,15 +41,8 @@ export function RunShow({
   initialSession: Session;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   // Changes made on another device, and each vote for the live count (useLiveVoters)
-  useShowEvents(code, { liveCounts: true });
-  const { data: session } = useQuery(
-    trpc.award.getSession.queryOptions(
-      { code },
-      { initialData: initialSession },
-    ),
-  );
+  const session = useHostShow(code, initialSession, { liveCounts: true });
   const { categories } = session;
 
   // The category the host picked from the running order, if any
@@ -61,24 +53,10 @@ export function RunShow({
     categories.find(c => c.isActive) ??
     nextToReveal(categories);
 
-  const onManageError = useManageErrorHandler();
-  // Each step shows straight away, before the server confirms it (optimistic.ts)
-  const showStraightAway = <TVariables,>(
-    change: (categories: Category[], variables: TVariables) => Category[],
-  ) =>
-    optimistic<TVariables, Session, ManageError>({
-      queryClient,
-      queryKey: trpc.award.getSession.queryKey({ code }),
-      change: (before, variables) =>
-        before && {
-          ...before,
-          categories: change(before.categories, variables),
-        },
-      onError: onManageError(),
-    });
+  const showChange = useShowChange();
   const setStage = useMutation(
     trpc.award.setCategoryStage.mutationOptions(
-      showStraightAway(
+      showChange(
         (categories, { id, stage }: { id: string; stage: ServerStage }) =>
           applyStage(categories, id, stage),
       ),
@@ -86,9 +64,9 @@ export function RunShow({
   );
   const setOptions = useMutation(
     trpc.award.setRevealOptions.mutationOptions(
-      showStraightAway(
+      showChange(
         (categories, { id, ...options }: { id: string } & RevealOptions) =>
-          categories.map(c => (c.id === id ? { ...c, ...options } : c)),
+          updateCategory(categories, id, c => ({ ...c, ...options })),
       ),
     ),
   );

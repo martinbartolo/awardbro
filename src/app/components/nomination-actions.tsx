@@ -2,12 +2,12 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import { isImageUrl } from "~/lib/images";
+import { withoutNomination } from "~/lib/show-changes";
 import { useTRPC } from "~/trpc/react";
 
 type NominationActionsProps = {
@@ -25,17 +25,17 @@ export function NominationActions({
   nominationDescription,
   isImage = false,
 }: NominationActionsProps) {
-  const router = useRouter();
-
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // Gone straight away (its aggregates' copies follow once the server has answered)
   const deleteNomination = useMutation(
-    trpc.award.deleteNomination.mutationOptions({
-      onSuccess: () => {
-        router.refresh();
-      },
-      onError: onManageError("Failed to delete nomination"),
-    }),
+    trpc.award.deleteNomination.mutationOptions(
+      showChange(
+        (categories, { id }: { id: string }) =>
+          withoutNomination(categories, id),
+        "Failed to delete nomination",
+      ),
+    ),
   );
 
   return (

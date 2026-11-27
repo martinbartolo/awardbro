@@ -1,4 +1,8 @@
-import { type QueryClient, type QueryKey } from "@tanstack/react-query";
+import {
+  hashKey,
+  type QueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 
 /**
  * Options for a mutation that shows its result straight away, before the server answers: it
@@ -28,6 +32,19 @@ export function optimistic<TVariables, TData, TError>({
 }) {
   const exists = () =>
     !!queryClient.getQueryCache().find({ queryKey, exact: true });
+  /** Other actions on their way that changed the same query (this one is still pending too) */
+  const othersHolding = () => {
+    const hash = hashKey(queryKey);
+    return (
+      queryClient
+        .getMutationCache()
+        .findAll({ status: "pending" })
+        .filter(m => {
+          const holds = m.options.meta?.holds;
+          return holds && hashKey(holds as QueryKey) === hash;
+        }).length > 1
+    );
+  };
 
   return {
     meta: { holds: queryKey },
@@ -43,10 +60,19 @@ export function optimistic<TVariables, TData, TError>({
       variables: TVariables,
       context: { before: TData | undefined } | undefined,
     ) => {
-      // Unless the page has moved on and dropped the query meanwhile
-      if (exists()) queryClient.setQueryData(queryKey, context?.before);
+      // Unless the page has moved on and dropped the query, or another action changed it since:
+      // putting back the data from before this would undo that one too. The last action to
+      // settle fetches what the server has.
+      if (exists() && !othersHolding()) {
+        queryClient.setQueryData(queryKey, context?.before);
+      }
       onError(error, variables);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey, exact: true }),
+    // Not while another action on the same query is on its way: the server may not have it yet,
+    // so the fetch would undo it on screen. The last one to settle fetches.
+    onSettled: () =>
+      othersHolding()
+        ? undefined
+        : queryClient.invalidateQueries({ queryKey, exact: true }),
   };
 }

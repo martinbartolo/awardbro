@@ -12,14 +12,12 @@ import {
   CategoryFields,
   type CategoryFieldValues,
 } from "~/app/components/category-fields";
-import {
-  InlineEditForm,
-  useCloseAfterRefresh,
-} from "~/app/components/inline-edit-form";
+import { InlineEditForm } from "~/app/components/inline-edit-form";
 import { Button } from "~/components/ui/button";
 import { type CategoryType } from "~/generated/prisma/enums";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import { categoryUpdateSchema, type CategoryUpdateValues } from "~/lib/schemas";
+import { renameSource, updateCategory } from "~/lib/show-changes";
 import { useTRPC } from "~/trpc/react";
 
 type EditableCategory = {
@@ -105,17 +103,32 @@ function EditCategoryForm({
         category.type === "AGGREGATE" ? category.sourceCategoryIds : undefined,
     },
   });
-  const { close, isRefreshing } = useCloseAfterRefresh(onDone);
-
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // The category shows its new name and description straight away. The form stays open until
+  // the server has saved them, so a refused change (a repeated name, say) keeps what was typed.
   const update = useMutation(
     trpc.award.updateCategory.mutationOptions({
+      ...showChange((categories, values: CategoryUpdateValues) =>
+        renameSource(
+          updateCategory(categories, values.id, c => ({
+            ...c,
+            name: values.name,
+            description: values.description ?? null,
+            rankingTop: values.rankingTop ?? c.rankingTop,
+            // An aggregate's new sources, in the running order
+            sourceCategories: values.sourceCategories
+              ? categories.filter(s => values.sourceCategories!.includes(s.id))
+              : c.sourceCategories,
+          })),
+          values.id,
+          values.name,
+        ),
+      ),
       onSuccess: () => {
         toast.success("Category updated");
-        close();
+        onDone();
       },
-      onError: onManageError(),
     }),
   );
 
@@ -124,7 +137,7 @@ function EditCategoryForm({
       form={form}
       onSubmit={values => update.mutate(values)}
       onCancel={onDone}
-      isSaving={update.isPending || isRefreshing}
+      isSaving={update.isPending}
     >
       <CategoryFields
         control={form.control as unknown as Control<CategoryFieldValues>}

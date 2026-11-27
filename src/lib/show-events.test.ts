@@ -63,13 +63,14 @@ const invalidated = () =>
 
 let stops: (() => void)[] = [];
 
-/** Connects as the big screen or run view (`liveCounts`), or as a voter's phone */
+/** Connects as the big screen or run view (`liveCounts`), or as a voter's phone (`crowd`) */
 const connect = (liveCounts: boolean) => {
   const stop = connectShowEvents({
     code: "K7QF",
     trpc,
     queryClient,
     liveCounts,
+    crowd: !liveCounts,
     EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
   });
   stops.push(stop);
@@ -188,6 +189,20 @@ describe("connectShowEvents", () => {
       await vi.advanceTimersByTimeAsync(1_000);
 
       expect(invalidated()).toEqual(["categoryA", "categoryB", "show"]);
+    });
+
+    it("doesn't fetch it again if the action already did, after the event", async () => {
+      connect(true);
+      const finish = startAction(queries.show);
+      await vi.advanceTimersByTimeAsync(0);
+      stream().emit("show", {});
+
+      // The action fetches what the server has as it settles
+      await vi.advanceTimersByTimeAsync(10);
+      queryClient.setQueryData([...queries.show], { fetched: true });
+      await finish();
+
+      expect(invalidated()).not.toContain("show");
     });
 
     it("holds a live count it changed until the action settles", async () => {

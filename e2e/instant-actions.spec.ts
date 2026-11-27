@@ -3,6 +3,7 @@ import { type Page } from "@playwright/test";
 import {
   addCategory,
   addNomination,
+  categoryCard,
   createShow,
   currentCategory,
   expect,
@@ -101,4 +102,36 @@ test("a vote shows as cast straight away, and goes back to the choice if it fail
   await expect(
     voter.getByRole("button", { name: "Update Vote" }),
   ).toBeEnabled();
+});
+
+test("the manage page shows the host's changes straight away", async ({
+  visit,
+}) => {
+  const host = await visit();
+  await createShow(host, { name: "Setup Awards", password: "setup" });
+  await addCategory(host, { name: "Best Film", type: "NORMAL" });
+  await addNomination(host, "Best Film", { name: "Dune" });
+  const card = categoryCard(host, "Best Film");
+
+  // A new nomination shows as being added, then as saved
+  const slowAdd = await interfere(host, "addNomination", "slow");
+  await card.getByLabel("Nomination Name").fill("Barbie");
+  await card.getByRole("button", { name: "Add nomination" }).click();
+  await expect(card.getByText("Barbie", { exact: true })).toBeVisible(
+    STRAIGHT_AWAY,
+  );
+  const barbie = card.getByRole("listitem").filter({ hasText: "Barbie" });
+  await expect(barbie.getByText("Adding...")).toBeVisible();
+  await slowAdd.answered();
+  await expect(barbie.getByText("Adding...")).toBeHidden();
+  await slowAdd.stop();
+
+  // A deleted nomination goes straight away
+  await interfere(host, "deleteNomination", "slow");
+  const dune = card.getByRole("listitem").filter({ hasText: "Dune" });
+  await dune.getByRole("button", { name: "Delete nomination" }).click();
+  await host.getByRole("button", { name: "Delete Nomination" }).click();
+  await expect(card.getByText("Dune", { exact: true })).toBeHidden(
+    STRAIGHT_AWAY,
+  );
 });

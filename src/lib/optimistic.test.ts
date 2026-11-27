@@ -77,6 +77,42 @@ describe("optimistic", () => {
     expect(queryClient.getQueryCache().find({ queryKey })).toBeUndefined();
   });
 
+  it("leaves fetching to the last of two actions on the same query", async () => {
+    let answerFirst!: () => void;
+    const first = run(
+      options(),
+      () => new Promise<void>(resolve => (answerFirst = resolve)),
+    );
+    let failSecond!: (error: Error) => void;
+    const second = run(
+      options(),
+      () => new Promise<void>((_, reject) => (failSecond = reject)),
+    );
+    await vi.waitFor(() =>
+      expect(queryClient.getQueryData(queryKey)).toEqual([
+        "Barbie",
+        "Dune",
+        "Dune",
+      ]),
+    );
+
+    // The second fails while the first is still on its way: putting back its snapshot would
+    // undo the first one too
+    failSecond(new Error("Refused"));
+    await second;
+    expect(queryClient.getQueryData(queryKey)).toEqual([
+      "Barbie",
+      "Dune",
+      "Dune",
+    ]);
+    expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(false);
+
+    // The last to settle fetches what the server has
+    answerFirst();
+    await first;
+    expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
+  });
+
   it("names the query it changes, so live events hold it", () => {
     expect(options().meta).toEqual({ holds: queryKey });
   });
