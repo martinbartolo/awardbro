@@ -49,7 +49,7 @@ export function LiveVotingSession({
   code,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
-  useShowEvents(code, { liveCounts: false });
+  useShowEvents(code, { liveCounts: false, crowd: true });
   const {
     data: session,
     error: sessionError,

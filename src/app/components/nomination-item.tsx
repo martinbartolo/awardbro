@@ -8,10 +8,7 @@ import { Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import {
-  InlineEditForm,
-  useCloseAfterRefresh,
-} from "~/app/components/inline-edit-form";
+import { InlineEditForm } from "~/app/components/inline-edit-form";
 import { NominationActions } from "~/app/components/nomination-actions";
 import { NominationDescription } from "~/app/components/nomination-description";
 import {
@@ -20,11 +17,13 @@ import {
 } from "~/app/components/nomination-fields";
 import { Button } from "~/components/ui/button";
 import { type CategoryType } from "~/generated/prisma/enums";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import {
   nominationFieldsSchema,
   type NominationFieldValues,
 } from "~/lib/schemas";
+import { isAdding, updateNomination } from "~/lib/show-changes";
+import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
 
 type Nomination = { id: string; name: string; description: string | null };
@@ -48,6 +47,8 @@ export function NominationItem({
   score: string;
 }) {
   const [editing, setEditing] = useState(false);
+  // Shown straight away while the server adds it (AddNomination)
+  const adding = isAdding(nomination);
 
   return (
     <li className="px-3 py-2">
@@ -79,9 +80,13 @@ export function NominationItem({
             )}
           </div>
           <span className="text-muted-foreground text-xs whitespace-nowrap">
-            {score}
+            {adding ? "Adding..." : score}
           </span>
-          <div className="flex shrink-0 gap-1">
+          {/* Nothing to edit or delete until the server has it */}
+          <div
+            className={cn("flex shrink-0 gap-1", adding && "invisible")}
+            aria-hidden={adding || undefined}
+          >
             {categoryType !== "AGGREGATE" && (
               <Button
                 variant="ghost"
@@ -123,12 +128,24 @@ function EditNominationForm({
       description: nomination.description ?? "",
     },
   });
-  const { close, isRefreshing } = useCloseAfterRefresh(onDone);
-
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // The nomination shows its new name and description straight away (an image link as typed,
+  // until the server has turned it into the picture's address). The form stays open until the
+  // server has saved them, so a refused change keeps what was typed.
   const update = useMutation(
     trpc.award.updateNomination.mutationOptions({
+      ...showChange(
+        (
+          categories,
+          values: { id: string; name: string; description?: string },
+        ) =>
+          updateNomination(categories, values.id, n => ({
+            ...n,
+            name: values.name,
+            description: values.description ?? n.description,
+          })),
+      ),
       onSuccess: ({ nomination: saved, mergedIn }) => {
         if (mergedIn.length) {
           toast.info(
@@ -137,9 +154,8 @@ function EditNominationForm({
         } else {
           toast.success("Nomination updated");
         }
-        close();
+        onDone();
       },
-      onError: onManageError(),
     }),
   );
 
@@ -159,7 +175,7 @@ function EditNominationForm({
       form={form}
       onSubmit={onSubmit}
       onCancel={onDone}
-      isSaving={update.isPending || isRefreshing}
+      isSaving={update.isPending}
     >
       <NominationFields control={form.control} picture={picture} />
       <p className="text-muted-foreground text-sm">

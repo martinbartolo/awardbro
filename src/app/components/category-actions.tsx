@@ -2,12 +2,16 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { RotateCcw, Trash } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
+import {
+  updateCategory,
+  withoutCategory,
+  withoutVotes,
+} from "~/lib/show-changes";
 import { useTRPC } from "~/trpc/react";
 
 /** Removes every vote in a category, after the host confirms */
@@ -16,16 +20,19 @@ export function ResetCategoryVotesButton({
 }: {
   categoryId: string;
 }) {
-  const router = useRouter();
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // Its scores go to 0 straight away (an aggregate's follow once the server has answered)
   const resetCategoryVotes = useMutation(
     trpc.award.resetCategoryVotes.mutationOptions({
+      ...showChange(
+        (categories, { categoryId: id }: { categoryId: string }) =>
+          updateCategory(categories, id, withoutVotes),
+        "Failed to reset category votes",
+      ),
       onSuccess: () => {
-        router.refresh();
         toast.success("Category votes have been reset");
       },
-      onError: onManageError("Failed to reset category votes"),
     }),
   );
 
@@ -50,16 +57,17 @@ export function ResetCategoryVotesButton({
 
 /** Deletes a category with its nominations and votes, after the host confirms */
 export function DeleteCategoryButton({ categoryId }: { categoryId: string }) {
-  const router = useRouter();
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // Gone straight away, from its aggregates' sources too (their copies follow once the server
+  // has answered)
   const deleteCategory = useMutation(
-    trpc.award.deleteCategory.mutationOptions({
-      onSuccess: () => {
-        router.refresh();
-      },
-      onError: onManageError("Failed to delete category"),
-    }),
+    trpc.award.deleteCategory.mutationOptions(
+      showChange(
+        (categories, { id }: { id: string }) => withoutCategory(categories, id),
+        "Failed to delete category",
+      ),
+    ),
   );
 
   return (

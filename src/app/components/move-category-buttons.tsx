@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef } from "react";
 
 import { useMutation } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "~/components/ui/button";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
+import { moveInOrder } from "~/lib/show-changes";
 import { useTRPC } from "~/trpc/react";
 
 /**
@@ -27,24 +27,25 @@ export function MoveCategoryButtons({
   index: number;
   count: number;
 }) {
-  const router = useRouter();
-  // Ignores clicks until the refreshed page arrives with the new order
-  const [isRefreshing, startRefresh] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   /** The arrow the host just used, until the move has settled */
   const moved = useRef<"up" | "down" | null>(null);
 
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // Moves straight away; further clicks wait until the server has the new order
   const move = useMutation(
-    trpc.award.moveCategory.mutationOptions({
-      onSuccess: () => {
-        startRefresh(() => router.refresh());
-      },
-      onError: onManageError("Failed to move category"),
-    }),
+    trpc.award.moveCategory.mutationOptions(
+      showChange(
+        (
+          categories,
+          { id, direction }: { id: string; direction: "up" | "down" },
+        ) => moveInOrder(categories, id, direction),
+        "Failed to move category",
+      ),
+    ),
   );
-  const isMoving = move.isPending || isRefreshing;
+  const isMoving = move.isPending;
 
   // Follow the card to its new place after the host moved it. Reordering the cards can move this
   // one's DOM node, which drops focus, so the arrow gets it back.

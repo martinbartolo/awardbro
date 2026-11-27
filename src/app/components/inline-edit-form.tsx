@@ -1,27 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef } from "react";
 
-import { useRouter } from "next/navigation";
 import { type FieldValues, type UseFormReturn } from "react-hook-form";
 
 import { Button } from "~/components/ui/button";
 import { Form } from "~/components/ui/form";
-
-/**
- * After an inline edit is saved: refreshes the page, and closes the form only once the refreshed
- * page arrives, so the old values never flash. `isRefreshing` is true until then.
- */
-export function useCloseAfterRefresh(onDone: () => void) {
-  const router = useRouter();
-  const [isRefreshing, startRefresh] = useTransition();
-  const close = () =>
-    startRefresh(() => {
-      router.refresh();
-      onDone();
-    });
-  return { close, isRefreshing };
-}
 
 /**
  * A form that edits or adds something in place on the manage page: focus moves into it when it

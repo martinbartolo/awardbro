@@ -24,8 +24,9 @@ const SPREAD_MS = 1_000;
  * - When the stream opens or reopens, and on a `show` event, the page fetches all its queries for
  *   the show again: the show, live counts and the voter's own votes.
  * - With `liveCounts` (the big screen and the run view), a `votes` event fetches that category's
- *   count again. Without it (voters' phones), the server leaves `votes` events out, and fetches
- *   after a host action are spread over a second, so a room full of phones doesn't fetch at once.
+ *   count again. Without it, the server leaves `votes` events out.
+ * - With `crowd` (voters' phones, one of many identical pages), fetches after a host action are
+ *   spread over a second, so a room full of phones doesn't fetch at once.
  * - While the stream isn't open, the page fetches the show every 30 s instead.
  * - While one of the page's own actions is on its way, the query it changed is fetched once it
  *   has settled, so a fetch never undoes what the page already shows (see optimistic.ts).
@@ -39,12 +40,14 @@ export function connectShowEvents({
   trpc,
   queryClient,
   liveCounts,
+  crowd = false,
   EventSourceImpl = EventSource,
 }: {
   code: string;
   trpc: TRPCOptionsProxy<AppRouter>;
   queryClient: QueryClient;
   liveCounts: boolean;
+  crowd?: boolean;
   EventSourceImpl?: typeof EventSource;
 }) {
   let stopped = false;
@@ -53,7 +56,8 @@ export function connectShowEvents({
   // changed could bring back the data from before it, and undo what the page already shows. So
   // that query (named in the action's `meta.holds`, see optimistic.ts) is fetched once the action
   // has settled. Every other query is fetched straight away.
-  const waiting = new Set<string>();
+  /** Held queries, and when their event arrived */
+  const waiting = new Map<string, number>();
   const heldQueries = () =>
     new Set(
       queryClient
@@ -71,7 +75,9 @@ export function connectShowEvents({
       ...filter,
       predicate: query => {
         if (!held.has(query.queryHash)) return true;
-        waiting.add(query.queryHash);
+        if (!waiting.has(query.queryHash)) {
+          waiting.set(query.queryHash, Date.now());
+        }
         return false;
       },
     });
@@ -79,11 +85,19 @@ export function connectShowEvents({
   const stopWaiting = queryClient.getMutationCache().subscribe(() => {
     if (!waiting.size || stopped) return;
     const held = heldQueries();
-    for (const hash of waiting) {
+    for (const [hash, heldAt] of waiting) {
       if (held.has(hash)) continue;
       waiting.delete(hash);
+      const query = queryClient.getQueryCache().get(hash);
+      // The action fetched it as it settled, after the change it was held for: that will do
+      if (
+        !query ||
+        (query.state.dataUpdatedAt > heldAt && !query.state.isInvalidated)
+      ) {
+        continue;
+      }
       void queryClient.invalidateQueries({
-        predicate: query => query.queryHash === hash,
+        predicate: q => q.queryHash === hash,
       });
     }
   });
@@ -97,9 +111,9 @@ export function connectShowEvents({
   const refetchCount = (categoryId: string) =>
     fetchAgain(trpc.award.getCategory.queryFilter({ id: categoryId }));
 
-  const afterHostAction = liveCounts
-    ? refetchShow
-    : () => setTimeout(refetchShow, Math.random() * SPREAD_MS);
+  const afterHostAction = crowd
+    ? () => setTimeout(refetchShow, Math.random() * SPREAD_MS)
+    : refetchShow;
 
   const url = `/api/shows/${encodeURIComponent(code)}/events${liveCounts ? "" : "?votes=0"}`;
   let source: EventSource | undefined;

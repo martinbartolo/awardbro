@@ -134,6 +134,8 @@ export async function addNomination(
   }
   await card.getByRole("button", { name: "Add nomination" }).click();
   await expect(card.getByText(name, { exact: true })).toBeVisible();
+  // It shows straight away, as "Adding...", until the server has saved it
+  await expect(card.getByText("Adding...")).toHaveCount(0);
 }
 
 /** The host opens the run view from the manage page */
