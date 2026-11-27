@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   # Which parts of the repository changed, so each job below runs only when it can be affected.
-  # On a push, compared with the commit before the push.
+  # A pull request is compared with its base branch, a push with the commit before it.
   changes:
     name: Find what changed
     runs-on: ubuntu-latest
@@ -30,6 +30,8 @@ jobs:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          # On a push to this branch, compare with the commit before the push (ignored for PRs)
+          base: ${{ github.ref_name }}
           filters: |
             # Anything that changes how every job installs and runs
             setup: &setup
@@ -43,6 +45,8 @@ jobs:
             code:
               - *setup
               - "**/*.{ts,tsx,js,jsx,mjs,cjs,mdx,json}"
+              # The Prisma client the code is type-checked against is generated from the schema
+              - prisma/**
             # Migrations and integration tests: the schema and the API
             database:
               - *setup
@@ -157,14 +161,36 @@ jobs:
             test-results/
           retention-days: 14
 
-  # The one check branch protection requires: it passes when every job above passed or was
-  # skipped because nothing it covers changed. Add new jobs to `needs`.
+  # The one check branch protection requires. It passes only when the changes job answered for
+  # every part, and every job whose part changed passed; the others were skipped. It fails closed:
+  # an empty or unexpected answer (a filter renamed, say) fails it instead of skipping everything.
+  # Add a new job to `needs` and to the list below.
   all-checks:
     name: All checks
     if: always()
     needs: [changes, checks, migrations, e2e]
     runs-on: ubuntu-latest
     steps:
-      - name: Fail if a job failed or was cancelled
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: exit 1
+      - name: Check every job that had to run passed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          JOBS: >-
+            checks ${{ needs.changes.outputs.code }} ${{ needs.checks.result }}
+            migrations ${{ needs.changes.outputs.database }} ${{ needs.migrations.result }}
+            e2e ${{ needs.changes.outputs.app }} ${{ needs.e2e.result }}
+        run: |
+          if [ "$CHANGES" != success ]; then
+            echo "::error::Finding what changed ended with: $CHANGES"; exit 1
+          fi
+          set -- $JOBS
+          while [ $# -gt 0 ]; do
+            job=$1; changed=$2; result=${3:-missing}
+            if [ "$#" -lt 3 ]; then
+              echo "::error::No answer from the changes job for $job"; exit 1
+            fi
+            case "$changed/$result" in
+              true/success | false/skipped) echo "$job: $result" ;;
+              *) echo "::error::$job: changed=$changed, result=$result"; exit 1 ;;
+            esac
+            shift 3
+          done

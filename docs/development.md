@@ -79,7 +79,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 ### Repository settings
 
 - Squash merges are disabled, so a PR's commits land on `dev` as they are.
-- Branch protection on `dev` and `main` requires two checks: **All checks** (CI) and **Vercel**. CI's first job finds which parts of the repository a PR changed, and each job runs only when it can be affected: lint, types, format and unit tests on any code or config; migrations and integration tests on the schema and the API (`prisma/`, `src/server`, `src/lib`, `src/test`); end-to-end tests on anything the app is built from. A docs-only PR runs none of them. A change to the workflow, `package.json` or the lockfile runs them all. "All checks" passes when every job passed or was skipped, so it's the only CI check to require. Add a new job to its `needs`, and its paths to the filters in `.github/workflows/ci.yml`.
+- Branch protection on `dev` and `main` requires two checks: **All checks** (CI) and **Vercel**. CI's first job finds which parts of the repository a PR changed, and each job runs only when it can be affected: lint, types, format and unit tests on any code, config or the schema; migrations and integration tests on the schema and the API (`prisma/`, `src/server`, `src/lib`, `src/test`); end-to-end tests on anything the app is built from. A docs-only PR runs none of them. A change to the workflow, `package.json`, the lockfile or `tsconfig.json` runs them all. "All checks" passes only when every job whose part changed passed, and fails if the changes job gives no clear answer, so it's the only CI check to require. Add a new job to its `needs` and to its list of jobs, and its paths to the filters in `.github/workflows/ci.yml`.
 - Dependabot opens grouped dependency PRs against `dev` once a month.
 - pnpm refuses package versions published less than a day ago (`minimumReleaseAge`, its default since pnpm 11), to keep a freshly compromised release out. Dependabot waits a day before proposing a version, to match. If an install fails on it, wait, or use the previous release.
 
@@ -108,7 +108,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 
 ## Integration tests
 
-`pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service on every PR.
+`pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service whenever the schema or the API changes (see "Repository settings").
 
 To protect real data, the tests only run against a database whose name ends in `_test`, given by `TEST_DATABASE_URL` in the shell (it isn't read from `.env.local`). `dev` and production are both called `neondb`, so they are refused. Locally, use any Postgres, or a throwaway Neon branch with its own empty database:
 
@@ -125,7 +125,7 @@ The app's client uses Neon's serverless driver, which can't reach a plain Postgr
 
 ## End-to-end tests
 
-`pnpm test:e2e` runs whole shows in Chromium with Playwright (`e2e/*.spec.ts`): a host sets up a category of each type, guests vote on phone-sized pages (changing a vote and a ranking), and the big screen shows each result and the presentation options as the host reveals them. Other tests check the manage page's password. Every person gets a browser of their own, so they share no cookies. CI runs them on every PR.
+`pnpm test:e2e` runs whole shows in Chromium with Playwright (`e2e/*.spec.ts`): a host sets up a category of each type, guests vote on phone-sized pages (changing a vote and a ranking), and the big screen shows each result and the presentation options as the host reveals them. Other tests check the manage page's password. Every person gets a browser of their own, so they share no cookies. CI runs them whenever anything the app is built from changes (see "Repository settings").
 
 The tests build the app (`pnpm build && pnpm start`, on port 3200 or `E2E_PORT`; the build replaces `.next`, so stop a local `pnpm start` first) and point it at `TEST_DATABASE_URL`, the same `_test` database as the integration tests, after applying the migrations. Every test creates its own show, so they don't empty the database and can run side by side. Don't run them at the same time as the integration tests on one database. The app uses the standard `pg` driver for it (`DATABASE_DRIVER=pg`, see `src/server/db.ts`), which works against Neon too. Pictures in image categories come from `https://pictures.e2e.test`, which the tests answer themselves.
 
