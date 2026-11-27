@@ -304,6 +304,13 @@ export default function HelpPage() {
                     </div>
                   </div>
                   <p className="text-muted-foreground text-sm">
+                    Click &quot;Add category&quot; at the end of the list and
+                    pick its type: each type says what voters do. Its &quot;Add
+                    nomination&quot; form opens straight away, except for an
+                    aggregate, whose nominations come from the categories it
+                    adds up.
+                  </p>
+                  <p className="text-muted-foreground text-sm">
                     Categories run in the order they&apos;re listed. Use the
                     arrows next to a category&apos;s name to move it, for
                     example to save the biggest award for last.
@@ -405,6 +412,11 @@ export default function HelpPage() {
                       </p>
                     </div>
                   </div>
+                  <p className="text-muted-foreground text-sm">
+                    To reveal only the order without vote counts, or only the
+                    winner, click the pencil next to the category and choose
+                    under &quot;Presentation&quot;.
+                  </p>
                   <div className="bg-secondary flex items-start gap-3 rounded-lg p-4">
                     <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500" />
                     <div>
