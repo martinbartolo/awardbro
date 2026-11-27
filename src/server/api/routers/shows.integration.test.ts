@@ -116,8 +116,12 @@ describe("a room code", () => {
 
     it("keeps an old link on its own show when its slug reads like another show's code", async () => {
       // Two shows from before room codes, the first given a code that reads like the second's
-      // slug when codes were added (new codes avoid slugs)
-      const { code } = await oldShow("first-show");
+      // slug when codes were added (new codes avoid slugs). The code has letters, so its lowercase
+      // form differs from it: a random one can be all digits.
+      const code = "K7QF";
+      await testDb.session.create({
+        data: { name: "Old Awards", slug: "first-show", code },
+      });
       const lookalike = await oldShow(code.toLowerCase());
 
       expect(await findShowCode(testDb, code.toLowerCase())).toBe(
