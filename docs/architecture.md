@@ -91,25 +91,27 @@ The present page shows a QR code that opens the vote page, the site's address an
 
 After every write, the server tells the show's open pages what changed (`src/server/events.ts`). Pages use the event as a signal to fetch again: events carry no scores or votes, so the database stays the only source of truth.
 
-| Event   | Sent by                                                                                                                                  |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `show`  | Any change to the show except its votes: categories, nominations, running order, a category's stage or reveal options, deleting the show |
-| `votes` | A vote, a ranking, or resetting a category's votes (with its `categoryId`); resetting all votes (without one)                            |
+| Event   | Sent by                                                                                                                           |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `show`  | Any host action: categories, nominations, running order, a category's stage or reveal options, resetting votes, deleting the show |
+| `votes` | A voter's vote or ranking, with its `categoryId`                                                                                  |
 
 How they travel, with no service besides the database:
 
 1. Every host write runs through `hostWrite` in `award.ts`, which takes the show's lock and sends the route's event (`notifyShow`, Postgres `NOTIFY`) in one statement. Votes do the same in `saveVote`. Postgres delivers a notification only when its transaction commits, so pages never hear of a write that was rolled back, and they hear of writes in the order they committed. `events.integration.test.ts` checks each mutation's event, and fails when a mutation isn't listed there.
 2. Each server instance with open pages holds one `LISTEN` connection (`event-hub.ts`). It connects when the first page subscribes and closes when the last one leaves. It uses `DATABASE_DIRECT_URL`, since Neon's pooler can't `LISTEN`. It throttles each category's `votes` events to one every 500 ms, folding the rest of a burst into one more at the end, so a burst of votes makes a few fetches rather than one per vote.
-3. Pages get the events as Server-Sent Events from `/api/shows/<code>/events` (`event-stream.ts`): `event: show` or `event: votes`, with the rest of the event as JSON data. The response starts only once the instance is listening, so a page that fetches when the stream opens misses nothing. A stream ends after 220–280 s, at random, before Vercel's 300 s limit on Hobby, and `EventSource` connects again by itself 1–2 s later. If an instance loses its database connection (it checks every 30 s), it ends every stream, so their pages connect again. If it can't listen at all, the route sends an empty stream that tells `EventSource` to try again in 5–10 s, since an error status would make it give up. Anyone with the room code can listen, as anyone can load the show.
+3. Pages get the events as Server-Sent Events from `/api/shows/<code>/events` (`event-stream.ts`): `event: show` or `event: votes`, with the rest of the event as JSON data (`?votes=0` leaves out `votes` events). The response starts only once the instance is listening, so a page that fetches when the stream opens misses nothing. A stream ends after 220–280 s, at random, before Vercel's 300 s limit on Hobby, and `EventSource` connects again by itself 1–2 s later. If an instance loses its database connection (it checks every 30 s), it ends every stream, so their pages connect again. If it can't listen at all, the route sends an empty stream that tells `EventSource` to try again in 20–30 s, since an error status would make it give up. A page that stops reading its stream has it ended after 100 queued events. Anyone with the room code can listen, as anyone can load the show.
 
 Why this rather than a hosted service (Ably, Pusher, Supabase Realtime): see BAR-17 in Linear. Their free plans can't hold a large show (connection limits), or charge per voter.
 
-Pages still **poll** with TanStack Query `refetchInterval` until they subscribe (Linear BAR-19):
+Pages listen with `useShowEvents` (`connectShowEvents` in `src/lib/show-events.ts`):
 
-- **Present page:** the show every 5 s, and the active category's live count every 1 s (`live-voting.tsx`).
-- **Vote page:** the active category and the voter's own vote every 5 s.
-- **Run view:** the show every 5 s, for changes made on another device, and the current category's live count every 2 s while voting is open.
-- **Manage page:** no polling. It's server-rendered and refreshes after the host's own actions.
+- **When the stream opens or reopens, and on a `show` event,** a page fetches all its queries for the show again: the show, live counts and the voter's own votes. That covers anything it missed while it wasn't listening.
+- **On a `votes` event,** pages that show live counts (the big screen and the run view, `liveCounts`) fetch that category's count again.
+- **Voters' phones** ask for no `votes` events (`?votes=0`). After a host action, each phone waits a random moment (up to 1 s) before fetching, so a room full of phones doesn't fetch at once.
+- **`EventSource` connects again by itself** when a stream ends. If it gives up (an error status, such as a deleted show), the page connects again after 10–20 s, up to 5 times in a row.
+- **While the stream isn't open** (and the page is visible), the page fetches the show every 30 s instead.
+- **The manage page** doesn't listen. It's server-rendered and refreshes after the host's own actions. During the show, the host uses the run view, which listens.
 
 ## Environment variables
 

@@ -136,7 +136,7 @@ TEST_DATABASE_URL="…/awardbro_test" pnpm test:e2e
 pnpm exec playwright show-report   # after a failure: steps, screenshots and traces
 ```
 
-A run takes about 2 minutes here, most of it the build and the polling pages (every 5 s). In CI, a failed run uploads the report as the `playwright-report` artifact.
+A run takes about 2 minutes here, most of it the build. In CI, a failed run uploads the report as the `playwright-report` artifact.
 
 Locate elements the way people find them (roles, labels and visible text, through the helpers in `e2e/show.ts`), not by class names, so the tests keep working through a redesign. If a test can't find something by its role or label, give the element one: that helps screen reader users too.
 
