@@ -22,6 +22,7 @@
     "preview": "next build && next start",
     "start": "next start",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:watch": "vitest",
     "typecheck": "next typegen && tsc --noEmit"
@@ -66,6 +67,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "16.4.6",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^26.6.6",
