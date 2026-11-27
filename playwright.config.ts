@@ -21,7 +21,7 @@ export default defineConfig({
   // `pnpm exec playwright show-report` opens the HTML report
   reporter: [[process.env.CI ? "github" : "list"], ["html", { open: "never" }]],
   timeout: 120_000,
-  // Voters' and the big screen's pages poll every 5 seconds
+  // Pages update from live events, within a second or two
   expect: { timeout: 15_000 },
   use: {
     baseURL: `http://localhost:${port}`,
