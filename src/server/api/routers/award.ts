@@ -611,13 +611,12 @@ export const awardRouter = createTRPCRouter({
         });
       }
 
+      const canManage = isHost(ctx, access);
       return {
         ...session,
-        categories: await withScores(
-          ctx.db,
-          session.categories,
-          isHost(ctx, access),
-        ),
+        categories: await withScores(ctx.db, session.categories, canManage),
+        // So host pages can tell when they've lost access (and only got public scores)
+        canManage,
       };
     }),
 
