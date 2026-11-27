@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import {
   CirclePlus,
-  CircleQuestionMark,
   Heart,
   Lock,
   Presentation,
@@ -224,20 +223,6 @@ export default function Page() {
               description="Put the big screen up: guests scan the QR code or enter the room code, and you reveal the winners."
             />
           </motion.div>
-          <motion.div
-            className="mt-10 flex justify-center sm:mt-12"
-            initial="hidden"
-            whileInView="visible"
-            variants={fadeIn}
-            viewport={{ once: true }}
-          >
-            <Button asChild variant="outline" size="lg">
-              <Link href="/help">
-                <CircleQuestionMark className="h-5 w-5" />
-                Read the Full Guide
-              </Link>
-            </Button>
-          </motion.div>
         </div>
       </section>
 
@@ -257,12 +242,6 @@ export default function Page() {
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Create Show
-              </Link>
-              <Link
-                href="/help"
-                className="text-muted-foreground hover:text-primary text-sm transition-colors"
-              >
-                Help
               </Link>
               <a
                 href="https://ko-fi.com/1martin"
