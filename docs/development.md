@@ -54,7 +54,7 @@ Only mention an issue ID in a PR that actually works on that issue: Linear links
    3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
    4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
 4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
-5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests) and the Vercel preview. Both are required.
+5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests, each run only when what it covers changed) and the Vercel preview. Both are required.
 6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
 7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
@@ -79,6 +79,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 ### Repository settings
 
 - Squash merges are disabled, so a PR's commits land on `dev` as they are.
+- Branch protection on `dev` and `main` requires two checks: **All checks** (CI) and **Vercel**. CI's first job finds which parts of the repository a PR changed, and each job runs only when it can be affected: lint, types, format and unit tests on any code or config; migrations and integration tests on the schema and the API (`prisma/`, `src/server`, `src/lib`, `src/test`); end-to-end tests on anything the app is built from. A docs-only PR runs none of them. A change to the workflow, `package.json` or the lockfile runs them all. "All checks" passes when every job passed or was skipped, so it's the only CI check to require. Add a new job to its `needs`, and its paths to the filters in `.github/workflows/ci.yml`.
 - Dependabot opens grouped dependency PRs against `dev` once a month.
 - pnpm refuses package versions published less than a day ago (`minimumReleaseAge`, its default since pnpm 11), to keep a freshly compromised release out. Dependabot waits a day before proposing a version, to match. If an install fails on it, wait, or use the previous release.
 
