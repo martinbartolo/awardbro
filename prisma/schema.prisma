@@ -52,6 +52,7 @@ model Category {
     description      String?
     revealed         Boolean      @default(false)
     isActive         Boolean      @default(false)
+    votingClosed     Boolean      @default(false) // The host stopped voting before the reveal
     type             CategoryType @default(NORMAL)
     rankingTop       Int? // How many to rank (e.g., 3 = top 3) - only for RANKING type
     hideVoteCounts   Boolean      @default(false) // Hide vote numbers in presentation, only show rankings
