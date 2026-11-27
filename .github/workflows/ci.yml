@@ -7,12 +7,64 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Superseded PR runs are cancelled; every push to dev or main gets a full run
+  # Superseded PR runs are cancelled; every push to dev or main gets its own run
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+  # Lets the changes job list a pull request's files
+  pull-requests: read
+
 jobs:
+  # Which parts of the repository changed, so each job below runs only when it can be affected.
+  # On a push, compared with the commit before the push.
+  changes:
+    name: Find what changed
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      database: ${{ steps.filter.outputs.database }}
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            # Anything that changes how every job installs and runs
+            setup: &setup
+              - .github/workflows/ci.yml
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - .node-version
+            # Lint, types, format and unit tests: any code or config
+            code:
+              - *setup
+              - "**/*.{ts,tsx,js,jsx,mjs,cjs,mdx,json}"
+            # Migrations and integration tests: the schema and the API
+            database:
+              - *setup
+              - prisma/**
+              - prisma.config.ts
+              - src/server/**
+              - src/lib/**
+              - src/test/**
+              - src/env.js
+              - vitest*.ts
+            # End-to-end tests: anything the running app is built from
+            app:
+              - *setup
+              - src/**
+              - e2e/**
+              - prisma/**
+              - public/**
+              - "*.config.{js,ts,cjs,mjs}"
+
   checks:
     name: Lint, types, format and tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       # next typegen loads next.config.js, which validates env vars that CI doesn't have
@@ -31,6 +83,8 @@ jobs:
 
   migrations:
     name: Migrations and integration tests
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
     runs-on: ubuntu-latest
     services:
       # Reused by the e2e job, which gets a container of its own
@@ -65,6 +119,8 @@ jobs:
 
   e2e:
     name: End-to-end tests
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     services:
       postgres: *postgres
@@ -99,3 +155,15 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  # The one check branch protection requires: it passes when every job above passed or was
+  # skipped because nothing it covers changed. Add new jobs to `needs`.
+  all-checks:
+    name: All checks
+    if: always()
+    needs: [changes, checks, migrations, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if a job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
