@@ -17,8 +17,6 @@ import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 /** Every query, called on a show the way its pages do */
 const queries = {
   getSession: (api, s) => api.getSession({ code: s.show.code }),
-  getSessionCategories: (api, s) =>
-    api.getSessionCategories({ sessionId: s.show.id }),
   getCategory: (api, s) => api.getCategory({ id: s.ranking.id }),
   getMyVotes: (api, s) => api.getMyVotes({ categoryId: s.ranking.id }),
   getPublicSessions: api => api.getPublicSessions(),
@@ -118,8 +116,12 @@ describe("a room code", () => {
 
     it("keeps an old link on its own show when its slug reads like another show's code", async () => {
       // Two shows from before room codes, the first given a code that reads like the second's
-      // slug when codes were added (new codes avoid slugs)
-      const { code } = await oldShow("first-show");
+      // slug when codes were added (new codes avoid slugs). The code has letters, so its lowercase
+      // form differs from it: a random one can be all digits.
+      const code = "K7QF";
+      await testDb.session.create({
+        data: { name: "Old Awards", slug: "first-show", code },
+      });
       const lookalike = await oldShow(code.toLowerCase());
 
       expect(await findShowCode(testDb, code.toLowerCase())).toBe(

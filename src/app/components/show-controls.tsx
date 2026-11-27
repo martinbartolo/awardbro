@@ -1,24 +1,15 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, RotateCcw, Trash } from "lucide-react";
+import { ArrowRight, ExternalLink, RotateCcw, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "~/components/ui/alert-dialog";
+import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { showPaths } from "~/lib/join";
 import { useTRPC } from "~/trpc/react";
 
 /** What the host needs to get the show going: the room code voters enter, and the big screen */
@@ -38,12 +29,21 @@ export function RunShowCard({ code }: { code: string }) {
           homepage.
         </p>
       </div>
-      <Button asChild size="lg" className="group shrink-0">
-        <Link href={`/present/${code}`} target="_blank">
-          Open Big Screen
-          <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
-        </Link>
-      </Button>
+      {/* The big screen in a new tab; the run view here, or on the host's phone */}
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+        <Button asChild size="lg" variant="outline">
+          <Link href={showPaths.present(code)} target="_blank">
+            Open Big Screen
+            <ExternalLink className="size-4" />
+          </Link>
+        </Button>
+        <Button asChild size="lg" className="group">
+          <Link href={showPaths.run(code)}>
+            Run the Show
+            <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
+          </Link>
+        </Button>
+      </div>
     </section>
   );
 }
@@ -88,59 +88,29 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
         These can&apos;t be undone.
       </p>
       <div className="flex flex-wrap gap-2">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline">
-              <RotateCcw className="size-4" />
-              Reset All Votes
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset all votes?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will remove all votes from all categories. This action
-                cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => resetAllVotes.mutate({ sessionId })}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Reset All Votes
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmButton
+          title="Reset all votes?"
+          description="This will remove all votes from all categories. This action cannot be undone."
+          confirmLabel="Reset All Votes"
+          onConfirm={() => resetAllVotes.mutate({ sessionId })}
+        >
+          <Button variant="outline">
+            <RotateCcw className="size-4" />
+            Reset All Votes
+          </Button>
+        </ConfirmButton>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive">
-              <Trash className="size-4" />
-              Delete Award Show
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete award show?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete your award show and all its data.
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteSession.mutate({ id: sessionId })}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete Show
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmButton
+          title="Delete award show?"
+          description="This will permanently delete your award show and all its data. This action cannot be undone."
+          confirmLabel="Delete Show"
+          onConfirm={() => deleteSession.mutate({ id: sessionId })}
+        >
+          <Button variant="destructive">
+            <Trash className="size-4" />
+            Delete Award Show
+          </Button>
+        </ConfirmButton>
       </div>
     </section>
   );

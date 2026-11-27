@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
+import { votingHasClosed } from "~/lib/stages";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
@@ -77,10 +78,10 @@ export function LivePresentation({
     }
   }, [isSessionError]);
 
-  // Voters can join while waiting and during voting. During a reveal, or an aggregate (which
-  // takes no votes), the join details move to a corner.
+  // Voters can join while waiting and during voting. Once voting has closed, during a reveal, or
+  // during an aggregate (which takes no votes), the join details move to a corner.
   const isVoting = session.categories.some(
-    category => !category.revealed && category.type !== "AGGREGATE",
+    category => !votingHasClosed(category) && category.type !== "AGGREGATE",
   );
 
   if (isSessionError) {
@@ -252,31 +253,49 @@ export function LivePresentation({
                                 </div>
                               )}
 
-                              {displayNominations.map((nomination, index) => {
-                                const isWinner =
-                                  hasWinner &&
-                                  nomination._count.votes === highestVoteCount;
+                              {displayNominations.length > 0 && (
+                                <ol
+                                  // Safari drops the list role of a list without bullets
+                                  role="list"
+                                  aria-label={`${category.name} results`}
+                                  className={`grid w-full grid-cols-1 gap-8 ${
+                                    category.winnerOnly
+                                      ? "place-items-center"
+                                      : ""
+                                  }`}
+                                >
+                                  {displayNominations.map(
+                                    (nomination, index) => {
+                                      const isWinner =
+                                        hasWinner &&
+                                        nomination._count.votes ===
+                                          highestVoteCount;
 
-                                return (
-                                  <div
-                                    key={nomination.id}
-                                    className={`${
-                                      isWinner
-                                        ? "col-span-1 w-full md:px-12"
-                                        : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
-                                    }`}
-                                  >
-                                    <WinnerAnimation
-                                      nomination={nomination}
-                                      index={index}
-                                      isWinner={isWinner}
-                                      isTied={isTied}
-                                      category={category}
-                                      hideVoteCounts={category.hideVoteCounts}
-                                    />
-                                  </div>
-                                );
-                              })}
+                                      return (
+                                        <li
+                                          key={nomination.id}
+                                          className={`${
+                                            isWinner
+                                              ? "col-span-1 w-full md:px-12"
+                                              : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
+                                          }`}
+                                        >
+                                          <WinnerAnimation
+                                            nomination={nomination}
+                                            index={index}
+                                            isWinner={isWinner}
+                                            isTied={isTied}
+                                            category={category}
+                                            hideVoteCounts={
+                                              category.hideVoteCounts
+                                            }
+                                          />
+                                        </li>
+                                      );
+                                    },
+                                  )}
+                                </ol>
+                              )}
                             </>
                           );
                         })()}
@@ -289,6 +308,7 @@ export function LivePresentation({
                       <LiveVoting
                         categoryId={category.id}
                         initialVoteCount={category.estimatedVoters ?? 0}
+                        closed={category.votingClosed}
                       />
                     )}
                   </motion.div>

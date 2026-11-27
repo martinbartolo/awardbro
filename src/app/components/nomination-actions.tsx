@@ -4,17 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "~/components/ui/alert-dialog";
+import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { isImageUrl } from "~/lib/images";
@@ -49,42 +39,32 @@ export function NominationActions({
   );
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          tooltip="Delete nomination"
-          className="h-8 w-8"
-          aria-label="Delete nomination"
-        >
-          <XIcon className="size-4" />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete nomination?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete &quot;{nominationName}&quot;
-            {nominationDescription &&
-            !isImage &&
-            !isImageUrl(nominationDescription)
-              ? ` (${nominationDescription})`
-              : ""}
-            ? This will permanently remove this nomination and all its votes.
-            This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => deleteNomination.mutate({ id: nominationId })}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Delete Nomination
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmButton
+      title="Delete nomination?"
+      description={
+        <>
+          Are you sure you want to delete &quot;{nominationName}&quot;
+          {nominationDescription &&
+          !isImage &&
+          !isImageUrl(nominationDescription)
+            ? ` (${nominationDescription})`
+            : ""}
+          ? This will permanently remove this nomination and all its votes. This
+          action cannot be undone.
+        </>
+      }
+      confirmLabel="Delete Nomination"
+      onConfirm={() => deleteNomination.mutate({ id: nominationId })}
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        tooltip="Delete nomination"
+        className="h-8 w-8"
+        aria-label="Delete nomination"
+      >
+        <XIcon className="size-4" />
+      </Button>
+    </ConfirmButton>
   );
 }

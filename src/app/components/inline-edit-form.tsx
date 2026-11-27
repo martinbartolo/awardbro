@@ -24,26 +24,41 @@ export function useCloseAfterRefresh(onDone: () => void) {
 }
 
 /**
- * A form that edits something in place on the manage page: focus moves into it when it opens,
- * Escape or Cancel closes it, and Save submits.
+ * A form that edits or adds something in place on the manage page: focus moves into it when it
+ * opens (unless `takeFocus` is false), Escape or Cancel closes it, and its submit button (Save,
+ * unless `submitLabel` says otherwise) submits.
  */
 export function InlineEditForm<T extends FieldValues>({
   form,
   onSubmit,
   onCancel,
   isSaving,
+  submitLabel = "Save",
+  savingLabel = "Saving...",
+  cancelLabel = "Cancel",
+  takeFocus = true,
   children,
 }: {
   form: UseFormReturn<T>;
   onSubmit: (values: T) => void;
   onCancel: () => void;
   isSaving: boolean;
+  submitLabel?: string;
+  /** The submit button's label while saving */
+  savingLabel?: string;
+  cancelLabel?: string;
+  /** False for a form that opens without the host asking, so it doesn't take focus */
+  takeFocus?: boolean;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLFormElement>(null);
   // Move focus into the form the host just opened
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>("input, textarea")?.focus();
+    if (takeFocus) {
+      ref.current?.querySelector<HTMLElement>("input, textarea")?.focus();
+    }
+    // Only when it opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -60,7 +75,7 @@ export function InlineEditForm<T extends FieldValues>({
         {children}
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+            {isSaving ? savingLabel : submitLabel}
           </Button>
           <Button
             type="button"
@@ -69,7 +84,7 @@ export function InlineEditForm<T extends FieldValues>({
             onClick={onCancel}
             disabled={isSaving}
           >
-            Cancel
+            {cancelLabel}
           </Button>
         </div>
       </form>

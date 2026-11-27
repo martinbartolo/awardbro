@@ -9,7 +9,7 @@ Run your own interactive award show. Create categories, let everyone vote from t
 - **No sign-up for voters.** Guests scan the QR code on the big screen, or type a short room code, and vote from any device.
 - **Live big-screen presentation** with vote tracking and animated winner reveals.
 - **Four category types:** classic votes, image votes, ranked top-N, and aggregate categories that combine results from others.
-- **Host controls:** open one category at a time, reveal when ready, hide vote counts or show only the winner.
+- **Host controls:** run the show from a laptop or phone, one category at a time: open voting, close it, reveal the winner (with vote counts, without them, or only the winner), next.
 - **Password-protected** manage page for each show.
 
 ## How it works

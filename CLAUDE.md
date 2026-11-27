@@ -8,7 +8,8 @@ Award show app: hosts build a show, voters vote from their phones, results are r
 ## Commands
 
 - `pnpm check` (types + lint) and `pnpm test` before every commit; `pnpm build` before every PR.
-- `pnpm test:integration` when changing the API or the schema. It needs `TEST_DATABASE_URL` pointing at a database named `*_test` (see "Integration tests" in @docs/development.md); CI runs it on every PR.
+- `pnpm test:integration` when changing the API or the schema. It needs `TEST_DATABASE_URL` pointing at a database named `*_test` (see "Integration tests" in @docs/development.md); CI runs it when the schema or the API changes.
+- `pnpm test:e2e` when changing pages or components (`src/app`): whole shows in a browser, against the same `*_test` database (see "End-to-end tests" in @docs/development.md); CI runs it when anything the app is built from changes.
 - Prisma has no global install: use `pnpm exec prisma …`.
 
 ## Workflow for every change

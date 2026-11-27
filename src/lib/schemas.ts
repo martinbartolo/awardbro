@@ -77,8 +77,6 @@ export const categoryFormSchema = z
     ...categoryFields,
     type: categoryTypeEnum,
     sourceCategories: sourceCategoriesField,
-    hideVoteCounts: z.boolean().optional(),
-    winnerOnly: z.boolean().optional(),
   })
   .refine(
     data => data.type !== "AGGREGATE" || data.sourceCategories.length > 0,

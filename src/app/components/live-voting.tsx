@@ -13,6 +13,8 @@ import { useTRPC } from "~/trpc/react";
 type LiveVotingProps = {
   categoryId: string;
   initialVoteCount: number;
+  /** The host has closed voting: the count is final, ahead of the reveal */
+  closed: boolean;
 };
 
 const containerVariants = {
@@ -36,7 +38,11 @@ const containerVariants = {
 
 const MAX_RETRIES = 3;
 
-export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
+export function LiveVoting({
+  categoryId,
+  initialVoteCount,
+  closed,
+}: LiveVotingProps) {
   const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const lastToastTimeRef = useRef(0);
 
@@ -45,7 +51,8 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
     trpc.award.getCategory.queryOptions(
       { id: categoryId },
       {
-        refetchInterval: 1000,
+        // Once voting has closed the count is final
+        refetchInterval: closed ? false : 1000,
         staleTime: 0,
         retry: MAX_RETRIES,
       },
@@ -174,25 +181,29 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
         </AnimatePresence>
       </motion.div>
 
-      <motion.div
-        className="flex justify-center space-x-2"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-      >
-        {[0, 1, 2].map(i => (
-          <motion.div
-            key={i}
-            className="h-3 w-3 rounded-full bg-white"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{
-              duration: 0.6,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </motion.div>
+      {closed ? (
+        <p className="text-2xl font-semibold">Voting has closed</p>
+      ) : (
+        <motion.div
+          className="flex justify-center space-x-2"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              className="h-3 w-3 rounded-full bg-white"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{
+                duration: 0.6,
+                repeat: Infinity,
+                delay: i * 0.2,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
+        </motion.div>
+      )}
     </motion.div>
   );
 }

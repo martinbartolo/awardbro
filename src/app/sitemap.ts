@@ -30,12 +30,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "monthly",
         priority: 0.9,
       },
-      {
-        url: "https://awardbro.com/help",
-        lastModified: new Date(),
-        changeFrequency: "monthly",
-        priority: 0.9,
-      },
       ...sessionUrls,
     ];
   } catch (error) {
@@ -50,12 +44,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
       {
         url: "https://awardbro.com/create",
-        lastModified: new Date(),
-        changeFrequency: "monthly",
-        priority: 0.9,
-      },
-      {
-        url: "https://awardbro.com/help",
         lastModified: new Date(),
         changeFrequency: "monthly",
         priority: 0.9,

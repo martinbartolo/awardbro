@@ -7,12 +7,69 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Superseded PR runs are cancelled; every push to dev or main gets a full run
+  # Superseded PR runs are cancelled; every push to dev or main gets its own run
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+  # Lets the changes job list a pull request's files
+  pull-requests: read
+
 jobs:
+  # Which parts of the repository changed, so each job below runs only when it can be affected.
+  # A pull request is compared with its base branch, a push with the commit before it.
+  changes:
+    name: Find what changed
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      database: ${{ steps.filter.outputs.database }}
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          # On a push to this branch, compare with the commit before the push (ignored for PRs)
+          base: ${{ github.ref_name }}
+          filters: |
+            # Anything that changes how every job installs and runs
+            setup: &setup
+              - .github/workflows/ci.yml
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - .node-version
+              - tsconfig.json
+            # Lint, types, format and unit tests: any code or config
+            code:
+              - *setup
+              - "**/*.{ts,tsx,js,jsx,mjs,cjs,mdx,json}"
+              # The Prisma client the code is type-checked against is generated from the schema
+              - prisma/**
+            # Migrations and integration tests: the schema and the API
+            database:
+              - *setup
+              - prisma/**
+              - prisma.config.ts
+              - src/server/**
+              - src/lib/**
+              - src/test/**
+              - src/env.js
+              - vitest*.ts
+            # End-to-end tests: anything the running app is built from
+            app:
+              - *setup
+              - src/**
+              - e2e/**
+              - prisma/**
+              - public/**
+              - "*.config.{js,ts,cjs,mjs}"
+
   checks:
     name: Lint, types, format and tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       # next typegen loads next.config.js, which validates env vars that CI doesn't have
@@ -31,9 +88,12 @@ jobs:
 
   migrations:
     name: Migrations and integration tests
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
     runs-on: ubuntu-latest
     services:
-      postgres:
+      # Reused by the e2e job, which gets a container of its own
+      postgres: &postgres
         image: postgres:16
         env:
           POSTGRES_USER: postgres
@@ -61,3 +121,76 @@ jobs:
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - name: Integration tests
         run: pnpm test:integration
+
+  e2e:
+    name: End-to-end tests
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres: *postgres
+    env:
+      # The tests build and start the app against this database (playwright.config.ts)
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/awardbro_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Lets `next build` reuse what it built for an earlier run
+      - name: Cache the Next.js build
+        uses: actions/cache@v6
+        with:
+          path: .next/cache
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**') }}
+          restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+      - name: Upload the report and traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  # The one check branch protection requires. It passes only when the changes job answered for
+  # every part, and every job whose part changed passed; the others were skipped. It fails closed:
+  # an empty or unexpected answer (a filter renamed, say) fails it instead of skipping everything.
+  # Add a new job to `needs` and to the list below.
+  all-checks:
+    name: All checks
+    if: always()
+    needs: [changes, checks, migrations, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every job that had to run passed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          JOBS: >-
+            checks ${{ needs.changes.outputs.code }} ${{ needs.checks.result }}
+            migrations ${{ needs.changes.outputs.database }} ${{ needs.migrations.result }}
+            e2e ${{ needs.changes.outputs.app }} ${{ needs.e2e.result }}
+        run: |
+          if [ "$CHANGES" != success ]; then
+            echo "::error::Finding what changed ended with: $CHANGES"; exit 1
+          fi
+          set -- $JOBS
+          while [ $# -gt 0 ]; do
+            job=$1; changed=$2; result=${3:-missing}
+            if [ "$#" -lt 3 ]; then
+              echo "::error::No answer from the changes job for $job"; exit 1
+            fi
+            case "$changed/$result" in
+              true/success | false/skipped) echo "$job: $result" ;;
+              *) echo "::error::$job: changed=$changed, result=$result"; exit 1 ;;
+            esac
+            shift 3
+          done

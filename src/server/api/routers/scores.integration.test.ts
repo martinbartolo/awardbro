@@ -35,6 +35,9 @@ const seenBy = async (who: Visitor) => {
     voters: category.estimatedVoters,
   };
 };
+/** The host sets how the normal category's reveal shows it */
+const present = (options: { hideVoteCounts?: boolean; winnerOnly?: boolean }) =>
+  host.api.setRevealOptions({ id: show.normal.id, ...options });
 const all = { Dune: 3, Barbie: 1, Oppenheimer: 0 };
 const none = { Dune: 0, Barbie: 0, Oppenheimer: 0 };
 
@@ -73,7 +76,7 @@ describe("scores after a category is revealed", () => {
   });
 
   it("only show the winners with winnerOnly", async () => {
-    await host.api.toggleWinnerOnly({ categoryId: show.normal.id });
+    await present({ winnerOnly: true });
     await reveal(host, show.normal.id);
 
     expect((await seenBy(visitor())).scores).toEqual({
@@ -85,7 +88,7 @@ describe("scores after a category is revealed", () => {
   });
 
   it("only show the order with hideVoteCounts", async () => {
-    await host.api.toggleHideVoteCounts({ categoryId: show.normal.id });
+    await present({ hideVoteCounts: true });
     await reveal(host, show.normal.id);
 
     expect((await seenBy(visitor())).scores).toEqual({
@@ -95,6 +98,22 @@ describe("scores after a category is revealed", () => {
     });
     expect((await seenBy(host)).scores).toEqual(all);
   });
+});
+
+it("sets the reveal options to the values given, leaving the others as they are", async () => {
+  const options = async () => {
+    const { hideVoteCounts, winnerOnly } = await host.api.getCategory({
+      id: show.normal.id,
+    });
+    return { hideVoteCounts, winnerOnly };
+  };
+
+  // Set to a value, not flipped, so a repeated click (or an out-of-date page) gives the same result
+  for (let i = 0; i < 2; i++) await present({ hideVoteCounts: true });
+  expect(await options()).toEqual({ hideVoteCounts: true, winnerOnly: false });
+
+  await present({ winnerOnly: true });
+  expect(await options()).toEqual({ hideVoteCounts: true, winnerOnly: true });
 });
 
 describe("an aggregate's scores", () => {
@@ -115,7 +134,7 @@ describe("an aggregate's scores", () => {
   });
 
   it("only show the order if a source hides its counts", async () => {
-    await host.api.toggleHideVoteCounts({ categoryId: show.normal.id });
+    await present({ hideVoteCounts: true });
     for (const id of [show.normal.id, show.ranking.id, show.aggregate.id]) {
       await reveal(host, id);
     }

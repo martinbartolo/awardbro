@@ -6,6 +6,7 @@ import {
   open,
   reveal,
   scoresByName,
+  setStage,
   type Show,
 } from "~/test/integration/show";
 import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
@@ -112,8 +113,12 @@ describe("voting in a normal category", () => {
 });
 
 describe("voting in other categories", () => {
-  it("rejects votes in an aggregate category, even while it's open", async () => {
-    await open(host, show.aggregate.id);
+  it("rejects votes in an aggregate category, even while it's on the big screen", async () => {
+    // Older shows could put an aggregate on the screen with voting open
+    await testDb.category.update({
+      where: { id: show.aggregate.id },
+      data: { isActive: true },
+    });
     const nomination = await testDb.nomination.findFirstOrThrow({
       where: { categoryId: show.aggregate.id },
     });
@@ -285,20 +290,118 @@ describe("after the host reveals the category", () => {
     await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
   });
 
-  it("accepts votes and rankings again once the results are hidden", async () => {
+  it("refuses votes and rankings once the host closes voting, before the reveal", async () => {
+    await open(host, show.normal.id);
+    await voteFor("Dune");
+    await setStage(host, show.normal.id, "closed");
+    await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
+
+    await open(host, show.ranking.id);
+    await setStage(host, show.ranking.id, "closed");
+    await expect(rank("Oppenheimer", "Dune")).rejects.toMatchObject(closed);
+
+    expect(await votesOf(voter)).toEqual({ "normal:Dune": null });
+  });
+
+  it("stays closed when the results are hidden again, and takes votes once reopened", async () => {
     await open(host, show.normal.id);
     await reveal(host, show.normal.id);
-    await reveal(host, show.normal.id, false);
+    await setStage(host, show.normal.id, "closed");
+    await expect(voteFor("Barbie")).rejects.toMatchObject(closed);
+
+    await open(host, show.normal.id);
     await voteFor("Barbie");
     await open(host, show.ranking.id);
     await reveal(host, show.ranking.id);
-    await reveal(host, show.ranking.id, false);
+    await open(host, show.ranking.id);
     await rank("Oppenheimer", "Dune");
 
     expect(await votesOf(voter)).toEqual({
       "normal:Barbie": null,
       "ranking:Oppenheimer": 1,
       "ranking:Dune": 2,
+    });
+  });
+});
+
+describe("the stages of the show", () => {
+  const state = async (categoryId: string) => {
+    const { isActive, votingClosed, revealed } =
+      await testDb.category.findUniqueOrThrow({ where: { id: categoryId } });
+    return { isActive, votingClosed, revealed };
+  };
+
+  it("put one category on the big screen at a time", async () => {
+    await open(host, show.normal.id);
+    await open(host, show.ranking.id);
+
+    expect(await state(show.normal.id)).toMatchObject({ isActive: false });
+    expect(await state(show.ranking.id)).toEqual({
+      isActive: true,
+      votingClosed: false,
+      revealed: false,
+    });
+  });
+
+  it("go from open to closed to revealed, and the same again from an out-of-date page", async () => {
+    await open(host, show.normal.id);
+    for (const stage of ["closed", "closed"] as const) {
+      await setStage(host, show.normal.id, stage);
+      expect(await state(show.normal.id)).toEqual({
+        isActive: true,
+        votingClosed: true,
+        revealed: false,
+      });
+    }
+    for (let i = 0; i < 2; i++) {
+      await reveal(host, show.normal.id);
+      expect(await state(show.normal.id)).toEqual({
+        isActive: true,
+        votingClosed: true,
+        revealed: true,
+      });
+    }
+  });
+
+  it("keep a revealed category revealed when it leaves the big screen", async () => {
+    await reveal(host, show.normal.id);
+    await setStage(host, show.normal.id, "off");
+
+    expect(await state(show.normal.id)).toEqual({
+      isActive: false,
+      votingClosed: true,
+      revealed: true,
+    });
+  });
+
+  it("refuse a step from an out-of-date page, rather than moving the category back", async () => {
+    await open(host, show.normal.id);
+    // Another device reveals it while this page still shows it as voting
+    await reveal(host, show.normal.id);
+
+    await expectError(
+      host.api.setCategoryStage({
+        id: show.normal.id,
+        stage: "closed",
+        from: "open",
+      }),
+      "CONFLICT",
+    );
+    expect(await state(show.normal.id)).toMatchObject({ revealed: true });
+  });
+
+  it("refuse to open voting in an aggregate", async () => {
+    await expectError(setStage(host, show.aggregate.id, "open"), "BAD_REQUEST");
+  });
+
+  it("can reveal an aggregate straight away, putting it on the big screen", async () => {
+    await open(host, show.normal.id);
+    await reveal(host, show.aggregate.id);
+
+    expect(await state(show.normal.id)).toMatchObject({ isActive: false });
+    expect(await state(show.aggregate.id)).toMatchObject({
+      isActive: true,
+      revealed: true,
     });
   });
 });
@@ -334,7 +437,8 @@ describe("scores", () => {
     const expected = { Dune: 2, Barbie: 2, Oppenheimer: 0 };
 
     const category = await visitor().api.getCategory({ id: show.aggregate.id });
-    await open(host, show.aggregate.id);
+    // On the big screen (an aggregate takes no votes, so it's never open)
+    await setStage(host, show.aggregate.id, "closed");
     const { categories } = await visitor().api.getSession({
       code: show.show.code,
       activeOnly: true,
@@ -370,7 +474,8 @@ describe("scores", () => {
         sourceCategories: [show.normal.id, show.ranking.id],
       });
     }
-    await open(host, show.aggregate.id);
+    // On the big screen (an aggregate takes no votes, so it's never open)
+    await setStage(host, show.aggregate.id, "closed");
 
     // The show with its categories, and its password to check access (in parallel);
     // aggregates are scored from sources loaded with the show

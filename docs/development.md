@@ -23,6 +23,7 @@ Local development uses the Neon `dev` branch, never production. Don't keep produ
 | `pnpm check`                        | Next types, ESLint and TypeScript. Run before every commit. Needs `.env.local` (`vercel env pull`) or `SKIP_ENV_VALIDATION=1`. |
 | `pnpm test`                         | Unit tests (Vitest). `pnpm test:watch` while developing.                                                                       |
 | `pnpm test:integration`             | Integration tests: the tRPC API against a real Postgres database. Needs `TEST_DATABASE_URL`, see below.                        |
+| `pnpm test:e2e`                     | End-to-end tests: whole shows in a browser (Playwright), against a production build. Needs `TEST_DATABASE_URL`, see below.     |
 | `pnpm build`                        | Production build. Run before opening a PR.                                                                                     |
 | `pnpm format:write`                 | Prettier                                                                                                                       |
 | `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below)                                                                 |
@@ -53,7 +54,7 @@ Only mention an issue ID in a PR that actually works on that issue: Linear links
    3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
    4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
 4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
-5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay and integration tests) and the Vercel preview. Both are required.
+5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests, each run only when what it covers changed) and the Vercel preview. Both are required.
 6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
 7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
@@ -78,6 +79,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 ### Repository settings
 
 - Squash merges are disabled, so a PR's commits land on `dev` as they are.
+- Branch protection on `dev` and `main` requires two checks: **All checks** (CI) and **Vercel**. CI's first job finds which parts of the repository a PR changed, and each job runs only when it can be affected: lint, types, format and unit tests on any code, config or the schema; migrations and integration tests on the schema and the API (`prisma/`, `src/server`, `src/lib`, `src/test`); end-to-end tests on anything the app is built from. A docs-only PR runs none of them. A change to the workflow, `package.json`, the lockfile or `tsconfig.json` runs them all. "All checks" passes only when every job whose part changed passed, and fails if the changes job gives no clear answer, so it's the only CI check to require. Add a new job to its `needs` and to its list of jobs, and its paths to the filters in `.github/workflows/ci.yml`.
 - Dependabot opens grouped dependency PRs against `dev` once a month.
 - pnpm refuses package versions published less than a day ago (`minimumReleaseAge`, its default since pnpm 11), to keep a freshly compromised release out. Dependabot waits a day before proposing a version, to match. If an install fails on it, wait, or use the previous release.
 
@@ -106,7 +108,7 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 
 ## Integration tests
 
-`pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service on every PR.
+`pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service whenever the schema or the API changes (see "Repository settings").
 
 To protect real data, the tests only run against a database whose name ends in `_test`, given by `TEST_DATABASE_URL` in the shell (it isn't read from `.env.local`). `dev` and production are both called `neondb`, so they are refused. Locally, use any Postgres, or a throwaway Neon branch with its own empty database:
 
@@ -120,6 +122,23 @@ neonctl branches delete test-bar-123
 A full run takes about 20 seconds in CI. Against Neon from further away it takes a few minutes, since every call is a round trip to Frankfurt.
 
 The app's client uses Neon's serverless driver, which can't reach a plain Postgres server, so the tests swap in the standard `pg` driver (`src/test/integration/db.ts`). The router code and its queries are the same.
+
+## End-to-end tests
+
+`pnpm test:e2e` runs whole shows in Chromium with Playwright (`e2e/*.spec.ts`): a host sets up a category of each type, guests vote on phone-sized pages (changing a vote and a ranking), and the big screen shows each result and the presentation options as the host reveals them. Other tests check the manage page's password. Every person gets a browser of their own, so they share no cookies. CI runs them whenever anything the app is built from changes (see "Repository settings").
+
+The tests build the app (`pnpm build && pnpm start`, on port 3200 or `E2E_PORT`; the build replaces `.next`, so stop a local `pnpm start` first) and point it at `TEST_DATABASE_URL`, the same `_test` database as the integration tests, after applying the migrations. Every test creates its own show, so they don't empty the database and can run side by side. Don't run them at the same time as the integration tests on one database. The app uses the standard `pg` driver for it (`DATABASE_DRIVER=pg`, see `src/server/db.ts`), which works against Neon too. Pictures in image categories come from `https://pictures.e2e.test`, which the tests answer themselves.
+
+Once, after `pnpm install`: `pnpm exec playwright install chromium`. Then, with a database as in "Integration tests":
+
+```bash
+TEST_DATABASE_URL="…/awardbro_test" pnpm test:e2e
+pnpm exec playwright show-report   # after a failure: steps, screenshots and traces
+```
+
+A run takes about 2 minutes here, most of it the build and the polling pages (every 5 s). In CI, a failed run uploads the report as the `playwright-report` artifact.
+
+Locate elements the way people find them (roles, labels and visible text, through the helpers in `e2e/show.ts`), not by class names, so the tests keep working through a redesign. If a test can't find something by its role or label, give the element one: that helps screen reader users too.
 
 ## Environments
 

@@ -4,6 +4,7 @@ import { cache } from "react";
 
 import { notFound, permanentRedirect } from "next/navigation";
 
+import { showPaths } from "~/lib/join";
 import { db } from "~/server/db";
 
 /**
@@ -36,11 +37,11 @@ const findShowCodeOnce = cache((param: string) => findShowCode(db, param));
  * form of the URL (an old slug link, a lowercase code) redirects permanently to the code URL.
  */
 export const showPageCode = async (
-  page: "vote" | "manage" | "present",
+  page: keyof typeof showPaths,
   param: string,
 ) => {
   const code = await findShowCodeOnce(param);
   if (!code) notFound();
-  if (code !== param) permanentRedirect(`/${page}/${code}`);
+  if (code !== param) permanentRedirect(showPaths[page](code));
   return code;
 };
