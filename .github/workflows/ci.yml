@@ -38,6 +38,7 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - .node-version
+              - tsconfig.json
             # Lint, types, format and unit tests: any code or config
             code:
               - *setup
