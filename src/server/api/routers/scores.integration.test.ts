@@ -35,6 +35,13 @@ const seenBy = async (who: Visitor) => {
     voters: category.estimatedVoters,
   };
 };
+/** The host sets how the normal category's reveal shows it */
+const present = (options: { hideVoteCounts?: boolean; winnerOnly?: boolean }) =>
+  host.api.updateCategory({
+    id: show.normal.id,
+    name: show.normal.name,
+    ...options,
+  });
 const all = { Dune: 3, Barbie: 1, Oppenheimer: 0 };
 const none = { Dune: 0, Barbie: 0, Oppenheimer: 0 };
 
@@ -73,7 +80,7 @@ describe("scores after a category is revealed", () => {
   });
 
   it("only show the winners with winnerOnly", async () => {
-    await host.api.toggleWinnerOnly({ categoryId: show.normal.id });
+    await present({ winnerOnly: true });
     await reveal(host, show.normal.id);
 
     expect((await seenBy(visitor())).scores).toEqual({
@@ -85,7 +92,7 @@ describe("scores after a category is revealed", () => {
   });
 
   it("only show the order with hideVoteCounts", async () => {
-    await host.api.toggleHideVoteCounts({ categoryId: show.normal.id });
+    await present({ hideVoteCounts: true });
     await reveal(host, show.normal.id);
 
     expect((await seenBy(visitor())).scores).toEqual({
@@ -115,7 +122,7 @@ describe("an aggregate's scores", () => {
   });
 
   it("only show the order if a source hides its counts", async () => {
-    await host.api.toggleHideVoteCounts({ categoryId: show.normal.id });
+    await present({ hideVoteCounts: true });
     for (const id of [show.normal.id, show.ranking.id, show.aggregate.id]) {
       await reveal(host, id);
     }

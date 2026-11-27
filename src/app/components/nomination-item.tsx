@@ -30,9 +30,9 @@ import { useTRPC } from "~/trpc/react";
 type Nomination = { id: string; name: string; description: string | null };
 
 /**
- * A nomination on the manage page: its name, description and score, with buttons to edit it in
- * place or delete it. Nominations of an aggregate are copies of its sources', so they can't be
- * edited there.
+ * A nomination on the manage page, as a row of its category's list: its name, description (a
+ * thumbnail for a picture) and score, with buttons to edit it in place or delete it. Nominations
+ * of an aggregate are copies of its sources', so they can't be edited there.
  */
 export function NominationItem({
   nomination,
@@ -50,7 +50,7 @@ export function NominationItem({
   const [editing, setEditing] = useState(false);
 
   return (
-    <div className="bg-secondary hover:bg-secondary/80 rounded-lg p-4 transition-colors">
+    <li className="px-3 py-2">
       {editing ? (
         <EditNominationForm
           nomination={nomination}
@@ -58,19 +58,29 @@ export function NominationItem({
           onDone={() => setEditing(false)}
         />
       ) : (
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="text-secondary-foreground font-semibold">
-              {nomination.name}
-            </div>
+        <div className="flex items-center gap-3">
+          {isImage && (
             <NominationDescription
               description={nomination.description}
-              isImage={isImage}
-              className="text-muted-foreground mt-1 text-sm"
-              imageClassName="mt-1 h-48"
+              isImage
+              thumbnail
+              imageClassName="h-10 w-14 shrink-0"
             />
-            <div className="text-accent mt-2 text-sm">{score}</div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-medium">{nomination.name}</div>
+            {!isImage && (
+              <NominationDescription
+                description={nomination.description}
+                thumbnail
+                className="text-muted-foreground line-clamp-1 text-xs"
+                imageClassName="mt-1 h-10 w-14"
+              />
+            )}
           </div>
+          <span className="text-muted-foreground text-xs whitespace-nowrap">
+            {score}
+          </span>
           <div className="flex shrink-0 gap-1">
             {categoryType !== "AGGREGATE" && (
               <Button
@@ -92,7 +102,7 @@ export function NominationItem({
           </div>
         </div>
       )}
-    </div>
+    </li>
   );
 }
 

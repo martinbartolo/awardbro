@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useTransition } from "react";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -35,15 +35,10 @@ export function MoveCategoryButtons({
   const moved = useRef<"up" | "down" | null>(null);
 
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const onManageError = useManageErrorHandler();
   const move = useMutation(
     trpc.award.moveCategory.mutationOptions({
       onSuccess: () => {
-        // The add-category form lists the categories as aggregate sources, in this order
-        void queryClient.invalidateQueries(
-          trpc.award.getSessionCategories.pathFilter(),
-        );
         startRefresh(() => router.refresh());
       },
       onError: onManageError("Failed to move category"),

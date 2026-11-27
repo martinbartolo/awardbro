@@ -34,7 +34,7 @@ test("the manage page asks anyone but the host for the password", async ({
     guest.getByRole("heading", { name: "Office Awards", level: 1 }),
   ).toBeVisible();
   await expect(
-    guest.getByRole("button", { name: "Add Category" }),
+    guest.getByRole("button", { name: "Add category" }),
   ).toBeVisible();
 });
 

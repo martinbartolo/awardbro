@@ -335,6 +335,36 @@ describe("editing a category", () => {
     });
   });
 
+  it("sets how its reveal shows it, and leaves that alone when an edit doesn't say", async () => {
+    const { host, show } = await votedShow();
+    const options = async () => {
+      const { hideVoteCounts, winnerOnly } = await host.api.getCategory({
+        id: show.normal.id,
+      });
+      return { hideVoteCounts, winnerOnly };
+    };
+
+    // Set to a value, not flipped, so saving twice (or from an old page) gives the same result
+    for (let i = 0; i < 2; i++) {
+      await host.api.updateCategory({
+        id: show.normal.id,
+        name: "Best Film",
+        hideVoteCounts: true,
+        winnerOnly: false,
+      });
+    }
+    expect(await options()).toEqual({
+      hideVoteCounts: true,
+      winnerOnly: false,
+    });
+
+    await host.api.updateCategory({ id: show.normal.id, name: "Best Picture" });
+    expect(await options()).toEqual({
+      hideVoteCounts: true,
+      winnerOnly: false,
+    });
+  });
+
   it("refuses to change a ranking's places once someone has voted", async () => {
     const { host, show } = await votedShow();
 

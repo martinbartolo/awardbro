@@ -88,26 +88,30 @@ export async function addCategory(
     sources?: string[];
   },
 ) {
-  const form = host
-    .locator("form")
-    .filter({ has: host.getByRole("button", { name: "Add Category" }) });
-  await form.getByRole("combobox").click();
-  await host
-    .getByRole("option", { name: TYPE_LABELS[type], exact: true })
-    .click();
-  if (rankingTop)
+  await host.getByRole("button", { name: "Add category" }).click();
+  const form = host.getByRole("region", { name: "Add category" });
+  // Each type is a card to click, with a radio button named after the type
+  const choice = form.getByRole("radio", {
+    name: TYPE_LABELS[type],
+    exact: true,
+  });
+  await form.getByText(TYPE_LABELS[type], { exact: true }).click();
+  await expect(choice).toBeChecked();
+  if (rankingTop) {
     await form.getByLabel("How many to rank?").fill(String(rankingTop));
+  }
   await form.getByLabel("Category Name").fill(name);
   for (const source of sources) {
     await form.getByRole("checkbox", { name: source, exact: true }).check();
   }
-  await form.getByRole("button", { name: "Add Category" }).click();
+  await form.getByRole("button", { name: "Add category" }).click();
   await expect(categoryCard(host, name)).toBeVisible();
 }
 
 /**
  * Adds a nomination to a category. In an image category `description` is the picture's link, and
- * the form saves only once its preview has loaded.
+ * the form saves only once its preview has loaded. The form stays open for the next one, and is
+ * already open for a category the host just added.
  */
 export async function addNomination(
   host: Page,
@@ -115,7 +119,11 @@ export async function addNomination(
   { name, description }: { name: string; description?: string },
 ) {
   const card = categoryCard(host, category);
-  await card.getByLabel(/^(Nomination Name|Image Caption)$/).fill(name);
+  const nameField = card.getByLabel(/^(Nomination Name|Image Caption)$/);
+  if (!(await nameField.isVisible())) {
+    await card.getByRole("button", { name: "Add nomination" }).click();
+  }
+  await nameField.fill(name);
   if (description) {
     await card
       .getByLabel(/^(Description \(Optional\)|Picture Link)$/)
@@ -124,7 +132,7 @@ export async function addNomination(
       await expect(card.getByAltText("Preview")).toBeVisible();
     }
   }
-  await card.getByRole("button", { name: "Add Nomination" }).click();
+  await card.getByRole("button", { name: "Add nomination" }).click();
   await expect(card.getByText(name, { exact: true })).toBeVisible();
 }
 
@@ -142,6 +150,32 @@ export async function revealCategory(host: Page, category: string) {
   const card = categoryCard(host, category);
   await card.getByRole("button", { name: "Reveal Winner" }).click();
   await expect(card.getByRole("button", { name: "Hide Winner" })).toBeVisible();
+}
+
+/**
+ * The host sets how a category's reveal shows it, in its edit form. Options left out stay as
+ * they are.
+ */
+export async function setPresentation(
+  host: Page,
+  category: string,
+  options: { hideVoteCounts?: boolean; winnerOnly?: boolean },
+) {
+  const card = categoryCard(host, category);
+  await card.getByRole("button", { name: "Edit category" }).click();
+  const labels = {
+    hideVoteCounts: "Hide vote counts",
+    winnerOnly: "Winner only",
+  };
+  for (const [option, checked] of Object.entries(options)) {
+    await card
+      .getByRole("checkbox", { name: labels[option as keyof typeof labels] })
+      .setChecked(checked);
+  }
+  await card.getByRole("button", { name: "Save" }).click();
+  await expect(
+    card.getByRole("button", { name: "Edit category" }),
+  ).toBeVisible();
 }
 
 /** A voter waits for the host to present a category */

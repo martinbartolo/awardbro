@@ -3,27 +3,28 @@
 import { createContext, use, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { type Control, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import {
+  CategoryFields,
+  type CategoryFieldValues,
+} from "~/app/components/category-fields";
 import {
   InlineEditForm,
   useCloseAfterRefresh,
 } from "~/app/components/inline-edit-form";
-import { SourceCategoryCheckboxes } from "~/app/components/source-category-checkboxes";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   FormControl,
   FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from "~/components/ui/form";
-import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { categoryUpdateSchema, type CategoryUpdateValues } from "~/lib/schemas";
@@ -38,6 +39,8 @@ type EditableCategory = {
   sourceCategoryIds: string[];
   /** Whether anyone has voted in it, which fixes a ranking's number of places */
   hasVotes: boolean;
+  hideVoteCounts: boolean;
+  winnerOnly: boolean;
 };
 
 const EditingContext = createContext<(() => void) | null>(null);
@@ -97,17 +100,21 @@ function EditCategoryForm({
   sourceOptions: { id: string; name: string }[];
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
   const form = useForm<CategoryUpdateValues>({
     resolver: zodResolver(categoryUpdateSchema),
     defaultValues: {
       id: category.id,
       name: category.name,
       description: category.description ?? "",
-      rankingTop: category.rankingTop ?? undefined,
+      // Left out (so unchanged) once people have voted: it can't change then
+      rankingTop: category.hasVotes
+        ? undefined
+        : (category.rankingTop ?? undefined),
       // Only an aggregate has sources; sending none would be refused
       sourceCategories:
         category.type === "AGGREGATE" ? category.sourceCategoryIds : undefined,
+      hideVoteCounts: category.hideVoteCounts,
+      winnerOnly: category.winnerOnly,
     },
   });
   const { close, isRefreshing } = useCloseAfterRefresh(onDone);
@@ -118,10 +125,6 @@ function EditCategoryForm({
     trpc.award.updateCategory.mutationOptions({
       onSuccess: () => {
         toast.success("Category updated");
-        // The add-category form lists category names as aggregate sources
-        void queryClient.invalidateQueries(
-          trpc.award.getSessionCategories.pathFilter(),
-        );
         close();
       },
       onError: onManageError(),
@@ -135,90 +138,68 @@ function EditCategoryForm({
       onCancel={onDone}
       isSaving={update.isPending || isRefreshing}
     >
-      <FormField
-        control={form.control}
-        name="name"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Category Name</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Description (Optional)</FormLabel>
-            <FormControl>
-              <Textarea {...field} rows={2} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+      <CategoryFields
+        control={form.control as unknown as Control<CategoryFieldValues>}
+        type={category.type}
+        sourceOptions={sourceOptions}
+        lockedPlaces={category.hasVotes ? category.rankingTop : null}
       />
 
-      {category.type === "RANKING" && (
-        <FormField
+      <fieldset className="space-y-3">
+        <legend className="mb-2 text-sm font-medium">Presentation</legend>
+        <PresentationOption
           control={form.control}
-          name="rankingTop"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>How many to rank?</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min={2}
-                  max={10}
-                  disabled={category.hasVotes}
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={e =>
-                    field.onChange(
-                      e.target.value === ""
-                        ? undefined
-                        : parseInt(e.target.value, 10),
-                    )
-                  }
-                  className="w-24"
-                />
-              </FormControl>
-              <FormDescription>
-                {category.hasVotes
-                  ? "People have already voted, and changing this would change their points. Reset the category's votes to change it."
-                  : `1st place gets ${field.value ?? "N"} points, 2nd gets one fewer, and so on.`}
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+          name="hideVoteCounts"
+          label="Hide vote counts"
+          description="The reveal shows the order without numbers."
         />
-      )}
-
-      {category.type === "AGGREGATE" && (
-        <FormField
+        <PresentationOption
           control={form.control}
-          name="sourceCategories"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Source Categories</FormLabel>
-              <FormDescription>
-                Nominations with the same name in these categories have their
-                scores added up.
-              </FormDescription>
-              <SourceCategoryCheckboxes
-                options={sourceOptions}
-                value={field.value ?? []}
-                onChange={field.onChange}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
+          name="winnerOnly"
+          label="Winner only"
+          description="The reveal shows only first place."
         />
-      )}
+        {category.type === "AGGREGATE" && (
+          <p className="text-muted-foreground text-sm">
+            The options of the categories it adds up apply too: if one hides its
+            counts or shows only its winner, this shows only the order.
+          </p>
+        )}
+      </fieldset>
     </InlineEditForm>
+  );
+}
+
+/** One of the options for how a category's reveal shows it on the big screen */
+function PresentationOption({
+  control,
+  name,
+  label,
+  description,
+}: {
+  control: Control<CategoryUpdateValues>;
+  name: "hideVoteCounts" | "winnerOnly";
+  label: string;
+  description: string;
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem className="flex flex-row items-start gap-3 space-y-0">
+          <FormControl>
+            <Checkbox
+              checked={field.value ?? false}
+              onCheckedChange={checked => field.onChange(checked === true)}
+            />
+          </FormControl>
+          <div className="space-y-1 leading-none">
+            <FormLabel>{label}</FormLabel>
+            <FormDescription>{description}</FormDescription>
+          </div>
+        </FormItem>
+      )}
+    />
   );
 }

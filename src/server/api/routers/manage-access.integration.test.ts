@@ -48,10 +48,6 @@ const writeRoutes = {
     api.setActiveCategory({ categoryId: s.normal.id, active: true }),
   setCategoryRevealed: (api, s) =>
     api.setCategoryRevealed({ id: s.normal.id, revealed: true }),
-  toggleHideVoteCounts: (api, s) =>
-    api.toggleHideVoteCounts({ categoryId: s.normal.id }),
-  toggleWinnerOnly: (api, s) =>
-    api.toggleWinnerOnly({ categoryId: s.normal.id }),
   resetCategoryVotes: (api, s) =>
     api.resetCategoryVotes({ categoryId: s.normal.id }),
   resetAllVotes: (api, s) => api.resetAllVotes({ sessionId: s.show.id }),

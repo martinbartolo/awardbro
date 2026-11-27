@@ -86,17 +86,6 @@ describe("the running order", () => {
     expect(await runningOrder(show)).toEqual(["A", "B", "C", "D"]);
   });
 
-  it("lists aggregate sources in the running order", async () => {
-    const { show, move } = await lettersShow();
-    await move("D", "up");
-
-    const sources = await visitor().api.getSessionCategories({
-      sessionId: show.show.id,
-    });
-
-    expect(sources.map(c => c.name)).toEqual(["A", "B", "D", "C"]);
-  });
-
   it("lists an aggregate's sources in the running order", async () => {
     const { ids, addAggregate, move } = await lettersShow();
     const overall = await addAggregate([ids.D!, ids.A!, ids.C!]);

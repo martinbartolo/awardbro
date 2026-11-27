@@ -602,22 +602,6 @@ export const awardRouter = createTRPCRouter({
       };
     }),
 
-  getSessionCategories: publicProcedure
-    .input(z.object({ sessionId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      return ctx.db.category.findMany({
-        where: {
-          sessionId: input.sessionId,
-          type: { not: "AGGREGATE" }, // Only return non-aggregate categories as sources
-        },
-        orderBy: runningOrder,
-        select: {
-          id: true,
-          name: true,
-        },
-      });
-    }),
-
   addCategory: publicProcedure
     .input(categoryFormSchema)
     .mutation(async ({ ctx, input }) => {
@@ -647,8 +631,6 @@ export const awardRouter = createTRPCRouter({
                 description: input.description,
                 type: input.type as CategoryType,
                 rankingTop: input.type === "RANKING" ? input.rankingTop : null,
-                hideVoteCounts: input.hideVoteCounts ?? false,
-                winnerOnly: input.winnerOnly ?? false,
                 sourceCategories: sourceIds.length
                   ? { connect: sourceIds.map(id => ({ id })) }
                   : undefined,
@@ -735,6 +717,8 @@ export const awardRouter = createTRPCRouter({
                 name: input.name,
                 description: input.description,
                 rankingTop,
+                hideVoteCounts: input.hideVoteCounts,
+                winnerOnly: input.winnerOnly,
                 sourceCategories: sourcesChanged
                   ? { set: sourceIds.map(id => ({ id })) }
                   : undefined,
@@ -850,50 +834,6 @@ export const awardRouter = createTRPCRouter({
           data: { revealed: input.revealed },
         }),
       );
-    }),
-
-  toggleHideVoteCounts: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.categoryId });
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.categoryId },
-        select: { hideVoteCounts: true },
-      });
-
-      if (!category) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
-        });
-      }
-
-      return ctx.db.category.update({
-        where: { id: input.categoryId },
-        data: { hideVoteCounts: !category.hideVoteCounts },
-      });
-    }),
-
-  toggleWinnerOnly: publicProcedure
-    .input(z.object({ categoryId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.categoryId });
-      const category = await ctx.db.category.findUnique({
-        where: { id: input.categoryId },
-        select: { winnerOnly: true },
-      });
-
-      if (!category) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Category not found",
-        });
-      }
-
-      return ctx.db.category.update({
-        where: { id: input.categoryId },
-        data: { winnerOnly: !category.winnerOnly },
-      });
     }),
 
   addNomination: publicProcedure
