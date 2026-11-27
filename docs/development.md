@@ -140,6 +140,24 @@ A run takes about 2 minutes here, most of it the build. In CI, a failed run uplo
 
 Locate elements the way people find them (roles, labels and visible text, through the helpers in `e2e/show.ts`), not by class names, so the tests keep working through a redesign. If a test can't find something by its role or label, give the element one: that helps screen reader users too.
 
+## Load test
+
+`scripts/load-test.ts` runs a simulated live show against a deployment: a host on the run view, a big screen and 300 voters' phones. The voters join over 15 seconds, then vote in a burst of 10 seconds when the host opens each category, a normal one (some change their vote) and a ranking. The host then closes and reveals it. Each simulated page fetches what the real one does when its stream opens and on each event. The script reports:
+
+- each request's time and failures
+- how fast each host action reached every page
+- whether the big screen showed every vote, and how soon after the last one
+- with `LOAD_TEST_DATABASE_URL`, the database connections the show used, including the instances listening for events (their connections are named `awardbro-events`)
+
+Run it against a preview, never production: it creates a show (deleted at the end, even if the script fails) and makes hundreds of votes. It asks `vercel inspect` whether the URL is a preview and refuses anything else, so it needs the Vercel CLI logged in and the project linked. Previews share the `dev` database, so tell anyone using it first.
+
+```bash
+node scripts/load-test.ts https://awardbro-<id>-bartolo.vercel.app [--voters 300] [--join 15] [--burst 10]
+LOAD_TEST_DATABASE_URL="<the dev branch's direct URL>" node scripts/load-test.ts …
+```
+
+The results of the first run, before the first live show, are in BAR-20.
+
 ## Environments
 
 | Environment | Trigger                           | Database           |
