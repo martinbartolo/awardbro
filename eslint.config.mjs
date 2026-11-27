@@ -24,6 +24,9 @@ export default [
       ".contentlayer/**",
       "public/**",
       "src/generated/prisma/**",
+      // Playwright's output: a failed run's report includes the trace viewer's bundled code
+      "playwright-report/**",
+      "test-results/**",
     ],
   },
 
