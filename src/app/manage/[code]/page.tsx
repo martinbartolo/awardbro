@@ -1,6 +1,4 @@
-import { CircleQuestionMark } from "lucide-react";
 import { type Metadata } from "next";
-import Link from "next/link";
 
 import { AddCategory } from "~/app/components/add-category-form";
 import { AddNomination } from "~/app/components/add-nomination-form";
@@ -20,7 +18,6 @@ import { MoveCategoryButtons } from "~/app/components/move-category-buttons";
 import { NominationItem } from "~/app/components/nomination-item";
 import { PasswordPage } from "~/app/components/password-verification";
 import { DangerZone, RunShowCard } from "~/app/components/show-controls";
-import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { showsPictures } from "~/lib/images";
 import { getScoreLabel } from "~/lib/scoring";
@@ -66,28 +63,12 @@ export default async function ManagePage({
   return (
     <main className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        {/* Header Section */}
-        <div className="mb-6 px-1">
-          <div className="flex flex-col gap-6">
-            {/* Title Row */}
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-foreground text-3xl font-bold sm:text-4xl">
-                  {session.name}
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Manage your award show
-                </p>
-              </div>
-              <Button asChild variant="ghost" size="sm" className="shrink-0">
-                <Link href="/help" target="_blank">
-                  <CircleQuestionMark className="h-4 w-4" />
-                  Help
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
+        <header className="mb-6 px-1">
+          <h1 className="text-foreground text-3xl font-bold sm:text-4xl">
+            {session.name}
+          </h1>
+          <p className="text-muted-foreground mt-1">Manage your award show</p>
+        </header>
 
         <RunShowCard code={code} />
 
