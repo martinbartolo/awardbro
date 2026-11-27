@@ -474,7 +474,8 @@ describe("scores", () => {
         sourceCategories: [show.normal.id, show.ranking.id],
       });
     }
-    await open(host, show.aggregate.id);
+    // On the big screen (an aggregate takes no votes, so it's never open)
+    await setStage(host, show.aggregate.id, "closed");
 
     // The show with its categories, and its password to check access (in parallel);
     // aggregates are scored from sources loaded with the show
