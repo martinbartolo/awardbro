@@ -34,6 +34,7 @@ const { db, tx } = vi.hoisted(() => ({
       delete: vi.fn(),
       findMany: vi.fn(),
     },
+    session: { delete: vi.fn() },
     vote: {
       deleteMany: vi.fn(),
       create: vi.fn(),
@@ -73,18 +74,9 @@ beforeEach(() => {
     rankingTop: null,
   };
   db.session.findFirst.mockResolvedValue({ id: "show", password: null });
-  // Stand-ins for the queries, so the tests can see what was batched
-  db.$queryRaw.mockReturnValue("lock-show");
-  db.category.updateMany.mockReturnValue("deactivate-all");
-  db.category.update.mockReturnValue("update-one");
-  db.category.delete.mockReturnValue("delete-category");
-  db.nomination.delete.mockReturnValue("delete-nomination");
-  db.session.delete.mockReturnValue("delete-show");
-  db.vote.deleteMany.mockReturnValue("delete-votes");
-  // A batch returns its queries; an interactive transaction runs with `tx`
-  db.$transaction.mockImplementation(
-    (arg: unknown[] | ((client: typeof tx) => unknown)) =>
-      typeof arg === "function" ? arg(tx) : Promise.resolve(arg),
+  // Every write runs in an interactive transaction, with `tx`
+  db.$transaction.mockImplementation((write: (client: typeof tx) => unknown) =>
+    write(tx),
   );
   // The show lock returns nothing; the device lock query returns the category
   tx.$queryRaw.mockImplementation((sql: TemplateStringsArray) =>
@@ -415,22 +407,27 @@ describe("host actions that take the show's lock", () => {
     [
       "resetCategoryVotes",
       () => caller.award.resetCategoryVotes({ categoryId: "b" }),
-      "delete-votes",
+      tx.vote.deleteMany,
     ],
     [
       "resetAllVotes",
       () => caller.award.resetAllVotes({ sessionId: "show" }),
-      "delete-votes",
+      tx.vote.deleteMany,
     ],
     [
       "deleteSession",
       () => caller.award.deleteSession({ id: "show" }),
-      "delete-show",
+      tx.session.delete,
     ],
-  ])("%s holds the show's lock", async (_, run, query) => {
+  ])("%s holds the show's lock", async (_, run, write) => {
     await run();
 
-    expect(db.$transaction).toHaveBeenCalledWith(["lock-show", query]);
+    // The lock comes with the notification for the show's pages, sent when the write commits
+    const lock = JSON.stringify(tx.$queryRaw.mock.calls[0]);
+    expect(lock).toContain("pg_advisory_xact_lock(");
+    expect(lock).toContain("pg_notify(");
+    const [locked, written] = callOrder(tx.$queryRaw, write);
+    expect(locked).toBeLessThan(written!);
   });
 
   it.each([

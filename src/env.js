@@ -8,7 +8,8 @@ export const env = createEnv({
    */
   server: {
     DATABASE_URL: z.url(),
-    DATABASE_DIRECT_URL: z.url().optional(),
+    // Direct (unpooled) connection: migrations, and listening for live events (event-hub.ts)
+    DATABASE_DIRECT_URL: z.url(),
     // "pg" for a plain Postgres server (the end-to-end tests); Neon's serverless driver otherwise
     DATABASE_DRIVER: z.literal("pg").optional(),
     // Signs manage-access cookies. Generate with: openssl rand -base64 32
