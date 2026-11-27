@@ -202,6 +202,9 @@ importers:
       '@prisma/adapter-neon':
         specifier: ^7.10.1
         version: 7.10.1
+      '@prisma/adapter-pg':
+        specifier: ^7.10.1
+        version: 7.10.1
       '@prisma/client':
         specifier: ^7.10.1
         version: 7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3)
@@ -299,9 +302,6 @@ importers:
       '@next/eslint-plugin-next':
         specifier: 16.4.6
         version: 16.4.6(eslint@10.15.0(jiti@2.7.0))
-      '@prisma/adapter-pg':
-        specifier: ^7.10.1
-        version: 7.10.1
       '@tailwindcss/postcss':
         specifier: ^4.3.5
         version: 4.3.5

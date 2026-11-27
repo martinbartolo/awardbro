@@ -9,6 +9,8 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.url(),
     DATABASE_DIRECT_URL: z.url().optional(),
+    // "pg" for a plain Postgres server (the end-to-end tests); Neon's serverless driver otherwise
+    DATABASE_DRIVER: z.literal("pg").optional(),
     // Signs manage-access cookies. Generate with: openssl rand -base64 32
     AUTH_SECRET: z.string().min(32),
   },
@@ -29,6 +31,7 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_DIRECT_URL: process.env.DATABASE_DIRECT_URL,
+    DATABASE_DRIVER: process.env.DATABASE_DRIVER,
     AUTH_SECRET: process.env.AUTH_SECRET,
   },
   /**
