@@ -6,15 +6,17 @@ How AwardBro works. For setup and day-to-day workflow, see [development.md](deve
 
 A **host** creates an award show (a `Session`), adds categories and nominations on the manage page, and runs the show from its run view, on a laptop or a phone. **Voters** join on their phones, by scanning the QR code on the big screen or typing the room code on the homepage, and vote in whichever category is currently active. A **big screen** shows the present page, which displays the active category and reveals results.
 
-| Route                   | Who        | What                                                                      |
-| ----------------------- | ---------- | ------------------------------------------------------------------------- |
-| `/`, `/create`, `/help` | Anyone     | Landing (enter a room code to vote or manage), create a show, help        |
-| `/manage/[code]`        | Host       | Set up the show: categories and nominations, running order, reset, delete |
-| `/manage/[code]/run`    | Host       | Run the show: open voting, close it, reveal, next                         |
-| `/vote/[code]`          | Voters     | Vote in the active category                                               |
-| `/present/[code]`       | Big screen | Live view of the active category and the reveal                           |
+| Route                | Who        | What                                                                      |
+| -------------------- | ---------- | ------------------------------------------------------------------------- |
+| `/`, `/create`       | Anyone     | Landing (enter a room code to vote or manage), create a show              |
+| `/manage/[code]`     | Host       | Set up the show: categories and nominations, running order, reset, delete |
+| `/manage/[code]/run` | Host       | Run the show: open voting, close it, reveal, next                         |
+| `/vote/[code]`       | Voters     | Vote in the active category                                               |
+| `/present/[code]`    | Big screen | Live view of the active category and the reveal                           |
 
 Shows are found by their room code, such as `/vote/K7QF`. Links from before room codes use the show's slug; they, and a code in lowercase, redirect to the code URL (`showPageCode` in `src/server/shows.ts`). No code reads like another show's slug: the room code migrations and `generate_room_code()` make sure of it.
+
+There is no help page: each screen explains itself (the category types, the next step when running the show). `/help` redirects to the homepage for old links.
 
 **Stack:** Next.js App Router with Server Components for the initial render, tRPC + TanStack Query for client data, Prisma over the Neon serverless adapter. Everything runs on Vercel (Node.js runtime).
 
