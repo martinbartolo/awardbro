@@ -33,7 +33,8 @@ jobs:
     name: Migrations and integration tests
     runs-on: ubuntu-latest
     services:
-      postgres:
+      # Reused by the e2e job, which gets a container of its own
+      postgres: &postgres
         image: postgres:16
         env:
           POSTGRES_USER: postgres
@@ -61,3 +62,40 @@ jobs:
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - name: Integration tests
         run: pnpm test:integration
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    services:
+      postgres: *postgres
+    env:
+      # The tests build and start the app against this database (playwright.config.ts)
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/awardbro_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Lets `next build` reuse what it built for an earlier run
+      - name: Cache the Next.js build
+        uses: actions/cache@v6
+        with:
+          path: .next/cache
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**') }}
+          restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+      - name: Upload the report and traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
