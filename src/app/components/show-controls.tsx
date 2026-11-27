@@ -6,17 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "~/components/ui/alert-dialog";
+import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
 import { useTRPC } from "~/trpc/react";
@@ -88,59 +78,29 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
         These can&apos;t be undone.
       </p>
       <div className="flex flex-wrap gap-2">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline">
-              <RotateCcw className="size-4" />
-              Reset All Votes
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset all votes?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will remove all votes from all categories. This action
-                cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => resetAllVotes.mutate({ sessionId })}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Reset All Votes
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmButton
+          title="Reset all votes?"
+          description="This will remove all votes from all categories. This action cannot be undone."
+          confirmLabel="Reset All Votes"
+          onConfirm={() => resetAllVotes.mutate({ sessionId })}
+        >
+          <Button variant="outline">
+            <RotateCcw className="size-4" />
+            Reset All Votes
+          </Button>
+        </ConfirmButton>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive">
-              <Trash className="size-4" />
-              Delete Award Show
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete award show?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete your award show and all its data.
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteSession.mutate({ id: sessionId })}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete Show
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmButton
+          title="Delete award show?"
+          description="This will permanently delete your award show and all its data. This action cannot be undone."
+          confirmLabel="Delete Show"
+          onConfirm={() => deleteSession.mutate({ id: sessionId })}
+        >
+          <Button variant="destructive">
+            <Trash className="size-4" />
+            Delete Award Show
+          </Button>
+        </ConfirmButton>
       </div>
     </section>
   );
