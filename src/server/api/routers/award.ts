@@ -40,6 +40,7 @@ import { assertCanManage, isHost } from "~/server/auth/manage";
 import { setManageCookie } from "~/server/auth/manage-token";
 import { DEVICE_ID_COOKIE, getCookie } from "~/server/cookies";
 import { type db } from "~/server/db";
+import { notifyShow, type ShowEvent } from "~/server/events";
 
 /**
  * What to load with each nomination to score it: its vote count, and the ranks of its ranked
@@ -196,10 +197,6 @@ const SALT_ROUNDS = 10;
  * host. The key is a bigint, which keeps it apart from the two-int device lock.
  */
 
-/** Takes the show's lock exclusively. Put it first in a batch transaction. */
-const lockShow = (client: Prisma.TransactionClient, sessionId: string) =>
-  client.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${sessionId}, 0))`;
-
 /** No connection or lock in time (P2028), or a transaction conflict (P2034) */
 const isBusy = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -211,21 +208,36 @@ const hostBusy = () =>
     message: "Couldn't save that change just now. Please try again.",
   });
 
-/** Runs one host write in a transaction holding the show's lock exclusively. */
-const withShowLocked = async <T>(
+/** Turns an error from a host's transaction into one for the client */
+const hostWriteError = (error: unknown, message: string) => {
+  if (error instanceof TRPCError) return error;
+  if (isBusy(error)) return hostBusy();
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+};
+
+/**
+ * Runs a host's write in one transaction that holds the show's lock exclusively (see above), and
+ * tells the show's open pages once it commits (see events.ts). The lock and the notification are
+ * one statement, so this costs no extra round trip. Errors become ones for the client, with
+ * `failure` as the message of an unexpected one.
+ */
+const hostWrite = async <T>(
   client: typeof db,
   sessionId: string,
-  query: Prisma.PrismaPromise<T>,
+  event: ShowEvent,
+  failure: string,
+  write: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> => {
   try {
-    const [, result] = await client.$transaction([
-      lockShow(client, sessionId),
-      query,
-    ]);
-    return result;
+    return await client.$transaction(
+      async tx => {
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${sessionId}, 0)), ${notifyShow(sessionId, event)}`;
+        return write(tx);
+      },
+      { maxWait: 5000, timeout: 10000 },
+    );
   } catch (error) {
-    if (isBusy(error)) throw hostBusy();
-    throw error;
+    throw hostWriteError(error, failure);
   }
 };
 
@@ -408,13 +420,6 @@ const reconcileAggregatesOf = async (
   }
 };
 
-/** Turns an error from a host's transaction into one for the client */
-const hostWriteError = (error: unknown, message: string) => {
-  if (error instanceof TRPCError) return error;
-  if (isBusy(error)) return hostBusy();
-  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
-};
-
 /**
  * Refuses a vote in a category that isn't open: not active, closed by the
  * host, or already revealed (so the results on the big screen can't change).
@@ -461,7 +466,8 @@ const saveVote = async <T>(
     return await client.$transaction(
       async tx => {
         // Show lock first, then the device lock, always in this order
-        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0))`;
+        // With the notification for the show's pages, sent only if the vote commits (events.ts)
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock_shared(hashtextextended(${sessionId}, 0)), ${notifyShow(sessionId, { type: "votes", categoryId })}`;
         const [category] = await tx.$queryRaw<
           {
             isActive: boolean;
@@ -621,47 +627,45 @@ export const awardRouter = createTRPCRouter({
       await assertCanManage(ctx, { sessionId: input.sessionId });
       const sourceIds =
         input.type === "AGGREGATE" ? [...new Set(input.sourceCategories)] : [];
-      try {
-        // One transaction, so an aggregate is created with all its nominations or not at all.
-        // It holds the show's lock, so two categories added at once get different places.
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, input.sessionId);
-            if (sourceIds.length) {
-              await assertValidSources(tx, input.sessionId, sourceIds);
-            }
+      // One transaction, so an aggregate is created with all its nominations or not at all.
+      // It holds the show's lock, so two categories added at once get different places.
+      return hostWrite(
+        ctx.db,
+        input.sessionId,
+        { type: "show" },
+        "Failed to create category",
+        async tx => {
+          if (sourceIds.length) {
+            await assertValidSources(tx, input.sessionId, sourceIds);
+          }
 
-            // A new category goes to the end of the running order
-            const last = await tx.category.aggregate({
-              where: { sessionId: input.sessionId },
-              _max: { position: true },
-            });
-            const category = await tx.category.create({
-              data: {
-                sessionId: input.sessionId,
-                position: (last._max.position ?? -1) + 1,
-                name: input.name,
-                description: input.description,
-                type: input.type as CategoryType,
-                rankingTop: input.type === "RANKING" ? input.rankingTop : null,
-                sourceCategories: sourceIds.length
-                  ? { connect: sourceIds.map(id => ({ id })) }
-                  : undefined,
-              },
-            });
+          // A new category goes to the end of the running order
+          const last = await tx.category.aggregate({
+            where: { sessionId: input.sessionId },
+            _max: { position: true },
+          });
+          const category = await tx.category.create({
+            data: {
+              sessionId: input.sessionId,
+              position: (last._max.position ?? -1) + 1,
+              name: input.name,
+              description: input.description,
+              type: input.type as CategoryType,
+              rankingTop: input.type === "RANKING" ? input.rankingTop : null,
+              sourceCategories: sourceIds.length
+                ? { connect: sourceIds.map(id => ({ id })) }
+                : undefined,
+            },
+          });
 
-            // An aggregate starts with a copy of its sources' nominations
-            if (sourceIds.length) {
-              await reconcileAggregate(tx, category.id, sourceIds);
-            }
+          // An aggregate starts with a copy of its sources' nominations
+          if (sourceIds.length) {
+            await reconcileAggregate(tx, category.id, sourceIds);
+          }
 
-            return category;
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to create category");
-      }
+          return category;
+        },
+      );
     }),
 
   /**
@@ -673,74 +677,72 @@ export const awardRouter = createTRPCRouter({
     .input(categoryUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { categoryId: input.id });
-      try {
-        // Holding the show's lock: changing sources rewrites the aggregate's copies, like adding a
-        // nomination does, and votes can't arrive between counting them and changing the places
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            const category = await tx.category.findUnique({
-              where: { id: input.id },
-              select: {
-                type: true,
-                rankingTop: true,
-                sourceCategories: { select: { id: true } },
-              },
+      // Holding the show's lock: changing sources rewrites the aggregate's copies, like adding a
+      // nomination does, and votes can't arrive between counting them and changing the places
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to update category",
+        async tx => {
+          const category = await tx.category.findUnique({
+            where: { id: input.id },
+            select: {
+              type: true,
+              rankingTop: true,
+              sourceCategories: { select: { id: true } },
+            },
+          });
+          if (!category) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Category not found",
             });
-            if (!category) {
+          }
+
+          const rankingTop =
+            category.type === "RANKING" ? input.rankingTop : undefined;
+          if (rankingTop && rankingTop !== category.rankingTop) {
+            const votes = await tx.vote.count({
+              where: { nomination: { categoryId: input.id } },
+            });
+            if (votes > 0) {
               throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Category not found",
+                code: "BAD_REQUEST",
+                message:
+                  "People have already voted in this category. Reset its votes to change how many places they rank.",
               });
             }
+          }
 
-            const rankingTop =
-              category.type === "RANKING" ? input.rankingTop : undefined;
-            if (rankingTop && rankingTop !== category.rankingTop) {
-              const votes = await tx.vote.count({
-                where: { nomination: { categoryId: input.id } },
-              });
-              if (votes > 0) {
-                throw new TRPCError({
-                  code: "BAD_REQUEST",
-                  message:
-                    "People have already voted in this category. Reset its votes to change how many places they rank.",
-                });
-              }
-            }
+          // Only when they change: the form sends an aggregate's sources with every edit
+          const sourceIds =
+            category.type === "AGGREGATE" && input.sourceCategories
+              ? [...new Set(input.sourceCategories)]
+              : undefined;
+          const current = new Set(category.sourceCategories.map(s => s.id));
+          const sourcesChanged =
+            sourceIds &&
+            (sourceIds.length !== current.size ||
+              sourceIds.some(id => !current.has(id)));
+          if (sourcesChanged) {
+            await assertValidSources(tx, session.id, sourceIds);
+            await reconcileAggregate(tx, input.id, sourceIds);
+          }
 
-            // Only when they change: the form sends an aggregate's sources with every edit
-            const sourceIds =
-              category.type === "AGGREGATE" && input.sourceCategories
-                ? [...new Set(input.sourceCategories)]
-                : undefined;
-            const current = new Set(category.sourceCategories.map(s => s.id));
-            const sourcesChanged =
-              sourceIds &&
-              (sourceIds.length !== current.size ||
-                sourceIds.some(id => !current.has(id)));
-            if (sourcesChanged) {
-              await assertValidSources(tx, session.id, sourceIds);
-              await reconcileAggregate(tx, input.id, sourceIds);
-            }
-
-            return tx.category.update({
-              where: { id: input.id },
-              data: {
-                name: input.name,
-                description: input.description,
-                rankingTop,
-                sourceCategories: sourcesChanged
-                  ? { set: sourceIds.map(id => ({ id })) }
-                  : undefined,
-              },
-            });
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to update category");
-      }
+          return tx.category.update({
+            where: { id: input.id },
+            data: {
+              name: input.name,
+              description: input.description,
+              rankingTop,
+              sourceCategories: sourcesChanged
+                ? { set: sourceIds.map(id => ({ id })) }
+                : undefined,
+            },
+          });
+        },
+      );
     }),
 
   /**
@@ -752,48 +754,46 @@ export const awardRouter = createTRPCRouter({
     .input(z.object({ id: z.string(), direction: z.enum(["up", "down"]) }))
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { categoryId: input.id });
-      try {
-        // Holding the show's lock, so two moves (or a move and an add) don't interleave
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            const order = await tx.category.findMany({
-              where: { sessionId: session.id },
-              orderBy: runningOrder,
-              select: { id: true, position: true },
+      // Holding the show's lock, so two moves (or a move and an add) don't interleave
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to move category",
+        async tx => {
+          const order = await tx.category.findMany({
+            where: { sessionId: session.id },
+            orderBy: runningOrder,
+            select: { id: true, position: true },
+          });
+          const from = order.findIndex(c => c.id === input.id);
+          const to = from + (input.direction === "up" ? -1 : 1);
+          if (from === -1) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Category not found",
             });
-            const from = order.findIndex(c => c.id === input.id);
-            const to = from + (input.direction === "up" ? -1 : 1);
-            if (from === -1) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Category not found",
-              });
-            }
-            if (to >= 0 && to < order.length) {
-              [order[from], order[to]] = [order[to]!, order[from]!];
-            }
-            // Number them 0, 1, 2, … again, which also settles ties from older shows
-            await Promise.all(
-              order.flatMap((category, index) =>
-                category.position === index
-                  ? []
-                  : [
-                      tx.category.update({
-                        where: { id: category.id },
-                        data: { position: index },
-                      }),
-                    ],
-              ),
-            );
-            // The new running order
-            return order.map(c => c.id);
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to move category");
-      }
+          }
+          if (to >= 0 && to < order.length) {
+            [order[from], order[to]] = [order[to]!, order[from]!];
+          }
+          // Number them 0, 1, 2, … again, which also settles ties from older shows
+          await Promise.all(
+            order.flatMap((category, index) =>
+              category.position === index
+                ? []
+                : [
+                    tx.category.update({
+                      where: { id: category.id },
+                      data: { position: index },
+                    }),
+                  ],
+            ),
+          );
+          // The new running order
+          return order.map(c => c.id);
+        },
+      );
     }),
 
   getCategory: publicProcedure
@@ -831,57 +831,55 @@ export const awardRouter = createTRPCRouter({
       const session = await assertCanManage(ctx, {
         categoryId: input.categoryId,
       });
-      try {
-        // One transaction holding the show's lock, so creating an aggregate of this category
-        // at the same moment can't copy the nomination twice or miss it (see addCategory)
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            const category = await tx.category.findUnique({
-              where: { id: input.categoryId },
-              select: { type: true },
+      // One transaction holding the show's lock, so creating an aggregate of this category
+      // at the same moment can't copy the nomination twice or miss it (see addCategory)
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to create nomination",
+        async tx => {
+          const category = await tx.category.findUnique({
+            where: { id: input.categoryId },
+            select: { type: true },
+          });
+          if (!category) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Category not found",
             });
-            if (!category) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Category not found",
-              });
-            }
-            if (category.type === "AGGREGATE") {
-              // Its nominations are copied from its sources
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Add nominations to the source categories instead",
-              });
-            }
-
-            const description = await assertValidNomination(tx, {
-              ...input,
-              categoryType: category.type,
+          }
+          if (category.type === "AGGREGATE") {
+            // Its nominations are copied from its sources
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Add nominations to the source categories instead",
             });
+          }
 
-            const nomination = await tx.nomination.create({
-              data: {
-                categoryId: input.categoryId,
-                name: input.name,
-                description,
-              },
-            });
+          const description = await assertValidNomination(tx, {
+            ...input,
+            categoryType: category.type,
+          });
 
-            // Copy it to the aggregates that use this category
-            await reconcileAggregatesOf(
-              tx,
-              await aggregatesOf(tx, input.categoryId),
-              [input.name],
-            );
+          const nomination = await tx.nomination.create({
+            data: {
+              categoryId: input.categoryId,
+              name: input.name,
+              description,
+            },
+          });
 
-            return nomination;
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to create nomination");
-      }
+          // Copy it to the aggregates that use this category
+          await reconcileAggregatesOf(
+            tx,
+            await aggregatesOf(tx, input.categoryId),
+            [input.name],
+          );
+
+          return nomination;
+        },
+      );
     }),
 
   /**
@@ -893,85 +891,83 @@ export const awardRouter = createTRPCRouter({
     .input(nominationUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { nominationId: input.id });
-      try {
-        // Holding the show's lock, like addNomination, since it changes aggregates' copies
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            const before = await tx.nomination.findUnique({
-              where: { id: input.id },
-              select: {
-                name: true,
-                description: true,
-                categoryId: true,
-                category: { select: { type: true } },
-              },
+      // Holding the show's lock, like addNomination, since it changes aggregates' copies
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to update nomination",
+        async tx => {
+          const before = await tx.nomination.findUnique({
+            where: { id: input.id },
+            select: {
+              name: true,
+              description: true,
+              categoryId: true,
+              category: { select: { type: true } },
+            },
+          });
+          if (!before) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Nomination not found",
             });
-            if (!before) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Nomination not found",
-              });
-            }
-            if (before.category.type === "AGGREGATE") {
-              // Its nominations are copies matched to its sources by name
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Edit nominations in the source categories instead",
-              });
-            }
+          }
+          if (before.category.type === "AGGREGATE") {
+            // Its nominations are copies matched to its sources by name
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Edit nominations in the source categories instead",
+            });
+          }
 
-            // Left out, the description stays as it is
-            const description = await assertValidNomination(tx, {
-              ...input,
-              description: input.description ?? before.description ?? undefined,
-              categoryId: before.categoryId,
-              categoryType: before.category.type,
-              exceptId: input.id,
-            });
+          // Left out, the description stays as it is
+          const description = await assertValidNomination(tx, {
+            ...input,
+            description: input.description ?? before.description ?? undefined,
+            categoryId: before.categoryId,
+            categoryType: before.category.type,
+            exceptId: input.id,
+          });
 
-            const nomination = await tx.nomination.update({
-              where: { id: input.id },
-              data: {
-                name: input.name,
-                description,
-              },
-            });
-            const aggregates = await aggregatesOf(tx, before.categoryId);
-            // Aggregates where another source nomination already has the new name: the two now
-            // count together there, which the host should know
-            const sameName =
-              before.name === input.name || !aggregates.length
-                ? []
-                : await tx.nomination.findMany({
-                    where: {
-                      name: input.name,
-                      id: { not: input.id },
-                      categoryId: {
-                        in: aggregates.flatMap(a =>
-                          a.sourceCategories.map(s => s.id),
-                        ),
-                      },
+          const nomination = await tx.nomination.update({
+            where: { id: input.id },
+            data: {
+              name: input.name,
+              description,
+            },
+          });
+          const aggregates = await aggregatesOf(tx, before.categoryId);
+          // Aggregates where another source nomination already has the new name: the two now
+          // count together there, which the host should know
+          const sameName =
+            before.name === input.name || !aggregates.length
+              ? []
+              : await tx.nomination.findMany({
+                  where: {
+                    name: input.name,
+                    id: { not: input.id },
+                    categoryId: {
+                      in: aggregates.flatMap(a =>
+                        a.sourceCategories.map(s => s.id),
+                      ),
                     },
-                    select: { categoryId: true },
-                  });
-            const mergedIn = aggregates
-              .filter(a =>
-                a.sourceCategories.some(s =>
-                  sameName.some(n => n.categoryId === s.id),
-                ),
-              )
-              .map(a => a.name);
-            await reconcileAggregatesOf(tx, aggregates, [
-              ...new Set([before.name, input.name]),
-            ]);
-            return { nomination, mergedIn };
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to update nomination");
-      }
+                  },
+                  select: { categoryId: true },
+                });
+          const mergedIn = aggregates
+            .filter(a =>
+              a.sourceCategories.some(s =>
+                sameName.some(n => n.categoryId === s.id),
+              ),
+            )
+            .map(a => a.name);
+          await reconcileAggregatesOf(tx, aggregates, [
+            ...new Set([before.name, input.name]),
+          ]);
+          return { nomination, mergedIn };
+        },
+      );
     }),
 
   /**
@@ -1000,59 +996,57 @@ export const awardRouter = createTRPCRouter({
       const session = await assertCanManage(ctx, { categoryId: input.id });
       const data = STAGE_FLAGS[input.stage];
 
-      try {
-        await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            const category = await tx.category.findUnique({
-              where: { id: input.id },
-              select: {
-                type: true,
-                isActive: true,
-                votingClosed: true,
-                revealed: true,
-              },
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to update the category",
+        async tx => {
+          const category = await tx.category.findUnique({
+            where: { id: input.id },
+            select: {
+              type: true,
+              isActive: true,
+              votingClosed: true,
+              revealed: true,
+            },
+          });
+          // Deleted after the access check
+          if (!category) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Category not found",
             });
-            // Deleted after the access check
-            if (!category) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Category not found",
-              });
-            }
-            if (category.type === "AGGREGATE" && input.stage === "open") {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message:
-                  "An aggregate category takes no votes. Reveal it instead.",
-              });
-            }
-            if (input.from && stageOf(category) !== input.from) {
-              throw new TRPCError({
-                code: "CONFLICT",
-                message:
-                  "This category has moved on since your page last updated. Check where it is, then try again.",
-              });
-            }
-            // At most one category is on the big screen
-            if (data.isActive) {
-              await tx.category.updateMany({
-                where: {
-                  sessionId: session.id,
-                  isActive: true,
-                  id: { not: input.id },
-                },
-                data: { isActive: false },
-              });
-            }
-            await tx.category.update({ where: { id: input.id }, data });
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-        return { id: input.id, stage: input.stage };
-      } catch (error) {
-        throw hostWriteError(error, "Failed to update the category");
-      }
+          }
+          if (category.type === "AGGREGATE" && input.stage === "open") {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "An aggregate category takes no votes. Reveal it instead.",
+            });
+          }
+          if (input.from && stageOf(category) !== input.from) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "This category has moved on since your page last updated. Check where it is, then try again.",
+            });
+          }
+          // At most one category is on the big screen
+          if (data.isActive) {
+            await tx.category.updateMany({
+              where: {
+                sessionId: session.id,
+                isActive: true,
+                id: { not: input.id },
+              },
+              data: { isActive: false },
+            });
+          }
+          await tx.category.update({ where: { id: input.id }, data });
+          return { id: input.id, stage: input.stage };
+        },
+      );
     }),
 
   /** How a category's reveal shows it: set to the values given, at the reveal step */
@@ -1065,23 +1059,28 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await assertCanManage(ctx, { categoryId: input.id });
+      const session = await assertCanManage(ctx, { categoryId: input.id });
       const { id, ...options } = input;
-      try {
-        return await ctx.db.category.update({ where: { id }, data: options });
-      } catch (error) {
-        // Deleted after the access check
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2025"
-        ) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Category not found",
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to update the category",
+        async tx => {
+          const { count } = await tx.category.updateMany({
+            where: { id },
+            data: options,
           });
-        }
-        throw hostWriteError(error, "Failed to update the category");
-      }
+          // Deleted after the access check
+          if (!count) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Category not found",
+            });
+          }
+          return { id, ...options };
+        },
+      );
     }),
 
   vote: publicProcedure
@@ -1315,66 +1314,62 @@ export const awardRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { nominationId: input.id });
-      try {
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            // Votes are removed by the onDelete: Cascade relation
-            const nomination = await tx.nomination.delete({
-              where: { id: input.id },
-            });
-            // Its aggregates drop their copy unless another source has the name
-            await reconcileAggregatesOf(
-              tx,
-              await aggregatesOf(tx, nomination.categoryId),
-              [nomination.name],
-            );
-            return nomination;
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to delete nomination");
-      }
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to delete nomination",
+        async tx => {
+          // Votes are removed by the onDelete: Cascade relation
+          const nomination = await tx.nomination.delete({
+            where: { id: input.id },
+          });
+          // Its aggregates drop their copy unless another source has the name
+          await reconcileAggregatesOf(
+            tx,
+            await aggregatesOf(tx, nomination.categoryId),
+            [nomination.name],
+          );
+          return nomination;
+        },
+      );
     }),
 
   deleteCategory: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const session = await assertCanManage(ctx, { categoryId: input.id });
-      try {
-        return await ctx.db.$transaction(
-          async tx => {
-            await lockShow(tx, session.id);
-            const [aggregates, nominations] = await Promise.all([
-              aggregatesOf(tx, input.id),
-              tx.nomination.findMany({
-                where: { categoryId: input.id },
-                select: { name: true },
-              }),
-            ]);
-            // Nominations and votes are removed by the onDelete: Cascade relations
-            const category = await tx.category.delete({
-              where: { id: input.id },
-            });
-            // Its aggregates drop the copies only it had
-            await reconcileAggregatesOf(
-              tx,
-              aggregates.map(a => ({
-                ...a,
-                sourceCategories: a.sourceCategories.filter(
-                  s => s.id !== input.id,
-                ),
-              })),
-              [...new Set(nominations.map(n => n.name))],
-            );
-            return category;
-          },
-          { maxWait: 5000, timeout: 10000 },
-        );
-      } catch (error) {
-        throw hostWriteError(error, "Failed to delete category");
-      }
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "show" },
+        "Failed to delete category",
+        async tx => {
+          const [aggregates, nominations] = await Promise.all([
+            aggregatesOf(tx, input.id),
+            tx.nomination.findMany({
+              where: { categoryId: input.id },
+              select: { name: true },
+            }),
+          ]);
+          // Nominations and votes are removed by the onDelete: Cascade relations
+          const category = await tx.category.delete({
+            where: { id: input.id },
+          });
+          // Its aggregates drop the copies only it had
+          await reconcileAggregatesOf(
+            tx,
+            aggregates.map(a => ({
+              ...a,
+              sourceCategories: a.sourceCategories.filter(
+                s => s.id !== input.id,
+              ),
+            })),
+            [...new Set(nominations.map(n => n.name))],
+          );
+          return category;
+        },
+      );
     }),
 
   deleteSession: publicProcedure
@@ -1385,21 +1380,17 @@ export const awardRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await assertCanManage(ctx, { sessionId: input.id });
-      try {
-        // Categories, nominations and votes are removed by the onDelete: Cascade relations
-        await withShowLocked(
-          ctx.db,
-          input.id,
-          ctx.db.session.delete({ where: { id: input.id } }),
-        );
-        return { success: true };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to delete session",
-        });
-      }
+      return hostWrite(
+        ctx.db,
+        input.id,
+        { type: "show" },
+        "Failed to delete session",
+        async tx => {
+          // Categories, nominations and votes are removed by the onDelete: Cascade relations
+          await tx.session.delete({ where: { id: input.id } });
+          return { success: true };
+        },
+      );
     }),
 
   resetCategoryVotes: publicProcedure
@@ -1408,42 +1399,32 @@ export const awardRouter = createTRPCRouter({
       const session = await assertCanManage(ctx, {
         categoryId: input.categoryId,
       });
-      try {
-        return await withShowLocked(
-          ctx.db,
-          session.id,
-          ctx.db.vote.deleteMany({
+      return hostWrite(
+        ctx.db,
+        session.id,
+        { type: "votes", categoryId: input.categoryId },
+        "Failed to reset category votes",
+        tx =>
+          tx.vote.deleteMany({
             where: { nomination: { categoryId: input.categoryId } },
           }),
-        );
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to reset category votes",
-        });
-      }
+      );
     }),
 
   resetAllVotes: publicProcedure
     .input(z.object({ sessionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertCanManage(ctx, { sessionId: input.sessionId });
-      try {
-        return await withShowLocked(
-          ctx.db,
-          input.sessionId,
-          ctx.db.vote.deleteMany({
+      return hostWrite(
+        ctx.db,
+        input.sessionId,
+        { type: "votes" },
+        "Failed to reset all votes",
+        tx =>
+          tx.vote.deleteMany({
             where: { nomination: { category: { sessionId: input.sessionId } } },
           }),
-        );
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to reset all votes",
-        });
-      }
+      );
     }),
 
   getPublicSessions: publicProcedure.query(async ({ ctx }) => {
