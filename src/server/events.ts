@@ -8,17 +8,18 @@ import { Prisma } from "~/generated/prisma/client";
  * Live events: after a write, the server tells the show's open pages what changed, so they can
  * fetch it again. Events carry no scores or votes: the database stays the only source of truth.
  *
- * - `show`: anything about the show but its votes: categories, nominations, the running order,
- *   a category's stage or reveal options, or the show being deleted.
- * - `votes`: votes changed in a category (a vote, a ranking or a reset), or in every category of
- *   the show when `categoryId` is missing (resetting all votes).
+ * - `show`: any host action: categories, nominations, the running order, a category's stage or
+ *   reveal options, resetting votes, or deleting the show. Every page fetches the show again
+ *   (with a reset, voters' own votes are gone too).
+ * - `votes`: a voter voted (or ranked) in the category. Only pages that show live counts fetch
+ *   again, so a burst of votes doesn't make every voter's phone fetch.
  *
  * They travel through Postgres: writes `NOTIFY` (`notifyShow`), and each server instance with open
  * pages `LISTEN`s (event-hub.ts) and streams them to the pages (`/api/shows/<code>/events`).
  */
 const showEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("show") }),
-  z.object({ type: z.literal("votes"), categoryId: z.string().optional() }),
+  z.object({ type: z.literal("votes"), categoryId: z.string() }),
 ]);
 export type ShowEvent = z.infer<typeof showEventSchema>;
 

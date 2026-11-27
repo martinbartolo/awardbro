@@ -1402,7 +1402,7 @@ export const awardRouter = createTRPCRouter({
       return hostWrite(
         ctx.db,
         session.id,
-        { type: "votes", categoryId: input.categoryId },
+        { type: "show" },
         "Failed to reset category votes",
         tx =>
           tx.vote.deleteMany({
@@ -1418,7 +1418,7 @@ export const awardRouter = createTRPCRouter({
       return hostWrite(
         ctx.db,
         input.sessionId,
-        { type: "votes" },
+        { type: "show" },
         "Failed to reset all votes",
         tx =>
           tx.vote.deleteMany({
