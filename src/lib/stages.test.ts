@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { stageOf, stepsFor } from "./stages";
+import { applyStage, stageOf, stepsFor } from "./stages";
 
 describe("stageOf", () => {
   it.each([
@@ -99,5 +99,51 @@ describe("stepsFor", () => {
     expect(
       stepsFor({ ...base, stage: "ready", onScreen: "Best Film" }).notes,
     ).toEqual(["This takes Best Film off the big screen."]);
+  });
+});
+
+describe("applyStage", () => {
+  const ready = { isActive: false, votingClosed: false, revealed: false };
+  const onScreen = { isActive: true, votingClosed: true, revealed: true };
+  const categories = [
+    { id: "a", name: "A", ...onScreen },
+    { id: "b", name: "B", ...ready },
+    { id: "c", name: "C", ...ready },
+  ];
+
+  it("opens a category and takes the one on the big screen off it", () => {
+    const after = applyStage(categories, "b", "open");
+
+    expect(after.map(stageOf)).toEqual(["done", "open", "ready"]);
+    // Everything else stays as it was
+    expect(after[0]?.name).toBe("A");
+    expect(after[2]).toBe(categories[2]);
+  });
+
+  it.each(["closed", "revealed"] as const)(
+    "moves the category on the screen to %s",
+    stage => {
+      const open = applyStage(categories, "b", "open");
+
+      expect(applyStage(open, "b", stage).map(stageOf)).toEqual([
+        "done",
+        stage,
+        "ready",
+      ]);
+    },
+  );
+
+  it("takes a category off the big screen, keeping it revealed", () => {
+    expect(applyStage(categories, "a", "off").map(stageOf)).toEqual([
+      "done",
+      "ready",
+      "ready",
+    ]);
+  });
+
+  it("returns a new list, leaving the one it was given alone", () => {
+    applyStage(categories, "b", "open");
+
+    expect(categories.map(stageOf)).toEqual(["revealed", "ready", "ready"]);
   });
 });

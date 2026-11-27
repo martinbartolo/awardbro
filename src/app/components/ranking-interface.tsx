@@ -2,12 +2,17 @@
 
 import { useMemo, useState } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import {
+  type QueryKey,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
-import { cn, getOrdinal, isSameRanking } from "~/lib/utils";
+import { optimistic } from "~/lib/optimistic";
+import { cn, getOrdinal } from "~/lib/utils";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
@@ -22,8 +27,8 @@ export type MyVotes = RouterOutputs["award"]["getMyVotes"];
 /** The voter's saved vote or ranking, owned by `LiveVotingSession` */
 export type MyVotesProps = {
   myVotes: MyVotes | undefined;
-  /** Reloads `myVotes`, resolving to the reloaded data (undefined on failure) */
-  refetchMyVotes: () => Promise<MyVotes | undefined>;
+  /** Its query, which a vote updates straight away, before the server answers (optimistic.ts) */
+  myVotesKey: QueryKey;
 };
 
 type Nomination = {
@@ -37,7 +42,7 @@ export function RankingInterface({
   categoryId,
   rankingTop,
   myVotes: currentRankings,
-  refetchMyVotes,
+  myVotesKey,
   closed,
 }: {
   nominations: Nomination[];
@@ -74,20 +79,25 @@ export function RankingInterface({
     setUserRankings(newRankings);
   };
 
+  // The ranking shows as saved straight away. If saving fails, it goes back to
+  // the voter's unsaved ranking, so they can try again.
+  const queryClient = useQueryClient();
   const submitRanking = useMutation(
     trpc.award.submitRanking.mutationOptions({
-      onSuccess: async (_data, { rankings: submitted }) => {
+      ...optimistic<{ rankings: Ranking[] }, MyVotes, { message: string }>({
+        queryClient,
+        queryKey: myVotesKey,
+        change: (_before, { rankings: submitted }) =>
+          [...submitted].sort((a, b) => a.rank - b.rank),
+        onError: (error, { rankings: submitted }) => {
+          setUserRankings(submitted);
+          toast.error(
+            error.message || "Error submitting rankings. Please try again.",
+          );
+        },
+      }),
+      onSuccess: () => {
         toast.success("Rankings submitted successfully!");
-        // Load the submitted ranking before dropping the local one, so the
-        // form never looks empty in between (the query only polls every 5 s).
-        // If loading it fails, keep the local ranking until the next poll.
-        const saved = await refetchMyVotes();
-        if (saved && isSameRanking(saved, submitted)) setUserRankings(null);
-      },
-      onError: error => {
-        toast.error(
-          error.message || "Error submitting rankings. Please try again.",
-        );
       },
     }),
   );
@@ -117,6 +127,7 @@ export function RankingInterface({
       return;
     }
     submitRanking.mutate({ categoryId, rankings });
+    setUserRankings(null);
   };
 
   const isComplete = rankings.length === rankingTop;

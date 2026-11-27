@@ -1,4 +1,9 @@
-import { type QueryClient } from "@tanstack/react-query";
+import {
+  hashKey,
+  type QueryClient,
+  type QueryFilters,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { type TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
 import { type AppRouter } from "~/server/api/root";
@@ -22,6 +27,8 @@ const SPREAD_MS = 1_000;
  *   count again. Without it (voters' phones), the server leaves `votes` events out, and fetches
  *   after a host action are spread over a second, so a room full of phones doesn't fetch at once.
  * - While the stream isn't open, the page fetches the show every 30 s instead.
+ * - While one of the page's own actions is on its way, the query it changed is fetched once it
+ *   has settled, so a fetch never undoes what the page already shows (see optimistic.ts).
  *
  * `EventSource` connects again by itself when a stream ends. If it gives up for good (an error
  * status), this connects again after a while, up to 5 times in a row (a deleted show stays
@@ -41,22 +48,58 @@ export function connectShowEvents({
   EventSourceImpl?: typeof EventSource;
 }) {
   let stopped = false;
-  const refetchShow = () =>
-    stopped
-      ? Promise.resolve()
-      : Promise.all([
-          queryClient.invalidateQueries(trpc.award.getSession.queryFilter()),
-          queryClient.invalidateQueries(trpc.award.getCategory.queryFilter()),
-          queryClient.invalidateQueries(trpc.award.getMyVotes.queryFilter()),
-        ]);
-  const afterHostAction = liveCounts
-    ? refetchShow
-    : () => setTimeout(() => void refetchShow(), Math.random() * SPREAD_MS);
+
+  // While one of the page's own actions is on its way (a step, a vote), fetching the query it
+  // changed could bring back the data from before it, and undo what the page already shows. So
+  // that query (named in the action's `meta.holds`, see optimistic.ts) is fetched once the action
+  // has settled. Every other query is fetched straight away.
+  const waiting = new Set<string>();
+  const heldQueries = () =>
+    new Set(
+      queryClient
+        .getMutationCache()
+        .findAll({ status: "pending" })
+        .flatMap(mutation => {
+          const holds = mutation.options.meta?.holds;
+          return holds ? [hashKey(holds as QueryKey)] : [];
+        }),
+    );
+  const fetchAgain = (filter: QueryFilters) => {
+    if (stopped) return;
+    const held = heldQueries();
+    void queryClient.invalidateQueries({
+      ...filter,
+      predicate: query => {
+        if (!held.has(query.queryHash)) return true;
+        waiting.add(query.queryHash);
+        return false;
+      },
+    });
+  };
+  const stopWaiting = queryClient.getMutationCache().subscribe(() => {
+    if (!waiting.size || stopped) return;
+    const held = heldQueries();
+    for (const hash of waiting) {
+      if (held.has(hash)) continue;
+      waiting.delete(hash);
+      void queryClient.invalidateQueries({
+        predicate: query => query.queryHash === hash,
+      });
+    }
+  });
+
+  const refetchShow = () => {
+    fetchAgain(trpc.award.getSession.queryFilter());
+    fetchAgain(trpc.award.getCategory.queryFilter());
+    fetchAgain(trpc.award.getMyVotes.queryFilter());
+  };
   // A fetch still on its way may have started before this vote was saved, so it's replaced
   const refetchCount = (categoryId: string) =>
-    queryClient.invalidateQueries(
-      trpc.award.getCategory.queryFilter({ id: categoryId }),
-    );
+    fetchAgain(trpc.award.getCategory.queryFilter({ id: categoryId }));
+
+  const afterHostAction = liveCounts
+    ? refetchShow
+    : () => setTimeout(refetchShow, Math.random() * SPREAD_MS);
 
   const url = `/api/shows/${encodeURIComponent(code)}/events${liveCounts ? "" : "?votes=0"}`;
   let source: EventSource | undefined;
@@ -68,12 +111,12 @@ export function connectShowEvents({
     // Changes made while the page wasn't listening (before it connected, or between streams)
     source.addEventListener("open", () => {
       failures = 0;
-      void refetchShow();
+      refetchShow();
     });
-    source.addEventListener("show", () => void afterHostAction());
+    source.addEventListener("show", () => afterHostAction());
     source.addEventListener("votes", event => {
       const categoryId = parseCategoryId(event);
-      if (categoryId) void refetchCount(categoryId);
+      if (categoryId) refetchCount(categoryId);
     });
     source.addEventListener("error", () => {
       if (source?.readyState !== EventSourceImpl.CLOSED || stopped) return;
@@ -87,11 +130,12 @@ export function connectShowEvents({
   const fallback = setInterval(() => {
     const listening = source?.readyState === EventSourceImpl.OPEN;
     const hidden = typeof document !== "undefined" && document.hidden;
-    if (!listening && !hidden) void refetchShow();
+    if (!listening && !hidden) refetchShow();
   }, FALLBACK_REFETCH_MS);
 
   return () => {
     stopped = true;
+    stopWaiting();
     clearTimeout(retry);
     clearInterval(fallback);
     source?.close();

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -49,7 +49,6 @@ export function LiveVotingSession({
   code,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   useShowEvents(code, { liveCounts: false });
   const {
     data: session,
@@ -104,18 +103,6 @@ export function LiveVotingSession({
     isError: isVoteError,
   } = useQuery(myVotesOptions);
   const hasVoted = !!myVotes?.length;
-  // Bound to this render's category, so a vote that completes after the host
-  // has moved on reloads the category it was cast in. A poll already in flight
-  // may have started before the vote was saved, so it's cancelled rather than
-  // reused. Undefined if it fails.
-  const refetchMyVotes = async () => {
-    await queryClient.cancelQueries({
-      queryKey: myVotesOptions.queryKey,
-      exact: true,
-    });
-    return queryClient.fetchQuery(myVotesOptions).catch(() => undefined);
-  };
-
   useEffect(() => {
     if (isSessionError) {
       toast.error("Failed to fetch session updates");
@@ -237,7 +224,7 @@ export function LiveVotingSession({
                   categoryType={activeCategory.type}
                   rankingTop={activeCategory.rankingTop}
                   myVotes={myVotes}
-                  refetchMyVotes={refetchMyVotes}
+                  myVotesKey={myVotesOptions.queryKey}
                   closed={isClosed}
                 />
               </CardContent>
