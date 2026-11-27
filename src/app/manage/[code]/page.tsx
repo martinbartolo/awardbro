@@ -113,7 +113,12 @@ export default async function ManagePage({
               Categories
             </h2>
             {session.categories.map((category, index) => (
-              <Card key={category.id} className="border-border">
+              <Card
+                key={category.id}
+                role="region"
+                aria-label={category.name}
+                className="border-border"
+              >
                 <CardHeader className="border-border border-b">
                   <CategoryEditor
                     category={{
