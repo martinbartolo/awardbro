@@ -46,17 +46,23 @@ Only mention an issue ID in a PR that actually works on that issue: Linear links
 
 ### Making a change
 
+The fast checks run all the time; the slow ones run once, on the finished code.
+
 1. **Branch** from `dev` with the branch name Linear generates (e.g. `martin9oh9/bar-5-…`) and move the issue to In Progress.
-2. **Build it**, with tests for anything that has logic. Run `pnpm check` and `pnpm test` as you go.
-3. **Prepare the PR.** When the change is more than docs or config:
+2. **Build it in logical steps, committing each one as it's done.** Write tests for anything that has logic. Before each commit, run `pnpm check` and `pnpm test` (seconds). Each commit builds and makes sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules"). Don't leave the split for the end.
+3. **Review the finished diff.** When the change is more than docs or config:
    1. Run **`/simplify`** and apply what's worth keeping.
-   2. Run an **uncapped code review** (`/code-review high --max-findings all`) on the final diff. Fix the real findings; for each one you skip, give the reason in the PR.
+   2. Run an **uncapped code review** (`/code-review high --max-findings all`). Fix the real findings; for each one you skip, give the reason in the PR.
    3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
-   4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
-4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
-5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests, each run only when what it covers changed) and the Vercel preview. Both are required.
-6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
-7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
+
+   Commit the fixes as you make them, into the commit they belong to when it's clearer (`git commit --fixup`, then `git rebase --autosquash`).
+4. **Run the slow checks once, on the final code:** `pnpm build`, then `pnpm test:integration` when the API or the schema changed, then `pnpm test:e2e` when pages or components changed. Both suites run against a local Postgres (see "Integration tests") and take a minute or two.
+   - Don't change any files while they run: they read the code as they go.
+   - If a suite fails, fix the code and run that suite again. If it fails twice for a reason outside the code (the database, the network, a timeout), stop and find the cause rather than running it a third time.
+5. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
+6. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests, each run only when what it covers changed) and the Vercel preview. Both are required.
+7. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
+8. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
 Commits and PRs never include AI attribution lines ("Generated with Claude Code", "Co-Authored-By: Claude", or similar).
 
