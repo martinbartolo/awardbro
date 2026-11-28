@@ -4,7 +4,7 @@
  */
 
 /** A nomination as the big screen sees it once its category is revealed */
-export type PodiumNomination = {
+type PodiumNomination = {
   id: string;
   /** Null when the show hides it */
   score: number | null;
@@ -13,7 +13,7 @@ export type PodiumNomination = {
 };
 
 /** How many column colours there are (`--column-1` to `--column-7`), and so the most columns */
-export const COLUMN_COLOURS = 7;
+const COLUMN_COLOURS = 7;
 /** Past seven nominations, the top five get columns and the rest share one block */
 const TOP_COLUMNS = 5;
 /** The shortest column, as a share of the tallest, so a nomination without votes still shows */
@@ -100,7 +100,7 @@ export function podiumSlots(count: number): number[] {
   return slots;
 }
 
-export type Podium<T extends PodiumNomination> = {
+type Podium<T extends PodiumNomination> = {
   /** Every nomination with a column, best first */
   columns: (T & { winner: boolean; height: number; slot: number })[];
   /** Past seven nominations, the ones without a column, best first */

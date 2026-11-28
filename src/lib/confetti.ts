@@ -23,24 +23,24 @@ type Piece = {
 };
 
 /** Pieces in one burst, at full strength */
-export const PIECES = 220;
+const PIECES = 220;
 /** How long the frame times are watched before deciding whether to thin out */
 const MEASURE_MS = 500;
 /** An average frame longer than this (under ~40 fps) counts as struggling */
 const SLOW_FRAME_MS = 25;
 
-export type ConfettiOptions = {
-  /** The shape set's colours, read from the theme */
-  colours: string[];
-  /** Where the burst starts, as a share of the canvas's width and height */
-  origin: { x: number; y: number };
-  pieces?: number;
-};
-
 /** Hits the canvas with one burst of confetti; returns a function that stops it */
 export function launchConfetti(
   canvas: HTMLCanvasElement,
-  { colours, origin, pieces = PIECES }: ConfettiOptions,
+  {
+    colours,
+    origin,
+  }: {
+    /** The shape set's colours, read from the theme */
+    colours: string[];
+    /** Where the burst starts, as a share of the canvas's width and height */
+    origin: { x: number; y: number };
+  },
 ): () => void {
   const context = canvas.getContext("2d");
   if (!context || colours.length === 0) return () => undefined;
@@ -55,7 +55,7 @@ export function launchConfetti(
 
   const random = (min: number, max: number) =>
     min + Math.random() * (max - min);
-  let alive: Piece[] = Array.from({ length: pieces }, (_, i) => {
+  let alive: Piece[] = Array.from({ length: PIECES }, (_, i) => {
     // Mostly upwards, fanned out to both sides
     const direction = random(-Math.PI * 0.85, -Math.PI * 0.15);
     const speed = random(14, 34) * unit;
@@ -139,12 +139,16 @@ export function launchConfetti(
       draw(piece);
     }
     alive = alive.filter(p => p.y < height + 40 * unit);
-    frame = alive.length > 0 ? requestAnimationFrame(tick) : 0;
+    if (alive.length > 0) frame = requestAnimationFrame(tick);
+    else release();
+  };
+  // A screen-sized canvas holds tens of megabytes: give them back once the burst is over
+  const release = () => {
+    cancelAnimationFrame(frame);
+    canvas.width = 0;
+    canvas.height = 0;
   };
   frame = requestAnimationFrame(tick);
 
-  return () => {
-    cancelAnimationFrame(frame);
-    context.clearRect(0, 0, width, height);
-  };
+  return release;
 }

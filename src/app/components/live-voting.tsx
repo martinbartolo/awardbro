@@ -11,17 +11,12 @@ import { useTRPC } from "~/trpc/react";
 type LiveVotingProps = {
   categoryId: string;
   initialVoteCount: number;
-  className?: string;
 };
 
 const MAX_RETRIES = 3;
 
 /** The big screen's live count of votes in the category on it */
-export function LiveVoting({
-  categoryId,
-  initialVoteCount,
-  className,
-}: LiveVotingProps) {
+export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
   const lastToastTimeRef = useRef(0);
 
   const trpc = useTRPC();
@@ -43,7 +38,7 @@ export function LiveVoting({
   if (latestVotes != null && latestVotes !== lastKnownVotes) {
     setLastKnownVotes(latestVotes);
   }
-  const totalVotes = latestVotes ?? lastKnownVotes;
+  const totalVotes = lastKnownVotes;
 
   // The page keeps the last count it had while it can't fetch, and says so once
   useEffect(() => {
@@ -66,7 +61,6 @@ export function LiveVoting({
         "bg-primary text-primary-foreground shadow-lift grid size-82 shrink-0 place-content-center rounded-full text-center",
         totalVotes > initialVoteCount &&
           "motion-safe:animate-[count-bump_0.5s_var(--ease-spring)]",
-        className,
       )}
     >
       <p
