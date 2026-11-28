@@ -16,6 +16,8 @@ const RECONNECT_MS = 10_000;
 const MAX_RECONNECTS = 5;
 /** Phones spread their fetches after a host action over this long, at random */
 const SPREAD_MS = 1_000;
+/** A tab hidden this long closes its stream until it's shown again */
+const HIDDEN_CLOSE_MS = 60_000;
 
 /**
  * Keeps a page's queries for a show up to date from the show's live events
@@ -27,7 +29,9 @@ const SPREAD_MS = 1_000;
  *   count again. Without it, the server leaves `votes` events out.
  * - With `crowd` (voters' phones, one of many identical pages), fetches after a host action are
  *   spread over a second, so a room full of phones doesn't fetch at once.
- * - While the stream isn't open, the page fetches the show every 30 s instead.
+ * - While the stream isn't open, the page fetches the show every 30 s instead (if it's visible).
+ * - A tab hidden for a minute closes its stream, so the server can stop listening to the
+ *   database, and connects again (fetching everything) when it's shown.
  * - While one of the page's own actions is on its way, the query it changed is fetched once it
  *   has settled, so a fetch never undoes what the page already shows (see optimistic.ts).
  *
@@ -121,6 +125,9 @@ export function connectShowEvents({
   let retry: ReturnType<typeof setTimeout> | undefined;
   let failures = 0;
 
+  /** Closed while the tab has been hidden a while, see `pause` */
+  let paused = false;
+
   const connect = () => {
     source = new EventSourceImpl(url);
     // Changes made while the page wasn't listening (before it connected, or between streams)
@@ -142,17 +149,44 @@ export function connectShowEvents({
   };
   connect();
 
+  const page = typeof document === "undefined" ? undefined : document;
+  const isHidden = () => page?.hidden ?? false;
+
   const fallback = setInterval(() => {
     const listening = source?.readyState === EventSourceImpl.OPEN;
-    const hidden = typeof document !== "undefined" && document.hidden;
-    if (!listening && !hidden) refetchShow();
+    if (!listening && !isHidden()) refetchShow();
   }, FALLBACK_REFETCH_MS);
+
+  // A stream keeps the server listening to the database, so it can't sleep. A tab hidden for a
+  // while (left open in the background, a locked phone) closes its stream, and connects again
+  // when it's shown: the stream's `open` fetches everything it missed. A quick switch away and
+  // back keeps it.
+  let hiding: ReturnType<typeof setTimeout> | undefined;
+  const pause = () => {
+    // A page that has given up (a deleted show) has nothing to connect again
+    paused = failures <= MAX_RECONNECTS;
+    clearTimeout(retry);
+    source?.close();
+  };
+  const onVisibilityChange = () => {
+    clearTimeout(hiding);
+    if (isHidden()) {
+      hiding = setTimeout(pause, HIDDEN_CLOSE_MS);
+    } else if (paused) {
+      paused = false;
+      connect();
+    }
+  };
+  page?.addEventListener("visibilitychange", onVisibilityChange);
+  onVisibilityChange();
 
   return () => {
     stopped = true;
     stopWaiting();
     clearTimeout(retry);
+    clearTimeout(hiding);
     clearInterval(fallback);
+    page?.removeEventListener("visibilitychange", onVisibilityChange);
     source?.close();
   };
 }

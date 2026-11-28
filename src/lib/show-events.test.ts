@@ -63,6 +63,15 @@ const invalidated = () =>
     .map(([name]) => name)
     .sort();
 
+/** Caches every query afresh, none of them marked for fetching again */
+const resetCache = () => {
+  queryClient.clear();
+  // What's cached doesn't matter, only which queries an event marks for fetching again
+  for (const key of Object.values(queries)) {
+    queryClient.setQueryData([...key], {});
+  }
+};
+
 let stops: (() => void)[] = [];
 
 /** Connects as the big screen or run view (`liveCounts`), or as a voter's phone (`crowd`) */
@@ -93,11 +102,7 @@ const WHOLE_SHOW = [
 beforeEach(() => {
   vi.useFakeTimers();
   FakeEventSource.opened = [];
-  queryClient.clear();
-  // What's cached doesn't matter, only which queries an event marks for fetching again
-  for (const key of Object.values(queries)) {
-    queryClient.setQueryData([...key], {});
-  }
+  resetCache();
 });
 
 afterEach(() => {
@@ -240,10 +245,7 @@ describe("connectShowEvents", () => {
     it("fetches nothing while the stream is open", () => {
       connect(true);
       stream().emit("open");
-      queryClient.clear();
-      for (const key of Object.values(queries)) {
-        queryClient.setQueryData([...key], {});
-      }
+      resetCache();
 
       vi.advanceTimersByTime(60_000);
 
@@ -257,6 +259,116 @@ describe("connectShowEvents", () => {
       expect(invalidated()).toEqual([]);
       vi.advanceTimersByTime(1_000);
       expect(invalidated()).toEqual(WHOLE_SHOW);
+    });
+  });
+
+  describe("in a hidden tab", () => {
+    /** Stands in for the page's document: the test hides and shows it */
+    let page: EventTarget & { hidden: boolean };
+    const setHidden = (hidden: boolean) => {
+      page.hidden = hidden;
+      page.dispatchEvent(new Event("visibilitychange"));
+    };
+
+    beforeEach(() => {
+      page = Object.assign(new EventTarget(), { hidden: false });
+      vi.stubGlobal("document", page);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("keeps the stream through a quick switch away and back", () => {
+      connect(true);
+      stream().emit("open");
+
+      setHidden(true);
+      vi.advanceTimersByTime(59_000);
+      setHidden(false);
+      vi.advanceTimersByTime(60_000);
+
+      expect(stream().readyState).toBe(FakeEventSource.OPEN);
+      expect(FakeEventSource.opened).toHaveLength(1);
+    });
+
+    it("closes the stream after a minute hidden, and fetches nothing meanwhile", () => {
+      connect(true);
+      stream().emit("open");
+      resetCache();
+
+      setHidden(true);
+      vi.advanceTimersByTime(60_000);
+      expect(stream().readyState).toBe(FakeEventSource.CLOSED);
+
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(FakeEventSource.opened).toHaveLength(1);
+      expect(invalidated()).toEqual([]);
+    });
+
+    it("connects again when shown, and fetches the whole show once open", () => {
+      connect(false);
+      setHidden(true);
+      vi.advanceTimersByTime(60_000);
+
+      setHidden(false);
+
+      expect(FakeEventSource.opened).toHaveLength(2);
+      expect(stream().url).toBe("/api/shows/K7QF/events?votes=0");
+      expect(invalidated()).toEqual([]);
+      stream().emit("open");
+      expect(invalidated()).toEqual(WHOLE_SHOW);
+    });
+
+    it("doesn't connect again when shown after giving up (a deleted show)", () => {
+      connect(true);
+      for (let attempt = 0; attempt < 10; attempt++) {
+        stream().readyState = FakeEventSource.CLOSED;
+        stream().emit("error");
+        vi.advanceTimersByTime(20_000);
+      }
+      expect(FakeEventSource.opened).toHaveLength(6);
+
+      setHidden(true);
+      vi.advanceTimersByTime(60_000);
+      setHidden(false);
+
+      expect(FakeEventSource.opened).toHaveLength(6);
+    });
+
+    it("drops a pending reconnect once it has closed the stream", () => {
+      connect(true);
+      setHidden(true);
+      vi.advanceTimersByTime(50_000);
+      // The browser gives up; the page would connect again in 10–20 s
+      stream().readyState = FakeEventSource.CLOSED;
+      stream().emit("error");
+
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(FakeEventSource.opened).toHaveLength(1);
+
+      setHidden(false);
+      expect(FakeEventSource.opened).toHaveLength(2);
+    });
+
+    it("closes the stream of a page opened in a hidden tab after a minute", () => {
+      page.hidden = true;
+      connect(true);
+
+      vi.advanceTimersByTime(60_000);
+
+      expect(stream().readyState).toBe(FakeEventSource.CLOSED);
+    });
+
+    it("stops watching the tab once stopped", () => {
+      const stop = connect(true);
+      setHidden(true);
+      vi.advanceTimersByTime(60_000);
+
+      stop();
+      setHidden(false);
+
+      expect(FakeEventSource.opened).toHaveLength(1);
     });
   });
 
