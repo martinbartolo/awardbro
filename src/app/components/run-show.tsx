@@ -18,9 +18,11 @@ import { showPaths } from "~/lib/join";
 import { updateCategory } from "~/lib/show-changes";
 import {
   applyStage,
+  isWaiting,
   type ServerStage,
   type Stage,
   STAGE_LABELS,
+  stageLabel,
   stageOf,
   stepsFor,
 } from "~/lib/stages";
@@ -107,13 +109,9 @@ export function RunShow({
 
       <div className="mt-5 grid gap-5 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6">
         {categories.length === 0 ? (
-          <section className="bg-card flex flex-col items-center rounded-[24px] px-6 py-16 text-center">
-            <ShapeMarks className="mb-5" />
-            <h2 className="text-2xl font-bold">No awards yet</h2>
-            <p className="text-muted-foreground mt-2">
-              Add the show&apos;s categories on the setup page.
-            </p>
-          </section>
+          <QuietPanel title="No awards yet">
+            Add the show&apos;s categories on the setup page.
+          </QuietPanel>
         ) : current ? (
           <CurrentCategory
             key={current.id}
@@ -140,19 +138,15 @@ export function RunShow({
             }
           />
         ) : (
-          <section className="bg-card flex flex-col items-center rounded-[24px] px-6 py-16 text-center">
-            <ShapeMarks className="mb-5" />
-            <h2 className="text-3xl font-bold">That&apos;s the show!</h2>
-            <p className="text-muted-foreground mt-2">
-              Every category has been revealed.
-            </p>
-          </section>
+          <QuietPanel title="That's the show!">
+            Every category has been revealed.
+          </QuietPanel>
         )}
 
         {categories.length > 0 && (
           <aside
             aria-labelledby="running-order"
-            className="bg-muted self-start rounded-[24px] p-3 sm:p-4"
+            className="bg-muted rounded-panel self-start p-3 sm:p-4"
           >
             <h2
               id="running-order"
@@ -170,7 +164,7 @@ export function RunShow({
                       onClick={() => setSelectedId(category.id)}
                       aria-current={isCurrent ? "step" : undefined}
                       className={cn(
-                        "focus-visible:ring-ring flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                        "focus-visible:ring-ring rounded-tile flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none",
                         isCurrent ? "bg-card shadow-soft" : "hover:bg-card/60",
                       )}
                     >
@@ -191,9 +185,7 @@ export function RunShow({
                             : "text-muted-foreground",
                         )}
                       >
-                        {isWaiting(category)
-                          ? "Waits for its awards"
-                          : STAGE_LABELS[stageOf(category)]}
+                        {stageLabel(category)}
                       </span>
                     </button>
                   </li>
@@ -258,7 +250,7 @@ function CurrentCategory({
   return (
     <section
       aria-labelledby="current-category"
-      className="bg-card flex flex-col rounded-[24px] p-5 sm:p-7 lg:min-h-[32rem] lg:p-9"
+      className="bg-card rounded-panel flex flex-col p-5 sm:p-7 lg:min-h-[32rem] lg:p-9"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h2
@@ -281,7 +273,8 @@ function CurrentCategory({
         aria-label="Stages"
         className={cn(
           "mt-5 grid gap-2",
-          isAggregate ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4",
+          "grid-cols-2",
+          !isAggregate && "sm:grid-cols-4",
         )}
       >
         {stages.map((step, index) => (
@@ -289,7 +282,7 @@ function CurrentCategory({
             key={step}
             aria-current={index === stepIndex ? "step" : undefined}
             className={cn(
-              "rounded-[14px] px-3 py-2.5 text-center text-sm font-semibold",
+              "rounded-tile px-3 py-2.5 text-center text-sm font-semibold",
               index === stepIndex
                 ? "bg-primary/15 text-primary ring-primary/50 ring-2 ring-inset"
                 : index < stepIndex
@@ -303,7 +296,7 @@ function CurrentCategory({
       </ol>
 
       {isVoting && (
-        <div className="bg-muted mt-5 flex flex-wrap items-baseline gap-x-3 rounded-[20px] px-6 py-5">
+        <div className="bg-muted rounded-tile mt-5 flex flex-wrap items-baseline gap-x-3 px-6 py-5">
           <span
             className="text-6xl leading-none font-bold tabular-nums"
             aria-live="polite"
@@ -357,7 +350,8 @@ function CurrentCategory({
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:mt-auto lg:pt-8">
         {primary && (
           <Button
-            className="shadow-lift h-14 rounded-full px-8 text-lg font-bold"
+            size="pillLg"
+            className="shadow-lift"
             disabled={isBusy || primary.disabled}
             onClick={() => onStage(primary.stage)}
           >
@@ -367,8 +361,9 @@ function CurrentCategory({
         {others.map(step => (
           <Button
             key={step.label}
-            variant="ghost"
-            className="border-border h-14 rounded-full border-2 px-6 text-base font-semibold"
+            variant="quiet"
+            size="pillLg"
+            className="text-base font-semibold"
             disabled={isBusy}
             onClick={() => onStage(step.stage)}
           >
@@ -379,12 +374,6 @@ function CurrentCategory({
     </section>
   );
 }
-
-/** An aggregate that can't be revealed yet: some of the categories it adds up aren't */
-const isWaiting = (category: Category) =>
-  category.type === "AGGREGATE" &&
-  !category.revealed &&
-  category.sourceCategories.some(source => !source.revealed);
 
 /**
  * The first category still to be revealed, skipping aggregates that are waiting for the
@@ -426,7 +415,7 @@ function RevealOption({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="bg-muted flex items-start gap-3 rounded-[16px] px-4 py-3">
+    <div className="bg-muted rounded-tile flex items-start gap-3 px-4 py-3">
       <Checkbox
         id={id}
         checked={checked}
@@ -444,5 +433,22 @@ function RevealOption({
         </p>
       </div>
     </div>
+  );
+}
+
+/** A card with the shape set, for the run view's start and end: no awards yet, or the show done */
+function QuietPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="bg-card rounded-panel flex flex-col items-center px-6 py-16 text-center">
+      <ShapeMarks className="mb-5" />
+      <h2 className="text-3xl font-bold">{title}</h2>
+      <p className="text-muted-foreground mt-2">{children}</p>
+    </section>
   );
 }

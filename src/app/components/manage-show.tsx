@@ -91,7 +91,7 @@ export function ManageShow({
                 key={category.id}
                 role="region"
                 aria-label={category.name}
-                className="shadow-soft gap-0 overflow-hidden rounded-[24px] border-0 py-0"
+                className="shadow-soft rounded-panel overflow-hidden border-0"
               >
                 <CardHeader className="border-border border-b p-4 sm:p-5">
                   <CategoryEditor

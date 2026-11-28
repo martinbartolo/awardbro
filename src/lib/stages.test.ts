@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { applyStage, stageOf, stepsFor } from "./stages";
+import { applyStage, isWaiting, stageLabel, stageOf, stepsFor } from "./stages";
 
 describe("stageOf", () => {
   it.each([
@@ -145,5 +145,34 @@ describe("applyStage", () => {
     applyStage(categories, "b", "open");
 
     expect(categories.map(stageOf)).toEqual(["revealed", "ready", "ready"]);
+  });
+});
+
+describe("stageLabel", () => {
+  const flags = { isActive: false, votingClosed: false, revealed: false };
+  const aggregate = (...sources: boolean[]) => ({
+    ...flags,
+    type: "AGGREGATE",
+    sourceCategories: sources.map(revealed => ({ revealed })),
+  });
+
+  it("says an aggregate waits while any category it adds up isn't revealed", () => {
+    expect(stageLabel(aggregate(true, false))).toBe("Waits for its awards");
+    expect(isWaiting(aggregate(true, false))).toBe(true);
+  });
+
+  it("gives the stage once they're all revealed, and for any other category", () => {
+    expect(stageLabel(aggregate(true, true))).toBe("Not started");
+    expect(
+      stageLabel({ ...aggregate(false), revealed: true, isActive: true }),
+    ).toBe("Revealed");
+    expect(
+      stageLabel({
+        ...flags,
+        isActive: true,
+        type: "NORMAL",
+        sourceCategories: [],
+      }),
+    ).toBe("Voting");
   });
 });

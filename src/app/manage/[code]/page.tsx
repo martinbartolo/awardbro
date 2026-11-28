@@ -2,7 +2,6 @@ import { type Metadata } from "next";
 
 import { ManageShow } from "~/app/components/manage-show";
 import { PasswordPage } from "~/app/components/password-verification";
-import { DEVICE_THEME_SCRIPT } from "~/lib/device-theme-script";
 import { ShowCodeProvider } from "~/lib/hooks/useShowChange";
 import { hasManageAccess } from "~/server/auth/manage";
 import { showPage } from "~/server/shows";
@@ -33,18 +32,13 @@ export default async function ManagePage({
     code,
   });
 
+  if (!(await hasManageAccess(code))) {
+    return <PasswordPage code={code} name={name} />;
+  }
+
   return (
-    <>
-      {/* Host views follow the device's light or dark setting, before the first paint (a fixed
-          script, see device-theme-script.ts) */}
-      <script dangerouslySetInnerHTML={{ __html: DEVICE_THEME_SCRIPT }} />
-      {(await hasManageAccess(code)) ? (
-        <ShowCodeProvider value={code}>
-          <ManageShow code={code} initialSession={session} />
-        </ShowCodeProvider>
-      ) : (
-        <PasswordPage code={code} name={name} />
-      )}
-    </>
+    <ShowCodeProvider value={code}>
+      <ManageShow code={code} initialSession={session} />
+    </ShowCodeProvider>
   );
 }

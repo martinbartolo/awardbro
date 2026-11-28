@@ -1,7 +1,7 @@
 import { type Metadata } from "next";
 
+import { DeviceThemeScript } from "~/app/components/device-theme-script";
 import { LiveVotingSession } from "~/app/components/live-voting-session";
-import { DEVICE_THEME_SCRIPT } from "~/lib/device-theme-script";
 import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
 
@@ -75,8 +75,7 @@ export default async function VotePage({
 
   return (
     <>
-      {/* The phone's light or dark theme, before the first paint (a fixed script, see device-theme.ts) */}
-      <script dangerouslySetInnerHTML={{ __html: DEVICE_THEME_SCRIPT }} />
+      <DeviceThemeScript />
       <LiveVotingSession
         initialShow={show}
         initialMyVotes={initialMyVotes}

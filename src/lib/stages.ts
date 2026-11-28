@@ -63,6 +63,24 @@ export const STAGE_LABELS: Record<Stage, string> = {
   done: "Done",
 };
 
+/** A category with what it adds up, if it's an aggregate */
+type WithSources = StageFlags & {
+  type: string;
+  sourceCategories: { revealed: boolean }[];
+};
+
+/** An aggregate that can't be revealed yet: some of the categories it adds up aren't */
+export const isWaiting = (category: WithSources) =>
+  category.type === "AGGREGATE" &&
+  !category.revealed &&
+  category.sourceCategories.some(source => !source.revealed);
+
+/** Where a category is, in words for the host (the running order, the manage page) */
+export const stageLabel = (category: WithSources) =>
+  isWaiting(category)
+    ? "Waits for its awards"
+    : STAGE_LABELS[stageOf(category)];
+
 /** A button in the run view: its label and the stage it moves the category to */
 export type Step = { label: string; stage: ServerStage; disabled?: boolean };
 

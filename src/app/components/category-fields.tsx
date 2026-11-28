@@ -22,7 +22,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { type CategoryType } from "~/generated/prisma/enums";
-import { STAGE_LABELS, stageOf } from "~/lib/stages";
+import { isWaiting, stageLabel, stageOf } from "~/lib/stages";
 import { cn } from "~/lib/utils";
 
 /** The category types, in the order they're offered, each with what it means for voters */
@@ -32,9 +32,8 @@ export const CATEGORY_TYPES: Record<
     label: string;
     description: string;
     icon: Icon;
-    /** Its badge's colours on the manage page (a normal category has no badge) */
-    /** The icon's colour in the badge (a shape colour); none for a normal category */
-    badgeClassName?: string;
+    /** Its icon's colour in its badge (a mark colour); a normal category has no badge */
+    iconClassName?: string;
   }
 > = {
   NORMAL: {
@@ -46,21 +45,21 @@ export const CATEGORY_TYPES: Record<
     label: "Image",
     description: "Voters pick one picture. Each nomination is a picture link.",
     icon: ImageIcon,
-    badgeClassName: "text-shape-4",
+    iconClassName: "text-mark-2",
   },
   RANKING: {
     label: "Ranking",
     description:
       "Voters rank their favourites. Higher places score more points.",
     icon: ListNumbersIcon,
-    badgeClassName: "text-shape-2",
+    iconClassName: "text-mark-3",
   },
   AGGREGATE: {
     label: "Aggregate",
     description:
       "Adds up the results of other categories. No voting of its own.",
     icon: StackIcon,
-    badgeClassName: "text-shape-1",
+    iconClassName: "text-mark-1",
   },
 };
 
@@ -72,15 +71,15 @@ export function CategoryTypeBadge({
   type: CategoryType;
   rankingTop: number | null;
 }) {
-  const { label, icon: Icon, badgeClassName } = CATEGORY_TYPES[type];
-  if (!badgeClassName) return null;
+  const { label, icon: Icon, iconClassName } = CATEGORY_TYPES[type];
+  if (!iconClassName) return null;
   return (
-    // The type in the foreground colour, its icon in one of the shape colours (readable in both themes)
+    // The type in the foreground colour, its icon in a mark colour (readable in both themes)
     <Badge
       variant="secondary"
       className="bg-muted text-foreground gap-1.5 rounded-full px-2.5 py-1"
     >
-      <Icon weight="duotone" className={cn("size-3.5", badgeClassName)} />
+      <Icon weight="duotone" className={cn("size-3.5", iconClassName)} />
       {label}
       {type === "RANKING" && ` (Top ${rankingTop})`}
     </Badge>
@@ -91,11 +90,10 @@ export function CategoryTypeBadge({
 export function CategoryStageBadge({
   category,
 }: {
-  category: Parameters<typeof stageOf>[0];
+  category: Parameters<typeof stageLabel>[0];
 }) {
-  const stage = stageOf(category);
-  if (stage === "ready") return null;
-  return <Badge variant="outline">{STAGE_LABELS[stage]}</Badge>;
+  if (stageOf(category) === "ready" && !isWaiting(category)) return null;
+  return <Badge variant="outline">{stageLabel(category)}</Badge>;
 }
 
 /** The fields the add and edit category forms have in common */

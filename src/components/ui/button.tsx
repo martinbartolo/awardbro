@@ -28,6 +28,9 @@ const buttonVariants = cva(
         // Quiet: icon actions and the way out beside a main button, never the action colour
         ghost:
           "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        // The quiet way out as a bordered button, beside a main one
+        quiet:
+          "border-2 border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -36,6 +39,9 @@ const buttonVariants = cva(
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
         iconSm: "size-8",
+        // Pills: the host views' actions, the main one larger
+        pill: "h-12 rounded-full px-6 text-base font-semibold has-[>svg]:px-5",
+        pillLg: "h-14 rounded-full px-8 text-lg font-bold has-[>svg]:px-7",
       },
     },
     defaultVariants: {
