@@ -47,6 +47,8 @@ const trpc = createTRPCOptionsProxy<AppRouter>({
 /** The page's cached queries, by name */
 const queries = {
   show: trpc.award.getSession.queryKey({ code: "K7QF", activeOnly: true }),
+  // The vote page's
+  activeCategory: trpc.award.getActiveCategory.queryKey({ code: "K7QF" }),
   categoryA: trpc.award.getCategory.queryKey({ id: "a" }),
   categoryB: trpc.award.getCategory.queryKey({ id: "b" }),
   myVotes: trpc.award.getMyVotes.queryKey({ categoryId: "a" }),
@@ -80,7 +82,13 @@ const connect = (liveCounts: boolean) => {
 /** The most recent stream */
 const stream = () => FakeEventSource.opened.at(-1)!;
 
-const WHOLE_SHOW = ["categoryA", "categoryB", "myVotes", "show"];
+const WHOLE_SHOW = [
+  "activeCategory",
+  "categoryA",
+  "categoryB",
+  "myVotes",
+  "show",
+];
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -174,7 +182,12 @@ describe("connectShowEvents", () => {
 
       stream().emit("show", {});
       // Everything else straight away
-      expect(invalidated()).toEqual(["categoryA", "categoryB", "myVotes"]);
+      expect(invalidated()).toEqual([
+        "activeCategory",
+        "categoryA",
+        "categoryB",
+        "myVotes",
+      ]);
 
       await finish();
       expect(invalidated()).toEqual(WHOLE_SHOW);
@@ -188,7 +201,12 @@ describe("connectShowEvents", () => {
       stream().emit("show", {});
       await vi.advanceTimersByTimeAsync(1_000);
 
-      expect(invalidated()).toEqual(["categoryA", "categoryB", "show"]);
+      expect(invalidated()).toEqual([
+        "activeCategory",
+        "categoryA",
+        "categoryB",
+        "show",
+      ]);
     });
 
     it("doesn't fetch it again if the action already did, after the event", async () => {

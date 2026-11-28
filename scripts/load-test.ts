@@ -499,11 +499,10 @@ async function voter(index: number) {
   // once if a category has just opened
   const refresh = async () => {
     if (stopped()) return;
-    const session = await trpc(who, "query", "getSession", {
+    const page = await trpc(who, "query", "getActiveCategory", {
       code: show.code,
-      activeOnly: true,
     }).catch(() => undefined);
-    const active = session?.categories[0];
+    const active = page?.category;
     if (!active) return;
     await fetchMyVotes(active.id);
     const category = categories.find(c => c.id === active.id);

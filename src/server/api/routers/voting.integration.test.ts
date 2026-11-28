@@ -491,5 +491,55 @@ describe("scores", () => {
     expect(
       await countOperations(api => api.getCategory({ id: show.aggregate.id })),
     ).toBe(2);
+    // The vote page's: one query, without scoring the aggregate
+    expect(
+      await countOperations(api =>
+        api.getActiveCategory({ code: show.show.code }),
+      ),
+    ).toBe(1);
+  });
+});
+
+describe("the vote page's show", () => {
+  const seen = () => voter.api.getActiveCategory({ code: show.show.code });
+
+  it("has the show's name and no category while none is on the big screen", async () => {
+    expect(await seen()).toEqual({ name: "Movie Awards", category: null });
+  });
+
+  it("has the category on the big screen and its nominations, without scores even once revealed", async () => {
+    await open(host, show.normal.id);
+    await voteFor("Dune");
+    await reveal(host, show.normal.id);
+
+    const { category } = await seen();
+    expect(category).toMatchObject({
+      id: show.normal.id,
+      name: "Best Film",
+      type: "NORMAL",
+      isActive: true,
+      votingClosed: true,
+      revealed: true,
+      aggregateOf: [{ id: show.aggregate.id, name: "Overall" }],
+    });
+    // Only these fields: no score, place or votes
+    expect(
+      [...(category?.nominations ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    ).toEqual(
+      ["Barbie", "Dune", "Oppenheimer"].map(name => ({
+        id: show.film("normal", name).id,
+        name,
+        description: null,
+      })),
+    );
+  });
+
+  it("is not found for a code no show has", async () => {
+    await expectError(
+      voter.api.getActiveCategory({ code: "ZZZZ" }),
+      "NOT_FOUND",
+    );
   });
 });
