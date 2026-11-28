@@ -2,56 +2,123 @@
 
 @plugin "tailwindcss-animate";
 
-@config "../../tailwind.config.ts";
+/* dark: follows the app's theme, not the device setting. */
+@custom-variant dark (&:where(:not([data-theme="light"], [data-theme="light"] *)));
 
+/*
+ * Podium: the AwardBro design tokens (see DESIGN.md).
+ * Primary is the action colour (buttons, focus); winner is the colour of first
+ * place, kept for results so a winner never looks like a button.
+ * Dark is the default: most shows run in the evening in a dim room.
+ * Light is the same system on warm paper, switched on with data-theme="light"
+ * on any element (the big screen per show, phones and host views by preference).
+ */
 :root {
-  --background: hsl(0 0% 0%);
-  --foreground: hsl(210 40% 98%);
-  --muted: hsl(0 0% 7%);
-  --muted-foreground: hsl(215 20.2% 75.1%);
-  --popover: hsl(0 0% 3%);
-  --popover-foreground: hsl(210 40% 98%);
-  --card: hsl(0 0% 3%);
-  --card-foreground: hsl(210 40% 98%);
-  --border: hsl(0 0% 10%);
-  --input: hsl(0 0% 20%);
-  --primary: hsl(280 100% 50%);
-  --primary-foreground: hsl(210 40% 98%);
-  --secondary: hsl(0 0% 7%);
-  --secondary-foreground: hsl(210 40% 98%);
-  --accent: hsl(160 100% 50%);
-  --accent-foreground: hsl(210 40% 98%);
-  --destructive: hsl(0 100% 50%);
-  --destructive-foreground: hsl(210 40% 98%);
-  --warning: hsl(40 95% 45%);
-  --warning-foreground: hsl(48 100% 97%);
-  --success: hsl(120 71% 35%);
-  --success-foreground: hsl(144 100% 97%);
-  --info: hsl(210 95% 45%);
-  --info-foreground: hsl(210 100% 97%);
-  --ring: hsl(280 100% 50%);
-  --chart-1: hsl(280 100% 50%); /* Bright Purple */
-  --chart-2: hsl(160 100% 50%); /* Bright Green */
-  --chart-3: hsl(30 100% 50%); /* Bright Orange */
-  --chart-4: hsl(200 100% 50%); /* Bright Blue */
-  --chart-5: hsl(330 100% 50%); /* Bright Pink */
-  --chart-6: hsl(45 95% 50%); /* Golden yellow */
-  --chart-7: hsl(195 85% 50%); /* Cyan blue */
-  --chart-8: hsl(80 65% 48%); /* Lime green */
-  --radius: 0.5rem;
-  --sidebar: hsl(0 0% 3%);
-  --sidebar-foreground: hsl(210 40% 98%);
-  --sidebar-primary: hsl(280 100% 50%);
-  --sidebar-primary-foreground: hsl(210 40% 98%);
-  --sidebar-accent: hsl(0 0% 7%);
-  --sidebar-accent-foreground: hsl(210 40% 98%);
-  --sidebar-border: hsl(0 0% 10%);
-  --sidebar-ring: hsl(280 100% 50%);
+  color-scheme: dark;
+
+  --background: #16153a;
+  --foreground: #ffffff;
+  --muted: #1f1e4a;
+  --muted-foreground: #bab8e6;
+  --card: #2e2c66;
+  --card-foreground: #ffffff;
+  --border: #33316a;
+  --input: #5a58a0;
+  --primary: #ff7a5c;
+  --primary-foreground: #16153a;
+  --secondary: #45438a;
+  --secondary-foreground: #ffffff;
+  --accent: #4a4892;
+  --accent-foreground: #ffffff;
+  --destructive: #ff6b8a;
+  --destructive-foreground: #16153a;
+  --warning: #ffc93c;
+  --warning-foreground: #16153a;
+  --success: #2ec4a6;
+  --success-foreground: #16153a;
+  --info: #7c8cff;
+  --info-foreground: #16153a;
+
+  /* Results: an unfilled track, a quiet fill and the winner's colour. */
+  --track: #23224f;
+  --fill: #2e2c66;
+  --winner: #ffc93c;
+  --winner-foreground: #16153a;
+
+  /* The shape set (circles, triangles, squiggles) and the confetti. */
+  --shape-1: #ff7a5c;
+  --shape-2: #2ec4a6;
+  --shape-3: #ffc93c;
+  --shape-4: #7c8cff;
+
+  /* Runners-up columns at the reveal: each nomination takes one, shuffled per
+     award. Never the winner colour, which the winner's column takes when crowned. */
+  --column-1: #ff7a5c;
+  --column-2: #2ec4a6;
+  --column-3: #7c8cff;
+  --column-4: #ff8fc6;
+  --column-5: #b4e05a;
+  --column-6: #5fd0f0;
+  --column-7: #c9a7ff;
+  --column-foreground: #16153a;
+
+  --shadow-color: rgb(0 0 0 / 0.4);
+  --radius: 1rem;
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #fff8ee;
+  --foreground: #1c1b33;
+  --muted: #f6ecdd;
+  --muted-foreground: #6b6052;
+  --card: #ffffff;
+  --card-foreground: #1c1b33;
+  --border: #ebddc9;
+  --input: #d4c0a3;
+  --primary: #3b5bdb;
+  --primary-foreground: #ffffff;
+  --secondary: #f6ecdd;
+  --secondary-foreground: #1c1b33;
+  --accent: #f1e6d6;
+  --accent-foreground: #1c1b33;
+  --destructive: #c62f3a;
+  --destructive-foreground: #ffffff;
+  --warning: #94570f;
+  --warning-foreground: #ffffff;
+  --success: #0f7d67;
+  --success-foreground: #ffffff;
+  --info: #3b5bdb;
+  --info-foreground: #ffffff;
+
+  --track: #f1e6d6;
+  --fill: #d6ddf8;
+  --winner: #e8553a;
+  --winner-foreground: #ffffff;
+
+  --shape-1: #e8553a;
+  --shape-2: #2ec4a6;
+  --shape-3: #ffc93c;
+  --shape-4: #3b5bdb;
+
+  --column-1: #ffc93c;
+  --column-2: #5fd6be;
+  --column-3: #7fb8f5;
+  --column-4: #f59cc4;
+  --column-5: #b9a4f5;
+  --column-6: #bfe07a;
+  --column-7: #9db0f2;
+  --column-foreground: #1c1b33;
+
+  --shadow-color: rgb(120 70 20 / 0.14);
+}
+
+/* Tailwind writes each var() below where a class uses it, so a token made of
+   another (like ring) follows the theme of the element it's used in. */
 @theme inline {
   --font-sans:
-    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+    var(--font-fredoka), ui-rounded, ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   --radius-lg: var(--radius);
@@ -62,8 +129,6 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
@@ -74,6 +139,22 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-track: var(--track);
+  --color-fill: var(--fill);
+  --color-winner: var(--winner);
+  --color-winner-foreground: var(--winner-foreground);
+  --color-column-1: var(--column-1);
+  --color-column-2: var(--column-2);
+  --color-column-3: var(--column-3);
+  --color-column-4: var(--column-4);
+  --color-column-5: var(--column-5);
+  --color-column-6: var(--column-6);
+  --color-column-7: var(--column-7);
+  --color-column-foreground: var(--column-foreground);
+  --color-shape-1: var(--shape-1);
+  --color-shape-2: var(--shape-2);
+  --color-shape-3: var(--shape-3);
+  --color-shape-4: var(--shape-4);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
@@ -82,23 +163,15 @@
   --color-success-foreground: var(--success-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-chart-6: var(--chart-6);
-  --color-chart-7: var(--chart-7);
-  --color-chart-8: var(--chart-8);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-ring: var(--primary);
+
+  /* Soft, coloured shadows only: no hard offsets. */
+  --shadow-soft: 0 6px 20px var(--shadow-color);
+  --shadow-lift: 0 18px 44px var(--shadow-color);
+
+  /* Motion: springy arrivals, quick exits. */
+  --ease-spring: cubic-bezier(0.2, 1.6, 0.4, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {
@@ -120,6 +193,11 @@
   ::selection {
     background-color: var(--primary);
     color: var(--primary-foreground);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
   button,
   [role="button"] {
