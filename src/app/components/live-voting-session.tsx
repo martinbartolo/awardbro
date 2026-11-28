@@ -150,7 +150,7 @@ export function LiveVotingSession({
             ) : (
               <>
                 <div className="mt-4 mb-2">
-                  <h1 className="text-[1.9rem] leading-[1.12] font-bold text-balance">
+                  <h1 className="text-3xl leading-[1.12] font-bold text-balance">
                     {category.name}
                   </h1>
                   {category.description && (
