@@ -189,6 +189,8 @@ export const writeRoutes = {
   resetCategoryVotes: (api, s) =>
     api.resetCategoryVotes({ categoryId: s.normal.id }),
   resetAllVotes: (api, s) => api.resetAllVotes({ sessionId: s.show.id }),
+  setScreenTheme: (api, s) =>
+    api.setScreenTheme({ sessionId: s.show.id, theme: "PAPER" }),
   deleteNomination: (api, s) =>
     api.deleteNomination({ id: s.film("normal", "Dune").id }),
   deleteCategory: (api, s) => api.deleteCategory({ id: s.normal.id }),
