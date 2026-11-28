@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
+import { ArrowLeftIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 import { CategoryTypeBadge } from "~/app/components/category-fields";
@@ -87,12 +87,12 @@ export function RunShow({
           <Button asChild variant="ghost" size="sm">
             <Link href={showPaths.present(code)} target="_blank">
               Big screen
-              <ExternalLink className="size-4" />
+              <ArrowSquareOutIcon />
             </Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
             <Link href={showPaths.manage(code)}>
-              <ArrowLeft className="size-4" />
+              <ArrowLeftIcon />
               Setup
             </Link>
           </Button>

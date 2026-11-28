@@ -2,9 +2,13 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
+import {
+  CheckSquareOffsetIcon,
+  CircleNotchIcon,
+  GearIcon,
+} from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
-import { Loader2, Settings, VoteIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "~/components/ui/button";
@@ -14,8 +18,8 @@ import { type AppRouter } from "~/server/api/root";
 import { useTRPC } from "~/trpc/react";
 
 const pages = {
-  vote: { label: "Join", icon: VoteIcon },
-  manage: { label: "Manage", icon: Settings },
+  vote: { label: "Join", icon: CheckSquareOffsetIcon },
+  manage: { label: "Manage", icon: GearIcon },
 };
 
 /**
@@ -102,11 +106,7 @@ export function RoomCodeForm({
           variant={page === "vote" ? "default" : "outline"}
           className="h-12 px-6"
         >
-          {isBusy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Icon className="h-4 w-4" />
-          )}
+          {isBusy ? <CircleNotchIcon className="animate-spin" /> : <Icon />}
           {buttonLabel}
         </Button>
       </div>

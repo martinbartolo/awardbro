@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
+import { CheckIcon } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
@@ -147,7 +147,7 @@ export function VotingInterface({
                 : "bg-muted text-muted-foreground",
             )}
           >
-            <Check className="h-4 w-4" />
+            <CheckIcon className="size-4" />
           </span>
           {selectedNomination ? (
             <div className="flex flex-1 items-center justify-between gap-2">

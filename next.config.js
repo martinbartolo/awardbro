@@ -6,6 +6,9 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // Next rewrites lucide-react's imports by default but not Phosphor's: without this, dev compiles
+  // every one of its icons on any page that uses one
+  experimental: { optimizePackageImports: ["@phosphor-icons/react"] },
   redirects: async () => [
     // The room code field moved to the homepage
     { source: "/join", destination: "/#join", permanent: false },

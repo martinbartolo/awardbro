@@ -3,15 +3,16 @@
 import { useState } from "react";
 
 import {
-  CirclePlus,
-  Heart,
-  Lock,
-  Presentation,
-  Timer,
-  Users,
-  Vote,
-  Zap,
-} from "lucide-react";
+  CheckSquareOffsetIcon,
+  HeartIcon,
+  type Icon,
+  LightningIcon,
+  LockIcon,
+  PlusCircleIcon,
+  PresentationIcon,
+  TimerIcon,
+  UsersIcon,
+} from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import Link from "next/link";
 
@@ -47,7 +48,7 @@ export default function Page() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Heart className="h-4 w-4" />
+              <HeartIcon />
               Support
             </a>
           </Button>
@@ -102,7 +103,7 @@ export default function Page() {
             <p className="text-muted-foreground text-sm">Hosting a show?</p>
             <Button asChild size="lg" variant="outline" className="h-12 px-8">
               <Link href="/create">
-                Create Award Show <CirclePlus className="h-5 w-5" />
+                Create Award Show <PlusCircleIcon className="size-5" />
               </Link>
             </Button>
             {isManaging ? (
@@ -155,32 +156,32 @@ export default function Page() {
             viewport={{ once: true }}
           >
             <FeatureCard
-              icon={Users}
+              icon={UsersIcon}
               title="Perfect for Any Group"
               description="Host award shows for company events, team celebrations, or social gatherings with unlimited participants."
             />
             <FeatureCard
-              icon={Vote}
+              icon={CheckSquareOffsetIcon}
               title="Easy Voting"
               description="Participants vote instantly from any device - no registration required."
             />
             <FeatureCard
-              icon={Presentation}
+              icon={PresentationIcon}
               title="Live Presentations"
               description="Dynamic big-screen display with live vote tracking and winner reveals."
             />
             <FeatureCard
-              icon={Zap}
+              icon={LightningIcon}
               title="Quick Setup"
               description="Ready in 2 minutes - just add your categories and start."
             />
             <FeatureCard
-              icon={Lock}
+              icon={LockIcon}
               title="Host Controls"
               description="Run the show from your own manage page, kept to you with a password."
             />
             <FeatureCard
-              icon={Timer}
+              icon={TimerIcon}
               title="Real-time Updates"
               description="See votes come in live as people make their choice."
             />
@@ -285,13 +286,13 @@ function FeatureCard({
   title,
   description,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: Icon;
   title: string;
   description: string;
 }) {
   return (
     <motion.div className="bg-card rounded-lg border p-6" variants={fadeIn}>
-      <Icon className="text-primary h-12 w-12" />
+      <Icon className="text-primary size-12" />
       <h3 className="mt-4 text-xl font-semibold">{title}</h3>
       <p className="text-muted-foreground mt-2">{description}</p>
     </motion.div>

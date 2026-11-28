@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 
+import { XIcon } from "@phosphor-icons/react";
 import {
   type QueryKey,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
@@ -200,11 +200,12 @@ export function RankingInterface({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveRanking(slot.nomination!.id)}
+                      tooltip="Remove"
                       aria-label={`Remove ${slot.nomination.name} from ${getOrdinal(slot.rank)} place`}
                       disabled={isSubmitting}
                       className="h-8 w-8 p-0"
                     >
-                      <X className="h-4 w-4" />
+                      <XIcon />
                     </Button>
                   )}
                 </div>

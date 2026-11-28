@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PencilSimpleIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -95,7 +95,7 @@ export function NominationItem({
                 aria-label={`Edit ${nomination.name}`}
                 onClick={() => setEditing(true)}
               >
-                <Pencil className="size-4" />
+                <PencilSimpleIcon />
               </Button>
             )}
             <NominationActions

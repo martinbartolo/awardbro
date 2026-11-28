@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { useShowChange } from "~/lib/hooks/useShowChange";
@@ -79,8 +79,8 @@ export function MoveCategoryButtons({
     <div ref={ref} className="flex flex-col">
       {(
         [
-          ["up", ChevronUp],
-          ["down", ChevronDown],
+          ["up", CaretUpIcon],
+          ["down", CaretDownIcon],
         ] as const
       ).map(([direction, Icon]) => (
         <Button
@@ -93,7 +93,7 @@ export function MoveCategoryButtons({
           aria-label={`Move ${categoryName} ${direction}`}
           {...moveButton(direction)}
         >
-          <Icon className="size-4" />
+          <Icon />
         </Button>
       ))}
     </div>

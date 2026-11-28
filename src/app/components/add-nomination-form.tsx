@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { InlineEditForm } from "~/app/components/inline-edit-form";
@@ -49,7 +49,7 @@ export function AddNomination({
         className="text-muted-foreground"
         onClick={() => setOpen("asked")}
       >
-        <Plus className="size-4" />
+        <PlusIcon />
         Add nomination
       </Button>
     );

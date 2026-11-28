@@ -1,6 +1,12 @@
 "use client";
 
-import { ImageIcon, Layers, ListOrdered, Vote } from "lucide-react";
+import {
+  CheckSquareOffsetIcon,
+  type Icon,
+  ImageIcon,
+  ListNumbersIcon,
+  StackIcon,
+} from "@phosphor-icons/react";
 import { type Control } from "react-hook-form";
 
 import { SourceCategoryCheckboxes } from "~/app/components/source-category-checkboxes";
@@ -25,7 +31,7 @@ export const CATEGORY_TYPES: Record<
   {
     label: string;
     description: string;
-    icon: typeof Vote;
+    icon: Icon;
     /** Its badge's colours on the manage page (a normal category has no badge) */
     badgeClassName?: string;
   }
@@ -33,7 +39,7 @@ export const CATEGORY_TYPES: Record<
   NORMAL: {
     label: "Normal",
     description: "Voters pick one nomination.",
-    icon: Vote,
+    icon: CheckSquareOffsetIcon,
   },
   IMAGE: {
     label: "Image",
@@ -45,14 +51,14 @@ export const CATEGORY_TYPES: Record<
     label: "Ranking",
     description:
       "Voters rank their favourites. Higher places score more points.",
-    icon: ListOrdered,
+    icon: ListNumbersIcon,
     badgeClassName: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
   },
   AGGREGATE: {
     label: "Aggregate",
     description:
       "Adds up the results of other categories. No voting of its own.",
-    icon: Layers,
+    icon: StackIcon,
     badgeClassName: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
   },
 };
@@ -72,7 +78,7 @@ export function CategoryTypeBadge({
       variant="secondary"
       className={cn("gap-1 px-2.5 py-1", badgeClassName)}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon weight="duotone" className="size-3.5" />
       {label}
       {type === "RANKING" && ` (Top ${rankingTop})`}
     </Badge>

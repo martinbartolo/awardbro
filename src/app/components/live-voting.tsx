@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { WarningCircleIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
@@ -110,7 +110,7 @@ export function LiveVoting({
         exit="exit"
       >
         <Alert variant="destructive">
-          <CircleExclamationPoint className="h-4 w-4" />
+          <WarningCircleIcon className="size-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {error.message}

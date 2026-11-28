@@ -1,7 +1,7 @@
 "use client";
 
+import { XIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { XIcon } from "lucide-react";
 
 import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
@@ -63,7 +63,7 @@ export function NominationActions({
         className="h-8 w-8"
         aria-label="Delete nomination"
       >
-        <XIcon className="size-4" />
+        <XIcon />
       </Button>
     </ConfirmButton>
   );

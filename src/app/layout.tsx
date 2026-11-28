@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import { Fredoka } from "next/font/google";
 
+import { IconProvider } from "~/components/icon-provider";
 import { Toaster } from "~/components/ui/sonner";
 import { TRPCReactProvider } from "~/trpc/react";
 
@@ -78,7 +79,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={fredoka.variable} dir="ltr">
       <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <IconProvider>
+          <TRPCReactProvider>{children}</TRPCReactProvider>
+        </IconProvider>
         <Toaster />
       </body>
     </html>

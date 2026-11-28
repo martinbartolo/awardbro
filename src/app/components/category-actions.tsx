@@ -1,7 +1,7 @@
 "use client";
 
+import { ArrowCounterClockwiseIcon, TrashIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { RotateCcw, Trash } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmButton } from "~/app/components/confirm-button";
@@ -49,7 +49,7 @@ export function ResetCategoryVotesButton({
         tooltip="Reset category votes"
         aria-label="Reset category votes"
       >
-        <RotateCcw className="size-4" />
+        <ArrowCounterClockwiseIcon />
       </Button>
     </ConfirmButton>
   );
@@ -83,7 +83,7 @@ export function DeleteCategoryButton({ categoryId }: { categoryId: string }) {
         tooltip="Delete category"
         aria-label="Delete category"
       >
-        <Trash className="size-4" />
+        <TrashIcon />
       </Button>
     </ConfirmButton>
   );
