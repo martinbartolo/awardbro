@@ -264,7 +264,7 @@ Phosphor (`@phosphor-icons/react`), imported one by one. Its Bold weight matches
 
 ### Named Rules
 
-**The Duotone Moment Rule.** Bold for controls; Duotone (`weight="duotone"`) only for the few expressive moments: the category-type badges, a voter's vote confirmation and empty states. Its second layer is the text colour at 20%, so it works in both themes without a token of its own. Never Duotone on a button.
+**The Duotone Moment Rule.** Bold for controls; Duotone (`weight="duotone"`) only for the category-type badges. A voter's vote confirmation is a Bold check on an action-colour badge, and the quiet screens (waiting, voting closed, an aggregate) carry the shape set as their mark, not an icon. Its second layer is the text colour at 20%, so it works in both themes without a token of its own. Never Duotone on a button.
 
 ## Components
 

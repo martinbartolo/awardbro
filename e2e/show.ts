@@ -253,11 +253,9 @@ export async function vote(
 
 /** A voter ranks nominations, best first, replacing any ranking they had */
 export async function rank(voter: Page, nominations: string[]) {
+  // A ranking already in: change it, starting from nothing
   const change = voter.getByRole("button", { name: "Change my ranking" });
-  if (await change.isVisible()) {
-    await change.click();
-    await voter.getByRole("button", { name: "Start again" }).click();
-  }
+  if (await change.isVisible()) await change.click();
   for (const nomination of nominations) {
     await nominationTile(voter, "button", nomination).click();
   }
