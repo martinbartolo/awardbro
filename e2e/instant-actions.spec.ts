@@ -85,7 +85,7 @@ test("a vote shows as cast straight away, and goes back to the choice if it fail
   await waitForCategory(voter, "Best Film");
 
   const slow = await interfere(voter, "award.vote", "slow");
-  await vote(voter, "Dune", STRAIGHT_AWAY);
+  await vote(voter, "Dune", { ...STRAIGHT_AWAY, waitForServer: false });
   await slow.answered();
   await slow.stop();
 

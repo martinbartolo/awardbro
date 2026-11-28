@@ -215,19 +215,33 @@ const nominationButton = (voter: Page, name: string) =>
     name: new RegExp(`^${literal(name)}(?=$|\\s|\\()`),
   });
 
-/** A voter votes (or changes their vote) in a normal or image category */
+/**
+ * A voter votes (or changes their vote) in a normal or image category, and waits until the
+ * server has saved it. With `waitForServer: false`, only until the page shows it.
+ */
 export async function vote(
   voter: Page,
   nomination: string,
-  options?: { timeout?: number },
+  {
+    waitForServer = true,
+    ...options
+  }: { timeout?: number; waitForServer?: boolean } = {},
 ) {
   await nominationButton(voter, nomination).click();
+  // The page shows the vote as cast before the server answers, so wait for the call itself:
+  // a host action straight after it could otherwise reach the server first (tRPC batches
+  // calls, so it's found by name in the address)
+  const saved = waitForServer
+    ? voter.waitForResponse(
+        response => response.url().includes("award.vote") && response.ok(),
+      )
+    : undefined;
   await voter.getByRole("button", { name: /^(Cast|Update) Vote$/ }).click();
-  // "Your Vote" marks the vote as saved
   await expect(voter.getByText("(Submitted)").locator("..")).toContainText(
     nomination,
     options,
   );
+  await saved;
 }
 
 /** A voter ranks nominations, best first, replacing any ranking they had */
