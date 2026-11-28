@@ -1,0 +1,724 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-28T15:06:07+00:00",
+  "title": "Design System: AwardBro",
+  "extensions": {
+    "colorMeta": {
+      "night-stage": {
+        "role": "neutral",
+        "displayName": "Night Stage",
+        "canonical": "#16153a",
+        "tonalRamp": [
+          "#0e0d24",
+          "#10102b",
+          "#131232",
+          "#16153a",
+          "#5c5b75",
+          "#8a8a9c",
+          "#b9b9c4",
+          "#e3e3e7"
+        ]
+      },
+      "night-surface": {
+        "role": "neutral",
+        "displayName": "Night Surface",
+        "canonical": "#2e2c66",
+        "tonalRamp": [
+          "#14122e",
+          "#1c1b41",
+          "#252454",
+          "#2e2c66",
+          "#6d6b94",
+          "#9696b2",
+          "#c0c0d1",
+          "#e6e6ed"
+        ]
+      },
+      "night-surface-low": {
+        "role": "neutral",
+        "displayName": "Night Surface Low",
+        "canonical": "#1f1e4a",
+        "tonalRamp": [
+          "#100f28",
+          "#151433",
+          "#1a193e",
+          "#1f1e4a",
+          "#626280",
+          "#8f8ea4",
+          "#bcbcc9",
+          "#e4e4e9"
+        ]
+      },
+      "night-line": {
+        "role": "neutral",
+        "displayName": "Night Line",
+        "canonical": "#33316a",
+        "tonalRamp": [
+          "#151430",
+          "#1f1e43",
+          "#292756",
+          "#33316a",
+          "#706f97",
+          "#9998b4",
+          "#c2c1d2",
+          "#e7e6ed"
+        ]
+      },
+      "night-chip": {
+        "role": "neutral",
+        "displayName": "Night Chip",
+        "canonical": "#45438a",
+        "tonalRamp": [
+          "#1a1838",
+          "#282653",
+          "#36356e",
+          "#45438a",
+          "#7d7bad",
+          "#a2a1c4",
+          "#c7c7dc",
+          "#e9e8f1"
+        ]
+      },
+      "night-hover": {
+        "role": "neutral",
+        "displayName": "Night Hover",
+        "canonical": "#4a4892",
+        "tonalRamp": [
+          "#1b1a3a",
+          "#2a2957",
+          "#3a3874",
+          "#4a4892",
+          "#807fb3",
+          "#a4a4c8",
+          "#c9c8de",
+          "#e9e9f2"
+        ]
+      },
+      "night-field": {
+        "role": "neutral",
+        "displayName": "Night Field",
+        "canonical": "#5a58a0",
+        "tonalRamp": [
+          "#1f1e3d",
+          "#32315e",
+          "#46447f",
+          "#5a58a0",
+          "#8c8abc",
+          "#acacd0",
+          "#cecde2",
+          "#ebebf4"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#484755",
+          "#85848e",
+          "#c2c2c6",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "night-muted": {
+        "role": "neutral",
+        "displayName": "Night Muted",
+        "canonical": "#bab8e6",
+        "tonalRamp": [
+          "#37364e",
+          "#626181",
+          "#8e8cb4",
+          "#bab8e6",
+          "#cfcdee",
+          "#dcdcf2",
+          "#eaeaf8",
+          "#f7f6fc"
+        ]
+      },
+      "night-coral": {
+        "role": "primary",
+        "displayName": "Ember Coral",
+        "canonical": "#ff7a5c",
+        "tonalRamp": [
+          "#48262c",
+          "#85423c",
+          "#c25e4c",
+          "#ff7a5c",
+          "#ffa28d",
+          "#ffbcae",
+          "#ffd7ce",
+          "#ffefeb"
+        ]
+      },
+      "night-gold": {
+        "role": "secondary",
+        "displayName": "Trophy Gold",
+        "canonical": "#ffc93c",
+        "tonalRamp": [
+          "#483a24",
+          "#856a2c",
+          "#c29934",
+          "#ffc93c",
+          "#ffd976",
+          "#ffe49e",
+          "#ffefc4",
+          "#fff9e8"
+        ]
+      },
+      "night-rose": {
+        "role": "neutral",
+        "displayName": "Night Rose",
+        "canonical": "#ff6b8a",
+        "tonalRamp": [
+          "#482238",
+          "#853a53",
+          "#c2536e",
+          "#ff6b8a",
+          "#ff97ad",
+          "#ffb5c4",
+          "#ffd3dc",
+          "#ffedf1"
+        ]
+      },
+      "night-track": {
+        "role": "neutral",
+        "displayName": "Night Track",
+        "canonical": "#23224f",
+        "tonalRamp": [
+          "#111029",
+          "#171636",
+          "#1d1c42",
+          "#23224f",
+          "#656484",
+          "#9190a7",
+          "#bdbdca",
+          "#e5e4ea"
+        ]
+      },
+      "paper-stage": {
+        "role": "neutral",
+        "displayName": "Paper Stage",
+        "canonical": "#fff8ee",
+        "tonalRamp": [
+          "#484650",
+          "#858185",
+          "#c2bcba",
+          "#fff8ee",
+          "#fffaf3",
+          "#fffcf6",
+          "#fffdfa",
+          "#fffefd"
+        ]
+      },
+      "paper-surface": {
+        "role": "neutral",
+        "displayName": "Paper Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#484755",
+          "#85848e",
+          "#c2c2c6",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "paper-surface-low": {
+        "role": "neutral",
+        "displayName": "Paper Surface Low",
+        "canonical": "#f6ecdd",
+        "tonalRamp": [
+          "#46424c",
+          "#807b7c",
+          "#bbb4ad",
+          "#f6ecdd",
+          "#f9f2e7",
+          "#faf6ee",
+          "#fcf9f5",
+          "#fefdfb"
+        ]
+      },
+      "paper-line": {
+        "role": "neutral",
+        "displayName": "Paper Line",
+        "canonical": "#ebddc9",
+        "tonalRamp": [
+          "#433f47",
+          "#7b7472",
+          "#b3a89e",
+          "#ebddc9",
+          "#f1e7d9",
+          "#f5eee4",
+          "#f9f5ef",
+          "#fdfbf9"
+        ]
+      },
+      "paper-field": {
+        "role": "neutral",
+        "displayName": "Paper Field",
+        "canonical": "#d4c0a3",
+        "tonalRamp": [
+          "#3d383e",
+          "#706560",
+          "#a29281",
+          "#d4c0a3",
+          "#e1d3bf",
+          "#eae0d1",
+          "#f2ece3",
+          "#faf7f4"
+        ]
+      },
+      "paper-ink": {
+        "role": "neutral",
+        "displayName": "Paper Ink",
+        "canonical": "#1c1b33",
+        "tonalRamp": [
+          "#0f0e22",
+          "#141228",
+          "#18172d",
+          "#1c1b33",
+          "#605f70",
+          "#8e8d99",
+          "#bbbbc2",
+          "#e4e4e7"
+        ]
+      },
+      "paper-muted": {
+        "role": "neutral",
+        "displayName": "Paper Muted",
+        "canonical": "#6b6052",
+        "tonalRamp": [
+          "#23202a",
+          "#3b3537",
+          "#534a44",
+          "#6b6052",
+          "#979086",
+          "#b5b0a8",
+          "#d3cfcb",
+          "#edecea"
+        ]
+      },
+      "paper-blue": {
+        "role": "primary",
+        "displayName": "Paper Blue",
+        "canonical": "#3b5bdb",
+        "tonalRamp": [
+          "#171e4c",
+          "#23327c",
+          "#2f47ab",
+          "#3b5bdb",
+          "#768ce6",
+          "#9daded",
+          "#c4cef4",
+          "#e7ebfb"
+        ]
+      },
+      "paper-coral": {
+        "role": "secondary",
+        "displayName": "Podium Coral",
+        "canonical": "#e8553a",
+        "tonalRamp": [
+          "#421d24",
+          "#7a302b",
+          "#b14232",
+          "#e8553a",
+          "#ef8875",
+          "#f4aa9c",
+          "#f8ccc4",
+          "#fcebe7"
+        ]
+      },
+      "paper-red": {
+        "role": "neutral",
+        "displayName": "Paper Red",
+        "canonical": "#c62f3a",
+        "tonalRamp": [
+          "#3a1324",
+          "#681c2b",
+          "#972632",
+          "#c62f3a",
+          "#d76d75",
+          "#e2979c",
+          "#eec1c4",
+          "#f8e6e7"
+        ]
+      },
+      "paper-track": {
+        "role": "neutral",
+        "displayName": "Paper Track",
+        "canonical": "#f1e6d6",
+        "tonalRamp": [
+          "#44414a",
+          "#7e7879",
+          "#b8afa8",
+          "#f1e6d6",
+          "#f5eee2",
+          "#f8f2ea",
+          "#fbf8f3",
+          "#fdfcfa"
+        ]
+      },
+      "paper-fill": {
+        "role": "neutral",
+        "displayName": "Paper Fill",
+        "canonical": "#d6ddf8",
+        "tonalRamp": [
+          "#3e3f53",
+          "#70748a",
+          "#a3a8c1",
+          "#d6ddf8",
+          "#e2e7fa",
+          "#eaeefc",
+          "#f3f5fd",
+          "#fafbfe"
+        ]
+      },
+      "shape-mint": {
+        "role": "tertiary",
+        "displayName": "Mint",
+        "canonical": "#2ec4a6",
+        "tonalRamp": [
+          "#14383e",
+          "#1c6761",
+          "#259684",
+          "#2ec4a6",
+          "#6dd6c1",
+          "#96e2d2",
+          "#c0ede4",
+          "#e6f8f4"
+        ]
+      },
+      "shape-periwinkle": {
+        "role": "tertiary",
+        "displayName": "Periwinkle",
+        "canonical": "#7c8cff",
+        "tonalRamp": [
+          "#272a55",
+          "#444b8e",
+          "#606cc6",
+          "#7c8cff",
+          "#a3aeff",
+          "#bec6ff",
+          "#d8dcff",
+          "#eff1ff"
+        ]
+      },
+      "night-pink": {
+        "role": "tertiary",
+        "displayName": "Night Pink",
+        "canonical": "#ff8fc6",
+        "tonalRamp": [
+          "#482b46",
+          "#854c71",
+          "#c26e9c",
+          "#ff8fc6",
+          "#ffb1d7",
+          "#ffc7e2",
+          "#ffddee",
+          "#fff2f8"
+        ]
+      },
+      "night-lime": {
+        "role": "tertiary",
+        "displayName": "Night Lime",
+        "canonical": "#b4e05a",
+        "tonalRamp": [
+          "#35402c",
+          "#60753b",
+          "#8aaa4a",
+          "#b4e05a",
+          "#cae98c",
+          "#daf0ac",
+          "#e8f6ce",
+          "#f6fbeb"
+        ]
+      },
+      "night-cyan": {
+        "role": "tertiary",
+        "displayName": "Night Cyan",
+        "canonical": "#5fd0f0",
+        "tonalRamp": [
+          "#203c51",
+          "#356d86",
+          "#4a9ebb",
+          "#5fd0f0",
+          "#8fdef4",
+          "#afe8f8",
+          "#cff1fa",
+          "#ecf9fd"
+        ]
+      },
+      "night-lilac": {
+        "role": "tertiary",
+        "displayName": "Night Lilac",
+        "canonical": "#c9a7ff",
+        "tonalRamp": [
+          "#3a3155",
+          "#6a588e",
+          "#9a80c6",
+          "#c9a7ff",
+          "#d9c1ff",
+          "#e4d3ff",
+          "#efe5ff",
+          "#f9f4ff"
+        ]
+      },
+      "paper-mint": {
+        "role": "tertiary",
+        "displayName": "Paper Mint",
+        "canonical": "#5fd6be",
+        "tonalRamp": [
+          "#203d44",
+          "#35706d",
+          "#4aa396",
+          "#5fd6be",
+          "#8fe2d2",
+          "#afeade",
+          "#cff3ec",
+          "#ecfaf7"
+        ]
+      },
+      "paper-sky": {
+        "role": "tertiary",
+        "displayName": "Paper Sky",
+        "canonical": "#7fb8f5",
+        "tonalRamp": [
+          "#283652",
+          "#456188",
+          "#628cbf",
+          "#7fb8f5",
+          "#a5cdf8",
+          "#bfdcfa",
+          "#d9eafc",
+          "#f0f6fe"
+        ]
+      },
+      "paper-pink": {
+        "role": "tertiary",
+        "displayName": "Paper Pink",
+        "canonical": "#f59cc4",
+        "tonalRamp": [
+          "#462e46",
+          "#805370",
+          "#ba789a",
+          "#f59cc4",
+          "#f8bad6",
+          "#facee2",
+          "#fce1ed",
+          "#fef3f8"
+        ]
+      },
+      "paper-lilac": {
+        "role": "tertiary",
+        "displayName": "Paper Lilac",
+        "canonical": "#b9a4f5",
+        "tonalRamp": [
+          "#363052",
+          "#625788",
+          "#8e7ebf",
+          "#b9a4f5",
+          "#cebff8",
+          "#dcd2fa",
+          "#eae4fc",
+          "#f7f4fe"
+        ]
+      },
+      "paper-lime": {
+        "role": "tertiary",
+        "displayName": "Paper Lime",
+        "canonical": "#bfe07a",
+        "tonalRamp": [
+          "#384034",
+          "#65754b",
+          "#92aa62",
+          "#bfe07a",
+          "#d2e9a2",
+          "#dff0bc",
+          "#ecf6d7",
+          "#f7fbef"
+        ]
+      },
+      "paper-cornflower": {
+        "role": "tertiary",
+        "displayName": "Paper Cornflower",
+        "canonical": "#9db0f2",
+        "tonalRamp": [
+          "#303452",
+          "#545d87",
+          "#7886bc",
+          "#9db0f2",
+          "#bac8f6",
+          "#ced8f8",
+          "#e2e7fb",
+          "#f3f6fd"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The winner's name and the reveal beat on the big screen."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The category name on the big screen."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "The category name in the run view and on phones."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Hints and explanations."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, stage labels, nomination names."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-soft",
+        "value": "0 6px 20px var(--shadow-color)",
+        "purpose": "Tiles, cards, the room code chip."
+      },
+      {
+        "name": "shadow-lift",
+        "value": "0 18px 44px var(--shadow-color)",
+        "purpose": "The QR code, the live count, the main button."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-soft",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Columns rising and cards arriving at the reveal (1.2s per column)."
+      },
+      {
+        "name": "ease-spring",
+        "value": "cubic-bezier(0.2, 1.6, 0.4, 1)",
+        "purpose": "Small bounces: the vote-in badge, the live count bump."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one next step on a screen: vote, open or close voting, reveal.",
+      "html": "<button class=\"ds-btn-primary\">Close voting</button>",
+      "css": ".ds-btn-primary{height:56px;padding:0 32px;border:0;border-radius:9999px;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);font:600 1.125rem Fredoka,ui-rounded,system-ui,sans-serif;box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4));cursor:pointer;transition:transform .15s,filter .2s}.ds-btn-primary:hover{filter:brightness(1.06)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Secondary steps such as taking an award off the big screen.",
+      "html": "<button class=\"ds-btn-quiet\">Take off the big screen</button>",
+      "css": ".ds-btn-quiet{height:48px;padding:0 24px;border:2px solid var(--border,#33316a);border-radius:9999px;background:transparent;color:var(--muted-foreground,#bab8e6);font:600 1rem Fredoka,ui-rounded,system-ui,sans-serif;cursor:pointer;transition:background .2s,color .2s}.ds-btn-quiet:hover{background:var(--accent,#33316a);color:var(--foreground,#fff)}.ds-btn-quiet:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A surface on the stage for forms and grouped content.",
+      "html": "<div class=\"ds-card\"><strong>Best Dance Move</strong><p>Voting is open.</p></div>",
+      "css": ".ds-card{padding:24px;border-radius:24px;background:var(--card,#2e2c66);color:var(--card-foreground,#fff);box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));font-family:Fredoka,ui-rounded,system-ui,sans-serif}.ds-card p{margin:6px 0 0;color:var(--muted-foreground,#bab8e6)}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text fields such as the room code and show name.",
+      "html": "<input class=\"ds-input\" placeholder=\"Room code, e.g. K7QF\">",
+      "css": ".ds-input{height:44px;padding:0 14px;border:1px solid var(--input,#5a58a0);border-radius:14px;background:var(--background,#16153a);color:var(--foreground,#fff);font:400 1rem Fredoka,ui-rounded,system-ui,sans-serif}.ds-input::placeholder{color:var(--muted-foreground,#bab8e6)}.ds-input:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:2px}"
+    },
+    {
+      "name": "Nomination Tile",
+      "kind": "custom",
+      "refersTo": "nomination-tile",
+      "description": "One choice in the voter's radio group; selected takes the action colour.",
+      "html": "<div role=\"radiogroup\" class=\"ds-noms\"><button role=\"radio\" aria-checked=\"true\" class=\"ds-nom\">Priya's Robot<i></i></button><button role=\"radio\" aria-checked=\"false\" class=\"ds-nom\">The Worm<i></i></button></div>",
+      "css": ".ds-noms{display:grid;gap:10px;width:320px}.ds-nom{display:flex;align-items:center;min-height:64px;padding:12px 18px;border:0;border-radius:20px;background:var(--card,#2e2c66);color:var(--card-foreground,#fff);font:600 1.25rem Fredoka,ui-rounded,system-ui,sans-serif;text-align:left;box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));cursor:pointer;transition:transform .15s,background .2s}.ds-nom i{margin-left:auto;width:24px;height:24px;border-radius:50%;border:2px solid currentColor;opacity:.6}.ds-nom[aria-checked=true]{background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a)}.ds-nom[aria-checked=true] i{opacity:1;background:currentColor}.ds-nom:active{transform:scale(.98)}.ds-nom:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+    },
+    {
+      "name": "Podium",
+      "kind": "custom",
+      "refersTo": "podium-column-winner",
+      "description": "Revealed results: rounded-top columns in podium order, each in its own colour, the winner wider in the winner colour.",
+      "html": "<div class=\"ds-podium\"><div style=\"height:96px;background:var(--column-1,#ff7a5c)\"><b>7</b>Dad Shuffle</div><div style=\"height:150px;background:var(--column-2,#2ec4a6)\"><b>12</b>The Worm</div><div class=\"ds-win\" style=\"height:176px\"><b>14</b>Priya's Robot</div><div style=\"height:70px;background:var(--column-3,#7c8cff)\"><b>4</b>Moonwalk</div></div>",
+      "css": ".ds-podium{display:flex;align-items:flex-end;gap:10px;width:420px;height:190px;font-family:Fredoka,ui-rounded,system-ui,sans-serif}.ds-podium>div{flex:1;padding-top:12px;border-radius:20px 20px 0 0;color:var(--column-foreground,#16153a);text-align:center;font-size:12px;font-weight:600}.ds-podium b{display:block;font-size:24px}.ds-podium .ds-win{flex:1.7;background:var(--winner,#ffc93c);color:var(--winner-foreground,#16153a)}.ds-podium .ds-win b{font-size:36px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Podium Night",
+    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show; phones and host views follow the device setting, with an override.",
+    "keyCharacteristics": [
+      "Rounded everything: Fredoka type, pill buttons, rounded-top podium columns.",
+      "Solid, saturated colour that survives a washed-out projector; no glows or gradients.",
+      "Results as a podium race: columns rise, each nomination in its own colour, the leader stalls, the winner turns gold and lands.",
+      "A small shape set (circle, triangle, squiggle) as markers and confetti, nothing more.",
+      "Soft coloured shadows; never hard offset shadows."
+    ],
+    "rules": [
+      {
+        "name": "The Gold Is Earned Rule",
+        "body": "The winner colour belongs to the winner alone: never a button, never a runner-up's column. Nothing else on the reveal is gold (or Podium Coral on Paper), so the moment it appears, the room knows.",
+        "section": "colors"
+      },
+      {
+        "name": "The Seeded Colour Rule",
+        "body": "Column colours look random but aren't: they are shuffled with the award as the seed, so the big screen, the host's laptop and every reload show the same colours. Up to seven nominations never repeat a colour; beyond seven, colours repeat but never side by side.",
+        "section": "colors"
+      },
+      {
+        "name": "The Projector Rule",
+        "body": "Colour is solid and saturated. No tints below 20% contrast, no gradients and no glow: a cheap projector washes out the subtle and keeps the bold.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Kicker Rule",
+        "body": "No small uppercase label above a heading. Context such as \"Award 4 of 9\" sits beside the progress dots; \"And the winner is…\" is a timed beat of its own, not a label.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Hard Offset Rule",
+        "body": "Never a solid offset shadow (the sticker or Memphis look). Shadows blur.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep the action colour for actions and the winner colour for the winner alone.",
+      "**Do** write copy that says what happens next (\"Watch the big screen for the results.\").",
+      "**Do** respect `prefers-reduced-motion`: show the end state at once.",
+      "**Do** check every text pair against both themes; body text stays at 4.5:1 or more."
+    ],
+    "donts": [
+      "**Don't** put AwardBro branding on the big screen or the vote page.",
+      "**Don't** use hard offset shadows, gradients or glows.",
+      "**Don't** add themed decoration (envelopes, stamps, tickets, textures): it gets old by the third award.",
+      "**Don't** put a small uppercase label above a heading."
+    ]
+  }
+}
