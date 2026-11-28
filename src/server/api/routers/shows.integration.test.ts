@@ -274,6 +274,50 @@ describe("a nomination with the same name as another in its category", () => {
   });
 });
 
+describe("the big screen", () => {
+  it("says which award of the show is on it, and nothing when none is", async () => {
+    const host = visitor();
+    const show = await createShow(host);
+    const screen = visitor().api;
+    const bigScreen = { code: show.show.code, bigScreen: true };
+    expect((await screen.getSession(bigScreen)).progress).toBeNull();
+
+    // The two categories added at once may come in either order
+    const order = (await host.api.getSession({ code: show.show.code }))
+      .categories;
+    await open(host, show.ranking.id);
+    expect((await screen.getSession(bigScreen)).progress).toEqual({
+      award: order.findIndex(c => c.id === show.ranking.id) + 1,
+      of: 3,
+    });
+    // Host pages see the whole show, so they don't need it
+    expect(
+      (await host.api.getSession({ code: show.show.code })).progress,
+    ).toBeNull();
+  });
+
+  it("follows the theme the host sets: Night by default, or Paper", async () => {
+    const host = visitor();
+    const show = await createShow(host, { password: "secret1" });
+    const getTheme = async () =>
+      (
+        await visitor().api.getSession({
+          code: show.show.code,
+          bigScreen: true,
+        })
+      ).screenTheme;
+    expect(await getTheme()).toBe("NIGHT");
+
+    await host.api.setScreenTheme({ sessionId: show.show.id, theme: "PAPER" });
+    expect(await getTheme()).toBe("PAPER");
+    await expectError(
+      visitor().api.setScreenTheme({ sessionId: show.show.id, theme: "NIGHT" }),
+      "UNAUTHORIZED",
+    );
+    expect(await getTheme()).toBe("PAPER");
+  });
+});
+
 describe("deleting", () => {
   it("a show removes its categories, nominations and votes, and leaves other shows alone", async () => {
     const { host, show } = await votedShow();

@@ -17,6 +17,11 @@ enum CategoryType {
     RANKING
 }
 
+enum ScreenTheme {
+    NIGHT
+    PAPER
+}
+
 model Session {
     id            String        @id @default(cuid())
     name          String
@@ -28,6 +33,8 @@ model Session {
     code          String        @unique @default(dbgenerated("generate_room_code()"))
     // bcrypt hash. Required for new shows; shows from before that may have none, and are open.
     password      String?
+    // How the big screen looks, set by the host: Night (dark) or Paper (light)
+    screenTheme   ScreenTheme   @default(NIGHT)
     createdAt     DateTime      @default(now())
     updatedAt     DateTime      @updatedAt
     categories    Category[]

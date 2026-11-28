@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { type CategoryType, Prisma } from "~/generated/prisma/client";
+import { ScreenTheme } from "~/generated/prisma/enums";
 import { imageAddress, parseImageLink } from "~/lib/images";
 import { normalizeRoomCode } from "~/lib/join";
 import {
@@ -666,7 +667,7 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const [session, access] = await Promise.all([
+      const [session, access, runningOrderIds] = await Promise.all([
         ctx.db.session.findUnique({
           where: { code: input.code },
           // Never send the password hash to the client
@@ -694,6 +695,14 @@ export const awardRouter = createTRPCRouter({
           where: { code: input.code },
           select: { id: true, password: true },
         }),
+        // The big screen says which award of the show is on it
+        input.bigScreen
+          ? ctx.db.category.findMany({
+              where: { session: { code: input.code } },
+              orderBy: runningOrder,
+              select: { id: true },
+            })
+          : [],
       ]);
 
       if (!session || !access) {
@@ -704,8 +713,16 @@ export const awardRouter = createTRPCRouter({
       }
 
       const canManage = isHost(ctx, access);
+      const onScreen = runningOrderIds.findIndex(
+        ({ id }) => id === session.categories[0]?.id,
+      );
       return {
         ...session,
+        /** The category on the big screen's place in the running order (big screen only) */
+        progress:
+          onScreen === -1
+            ? null
+            : { award: onScreen + 1, of: runningOrderIds.length },
         categories: await withScores(
           ctx.db,
           session.categories,
@@ -1521,6 +1538,26 @@ export const awardRouter = createTRPCRouter({
           tx.vote.deleteMany({
             where: { nomination: { category: { sessionId: input.sessionId } } },
           }),
+      );
+    }),
+
+  /** How the big screen looks: Night (dark) or Paper (light). It follows straight away. */
+  setScreenTheme: publicProcedure
+    .input(z.object({ sessionId: z.string(), theme: z.enum(ScreenTheme) }))
+    .mutation(async ({ ctx, input }) => {
+      await assertCanManage(ctx, { sessionId: input.sessionId });
+      return hostWrite(
+        ctx.db,
+        input.sessionId,
+        { type: "show" },
+        "Failed to change the big screen's theme",
+        async tx => {
+          await tx.session.update({
+            where: { id: input.sessionId },
+            data: { screenTheme: input.theme },
+          });
+          return { theme: input.theme };
+        },
       );
     }),
 
