@@ -4,7 +4,7 @@
  * once the server has answered.
  */
 
-type Nomination = { id: string; _count: { votes: number } };
+type Nomination = { id: string; score: number | null; place: number | null };
 type Category<N extends Nomination = Nomination> = {
   id: string;
   nominations: N[];
@@ -34,10 +34,14 @@ export const renameSource = <
     ),
   }));
 
-/** A category with its votes reset: every score 0, and no one counted as voting */
+/** A category with its votes reset: every score 0 (a hidden one stays hidden), so no places */
 export const withoutVotes = <C extends Category>(category: C): C => ({
   ...category,
-  nominations: category.nominations.map(n => ({ ...n, _count: { votes: 0 } })),
+  nominations: category.nominations.map(n => ({
+    ...n,
+    score: n.score === null ? null : 0,
+    place: null,
+  })),
   estimatedVoters: category.estimatedVoters === null ? null : 0,
 });
 

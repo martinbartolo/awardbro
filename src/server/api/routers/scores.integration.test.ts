@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   createShow,
   open,
+  placesByName,
   reveal,
   scoresByName,
   type Show,
@@ -27,11 +28,12 @@ beforeEach(async () => {
   }
 });
 
-/** The normal category's scores and estimated voters, as `who` sees them */
+/** The normal category's scores, places and estimated voters, as `who` sees them */
 const seenBy = async (who: Visitor) => {
   const category = await who.api.getCategory({ id: show.normal.id });
   return {
     scores: scoresByName(category.nominations),
+    places: placesByName(category.nominations),
     voters: category.estimatedVoters,
   };
 };
@@ -39,17 +41,22 @@ const seenBy = async (who: Visitor) => {
 const present = (options: { hideVoteCounts?: boolean; winnerOnly?: boolean }) =>
   host.api.setRevealOptions({ id: show.normal.id, ...options });
 const all = { Dune: 3, Barbie: 1, Oppenheimer: 0 };
-const none = { Dune: 0, Barbie: 0, Oppenheimer: 0 };
+const places = { Dune: 1, Barbie: 2, Oppenheimer: null };
+const none = { Dune: null, Barbie: null, Oppenheimer: null };
 
 describe("scores before a category is revealed", () => {
   it("are hidden from voters and strangers, but not the live voter count", async () => {
     for (const who of [visitor(), visitor({ deviceId: null })]) {
-      expect(await seenBy(who)).toEqual({ scores: none, voters: 4 });
+      expect(await seenBy(who)).toEqual({
+        scores: none,
+        places: none,
+        voters: 4,
+      });
     }
   });
 
   it("are all shown to the host", async () => {
-    expect(await seenBy(host)).toEqual({ scores: all, voters: 4 });
+    expect(await seenBy(host)).toEqual({ scores: all, places, voters: 4 });
   });
 });
 
@@ -62,6 +69,7 @@ it("are the same in getSession as in getCategory", async () => {
 
     expect({
       scores: scoresByName(normal.nominations),
+      places: placesByName(normal.nominations),
       voters: normal.estimatedVoters,
     }).toEqual(await seenBy(who));
   }
@@ -71,19 +79,23 @@ describe("scores after a category is revealed", () => {
   it("are shown to everyone, but the voter count only to the host", async () => {
     await reveal(host, show.normal.id);
 
-    expect(await seenBy(visitor())).toEqual({ scores: all, voters: null });
-    expect(await seenBy(host)).toEqual({ scores: all, voters: 4 });
+    expect(await seenBy(visitor())).toEqual({
+      scores: all,
+      places,
+      voters: null,
+    });
+    expect(await seenBy(host)).toEqual({ scores: all, places, voters: 4 });
   });
 
   it("only show the winners with winnerOnly", async () => {
     await present({ winnerOnly: true });
     await reveal(host, show.normal.id);
 
-    expect((await seenBy(visitor())).scores).toEqual({
-      Dune: 3,
-      Barbie: 0,
-      Oppenheimer: 0,
-    });
+    const seen = await seenBy(visitor());
+    expect([seen.scores, seen.places]).toEqual([
+      { Dune: 3, Barbie: null, Oppenheimer: null },
+      { Dune: 1, Barbie: null, Oppenheimer: null },
+    ]);
     expect((await seenBy(host)).scores).toEqual(all);
   });
 
@@ -91,11 +103,8 @@ describe("scores after a category is revealed", () => {
     await present({ hideVoteCounts: true });
     await reveal(host, show.normal.id);
 
-    expect((await seenBy(visitor())).scores).toEqual({
-      Dune: 2,
-      Barbie: 1,
-      Oppenheimer: 0,
-    });
+    const seen = await seenBy(visitor());
+    expect([seen.scores, seen.places]).toEqual([none, places]);
     expect((await seenBy(host)).scores).toEqual(all);
   });
 });
@@ -118,19 +127,21 @@ it("sets the reveal options to the values given, leaving the others as they are"
 
 describe("an aggregate's scores", () => {
   // Overall adds up Best Film (Dune 3, Barbie 1) and Top Films (no rankings yet)
-  const overall = async () =>
-    scoresByName(
-      (await visitor().api.getCategory({ id: show.aggregate.id })).nominations,
-    );
+  const overall = async () => {
+    const { nominations } = await visitor().api.getCategory({
+      id: show.aggregate.id,
+    });
+    return [scoresByName(nominations), placesByName(nominations)];
+  };
   it("stay hidden until every source is revealed", async () => {
     await reveal(host, show.aggregate.id);
-    expect(await overall()).toEqual(none);
+    expect(await overall()).toEqual([none, none]);
 
     await reveal(host, show.normal.id);
-    expect(await overall()).toEqual(none);
+    expect(await overall()).toEqual([none, none]);
 
     await reveal(host, show.ranking.id);
-    expect(await overall()).toEqual(all);
+    expect(await overall()).toEqual([all, places]);
   });
 
   it("only show the order if a source hides its counts", async () => {
@@ -139,7 +150,23 @@ describe("an aggregate's scores", () => {
       await reveal(host, id);
     }
 
-    expect(await overall()).toEqual({ Dune: 2, Barbie: 1, Oppenheimer: 0 });
+    expect(await overall()).toEqual([none, places]);
+  });
+
+  it("are sent with what it reveals, which waits for its sources", async () => {
+    const reveals = async () =>
+      (await visitor().api.getCategory({ id: show.aggregate.id })).reveals;
+
+    await reveal(host, show.aggregate.id);
+    expect((await reveals()).revealed).toBe(false);
+
+    await present({ winnerOnly: true });
+    for (const id of [show.normal.id, show.ranking.id]) await reveal(host, id);
+    expect(await reveals()).toEqual({
+      revealed: true,
+      winnerOnly: true,
+      hideVoteCounts: true,
+    });
   });
 });
 

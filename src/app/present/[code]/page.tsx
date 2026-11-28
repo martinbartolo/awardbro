@@ -61,7 +61,7 @@ export default async function PresentPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await showPage("present", (await params).code);
-  const session = await api.award.getSession({ code, activeOnly: true });
+  const session = await api.award.getSession({ code, bigScreen: true });
 
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">

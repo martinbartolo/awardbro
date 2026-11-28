@@ -16,12 +16,12 @@ import {
 } from "~/lib/schemas";
 import {
   estimateVoters,
-  publicScores,
   type RevealOptions,
   type ScoredCategory,
   type ScoredNomination,
   scoreNomination,
   type SourceNomination,
+  visibleScores,
 } from "~/lib/scoring";
 import {
   SERVER_STAGES,
@@ -100,11 +100,11 @@ type ScorableCategory = ScoredCategory &
   };
 
 /**
- * The categories, with each nomination's score in `_count.votes` (votes, or points in ranking and
- * aggregate categories) and without its votes, so individual votes are never sent.
+ * The categories, with each nomination's `score` and `place` (`VisibleScore`) instead of its
+ * votes, so individual votes are never sent.
  *
  * With `canSeeAllScores` (hosts) every score is sent; otherwise only what the show reveals
- * (`publicScores` with `revealOptions`).
+ * (`visibleScores` with `revealOptions`).
  *
  * An aggregate is scored from its sources' nominations. Sources among `categories` are used as
  * loaded; any others are loaded in one query for all aggregates. So scoring a whole show costs no
@@ -157,23 +157,25 @@ const withScores = async <C extends ScorableCategory>(
   return categories.map(category => {
     const sources =
       category.type === "AGGREGATE" ? sourcesByName(category) : undefined;
-    const nominations = category.nominations.map(
-      ({ votes, ...nomination }: C["nominations"][number]) => ({
-        ...nomination,
-        _count: {
-          votes: scoreNomination(
-            category,
-            { ...nomination, votes },
-            sources?.get(nomination.name),
-          ),
-        },
-      }),
+    const scores = category.nominations.map(nomination =>
+      scoreNomination(category, nomination, sources?.get(nomination.name)),
     );
+    const reveals = revealOptions(category);
+    const shown = visibleScores(canSeeAllScores ? "all" : reveals, scores);
+    const { nominations, ...rest } = category;
     return {
-      ...category,
-      nominations: canSeeAllScores
-        ? nominations
-        : publicScores(revealOptions(category), nominations),
+      ...rest,
+      nominations: nominations.map(
+        (
+          { votes: _votes, _count, ...nomination }: C["nominations"][number],
+          i,
+        ) => ({
+          ...nomination,
+          ...shown[i]!,
+        }),
+      ),
+      // What the audience sees of it: an aggregate reveals no more than its sources
+      reveals,
       // The present page's live count while voting is open, so public until the reveal. After
       // it, the total next to masked scores would give hidden ones away (a loser's score is
       // the total minus the winner's), so only hosts get it. An aggregate's would mix votes and
@@ -181,7 +183,7 @@ const withScores = async <C extends ScorableCategory>(
       estimatedVoters:
         category.type === "AGGREGATE" || (!canSeeAllScores && category.revealed)
           ? null
-          : estimateVoters(category, nominations),
+          : estimateVoters(category, scores),
     };
   });
 };
@@ -616,7 +618,11 @@ export const awardRouter = createTRPCRouter({
     .input(
       z.object({
         code: z.string(),
-        activeOnly: z.boolean().optional(),
+        /**
+         * For the big screen: only the category on it, with what the audience may see (even
+         * on a host's laptop, and with sources' reveal options in an aggregate's)
+         */
+        bigScreen: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -627,7 +633,7 @@ export const awardRouter = createTRPCRouter({
           omit: { password: true },
           include: {
             categories: {
-              where: input.activeOnly ? { isActive: true } : undefined,
+              where: input.bigScreen ? { isActive: true } : undefined,
               orderBy: runningOrder,
               include: {
                 nominations: {
@@ -660,8 +666,13 @@ export const awardRouter = createTRPCRouter({
       const canManage = isHost(ctx, access);
       return {
         ...session,
-        categories: await withScores(ctx.db, session.categories, canManage),
-        // So host pages can tell when they've lost access (and only got public scores)
+        categories: await withScores(
+          ctx.db,
+          session.categories,
+          canManage && !input.bigScreen,
+        ),
+        // So host pages can tell when they've lost access (and only got public scores). The big
+        // screen always gets public scores, whoever is looking.
         canManage,
       };
     }),

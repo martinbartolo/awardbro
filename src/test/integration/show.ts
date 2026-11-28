@@ -143,10 +143,15 @@ export const procedureNames = (type: "query" | "mutation") =>
 export const awardPaths = (names: string[]) =>
   names.map(name => `award.${name}`).sort();
 
-/** Each nomination's score, by name */
+/** Each nomination's score, by name (null when it's hidden) */
 export const scoresByName = (
-  nominations: { name: string; _count: { votes: number } }[],
-) => Object.fromEntries(nominations.map(n => [n.name, n._count.votes]));
+  nominations: { name: string; score: number | null }[],
+) => Object.fromEntries(nominations.map(n => [n.name, n.score]));
+
+/** Each nomination's place, by name (null without votes, or when it's hidden) */
+export const placesByName = (
+  nominations: { name: string; place: number | null }[],
+) => Object.fromEntries(nominations.map(n => [n.name, n.place]));
 
 /**
  * Every route that changes a show (all but voting), called on the show's normal category or the

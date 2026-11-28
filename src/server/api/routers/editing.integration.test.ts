@@ -16,7 +16,7 @@ const nominationsOf = async (host: Visitor, categoryId: string) =>
     .map(n => ({
       name: n.name,
       description: n.description,
-      score: n._count.votes,
+      score: n.score,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 

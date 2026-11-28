@@ -269,9 +269,7 @@ describe("a nomination with the same name as another in its category", () => {
 
     expect(await copies(show.normal.id, "Dune")).toBe(2);
     expect(
-      aggregate.nominations
-        .filter(n => n.name === "Dune")
-        .map(n => n._count.votes),
+      aggregate.nominations.filter(n => n.name === "Dune").map(n => n.score),
     ).toEqual([2]);
   });
 });

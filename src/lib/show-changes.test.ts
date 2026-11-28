@@ -12,10 +12,14 @@ import {
   withoutVotes,
 } from "./show-changes";
 
-const film = (id: string, votes: number) => ({ id, _count: { votes } });
+const film = (id: string, score: number | null) => ({
+  id,
+  score,
+  place: score ? 1 : null,
+});
 type Category = {
   id: string;
-  nominations: { id: string; _count: { votes: number } }[];
+  nominations: ReturnType<typeof film>[];
   sourceCategories: { id: string }[];
   estimatedVoters: number | null;
 };
@@ -56,11 +60,21 @@ describe("updateCategory", () => {
 });
 
 describe("withoutVotes", () => {
-  it("sets every score and the count of voters to 0", () => {
+  it("sets every score and the count of voters to 0, so no places", () => {
     const reset = withoutVotes(show()[0]!);
 
-    expect(reset.nominations.map(n => n._count.votes)).toEqual([0, 0]);
+    expect(reset.nominations.map(({ score, place }) => [score, place])).toEqual(
+      [
+        [0, null],
+        [0, null],
+      ],
+    );
     expect(reset.estimatedVoters).toBe(0);
+  });
+
+  it("keeps a hidden score hidden", () => {
+    const hidden = { ...show()[0]!, nominations: [film("a1", null)] };
+    expect(withoutVotes(hidden).nominations[0]?.score).toBeNull();
   });
 
   it("leaves an aggregate without a count of voters", () => {
@@ -106,10 +120,10 @@ describe("updateNomination", () => {
   it("changes only that nomination, wherever it is", () => {
     const after = updateNomination(show(), "b1", n => ({
       ...n,
-      _count: { votes: 7 },
+      score: 7,
     }));
 
-    expect(after.flatMap(c => c.nominations.map(n => n._count.votes))).toEqual([
+    expect(after.flatMap(c => c.nominations.map(n => n.score))).toEqual([
       3, 1, 7, 5,
     ]);
   });
