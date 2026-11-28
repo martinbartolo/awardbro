@@ -56,3 +56,9 @@ yarn-error.log*
 /test-results/
 /playwright-report/
 /blob-report/
+
+# impeccable (design tool): keep the config, design sidecar and surface briefs; skip local working state
+/.impeccable/questions/
+/.impeccable/review/
+/.impeccable/hook.cache.json
+/.impeccable/config.local.json
