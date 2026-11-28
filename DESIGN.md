@@ -39,6 +39,7 @@ colors:
   paper-lilac: "#b9a4f5"
   paper-lime: "#bfe07a"
   paper-cornflower: "#9db0f2"
+  paper-success: "#0f7d67"
 typography:
   display:
     fontFamily: "Fredoka, ui-rounded, system-ui, sans-serif"
@@ -132,7 +133,7 @@ components:
 <!-- impeccable:design-map -->
 
 Name: AwardBro
-Colors: primary: night-coral #ff7a5c; secondary: night-gold #ffc93c; tertiary: shape-mint #2ec4a6; neutral: night-stage #16153a; primary: paper-blue #3b5bdb; secondary: paper-coral #e8553a (+29 more in the sidecar)
+Colors: primary: night-coral #ff7a5c; secondary: night-gold #ffc93c; tertiary: shape-mint #2ec4a6; neutral: night-stage #16153a; primary: paper-blue #3b5bdb; secondary: paper-coral #e8553a (+30 more in the sidecar)
 Fonts: Fredoka (display, headline, title, body, label)
 Spacing: xs 8px, sm 12px, md 16px, lg 24px, xl 40px, stage 96px
 Radius: sm 12px, md 14px, lg 16px, card 24px, tile 20px, column 40px, pill 9999px
@@ -145,6 +146,7 @@ Rules:
 - The Stage Unit Rule. Everything on the big screen is sized in stage units: type from the `text-stage-*` scale, spacing from Tailwind's scale (which counts in half-units there), anything else as a multiple of `u`.
 - The No Kicker Rule. No small uppercase label above a heading.
 - The Overscan Rule. Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).
+- The Thumb Reach Rule. A phone screen has one action, pinned full width at the bottom within thumb reach, and it names what it sends ("Vote for The Worm", "Submit my top 3").
 - The Duotone Moment Rule. Bold for controls; Duotone (`weight="duotone"`) only for the category-type badges. A voter's vote confirmation is a Bold check on an action-colour badge, and the quiet screens (waiting, voting closed, an aggregate) carry the shape set as their mark, not an icon.
 - The No Hard Offset Rule. Never a solid offset shadow (the sticker or Memphis look).
 
