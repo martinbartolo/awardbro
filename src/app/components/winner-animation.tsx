@@ -178,7 +178,7 @@ export function WinnerAnimation({
       "bg-gradient-to-br from-gray-200 to-gray-400 border-gray-300 shadow-lg shadow-gray-400/50 text-shadow-medal",
     third:
       "bg-gradient-to-br from-orange-300 to-orange-600 border-orange-400 shadow-lg shadow-orange-500/50 text-shadow-medal",
-    other: "bg-chart-4 border-chart-4/50 shadow-lg shadow-chart-4/30",
+    other: "bg-shape-4 border-shape-4/50 shadow-lg shadow-shape-4/30",
   };
 
   const descriptionVariants = {

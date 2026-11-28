@@ -171,7 +171,7 @@ export function LiveVotingSession({
                   : "Cast your vote"}
             </p>
             {hasVoted && !isClosed && (
-              <p className="text-chart-2 mt-2">
+              <p className="text-success mt-2">
                 You have already voted in this category
               </p>
             )}

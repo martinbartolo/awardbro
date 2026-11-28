@@ -1,12 +1,17 @@
 import "~/styles/globals.css";
 
-import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
+import { Fredoka } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { TRPCReactProvider } from "~/trpc/react";
 
 import ogImage from "./opengraph-image.png";
+
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  variable: "--font-fredoka",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://awardbro.com"),
@@ -71,7 +76,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable}`} dir="ltr">
+    <html lang="en" className={fredoka.variable} dir="ltr">
       <body>
         <TRPCReactProvider>{children}</TRPCReactProvider>
         <Toaster />

@@ -149,7 +149,7 @@ export default [
           alphabetize: { order: "asc", caseInsensitive: true },
         },
       ],
-      "i/no-unresolved": ["error", { ignore: ["^geist/"] }],
+      "i/no-unresolved": "error",
     },
   },
 
