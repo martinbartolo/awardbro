@@ -39,6 +39,7 @@ colors:
   paper-lilac: "#b9a4f5"
   paper-lime: "#bfe07a"
   paper-cornflower: "#9db0f2"
+  paper-success: "#0f7d67"
 typography:
   display:
     fontFamily: "Fredoka, ui-rounded, system-ui, sans-serif"
@@ -137,14 +138,14 @@ An awards night run from a laptop, voted on from phones and revealed on whatever
 
 One system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.
 
-There are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. A page puts its theme on `<html>` (`data-theme="light"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.
+There are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. On the vote page that override is the theme toggle in the header, remembered on the device (`localStorage`); until the voter picks one, the page follows `prefers-color-scheme` live, and an inline script sets the theme before the first paint so a light phone never flashes dark. It is the device's theme, separate from the big screen's per-show one. A page puts its theme on `<html>` (`data-theme="light"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.
 
 **Key Characteristics:**
 
 - Rounded everything: Fredoka type, pill buttons, rounded-top podium columns.
 - Solid, saturated colour that survives a washed-out projector; no glows or gradients.
 - Results as a podium race: columns rise, each nomination in its own colour, the leader stalls, the winner turns gold and lands.
-- A small shape set (circle, triangle, squiggle) as markers and confetti, nothing more.
+- A small shape set (circle, triangle, squiggle) as markers, the quiet screens' mark and confetti, nothing more.
 - Soft coloured shadows; never hard offset shadows.
 
 ## Colors
@@ -174,6 +175,7 @@ Deep navy night with warm sparks, or warm paper with a confident blue: either wa
 - **Night Muted** / **Paper Muted**: secondary text, hints, stage labels.
 - **Track** and **Fill**: an unfilled result track, and quiet fills where results need no colour (such as a column before the reveal).
 - **Rose** (night) / **Red** (paper): destructive actions only.
+- **Success** (`success`): Shape Mint at Night, Paper Success (a deeper green, so it holds on white) on Paper. Only the phone's "Voting is open" dot, which pulses inside a 25% ring of itself.
 
 ### Named Rules
 
@@ -194,9 +196,9 @@ Deep navy night with warm sparks, or warm paper with a confident blue: either wa
 
 - **Display** (700, 84px on the big screen, line-height 1): the winner's name at the reveal and the "And the winner is…" beat (92px).
 - **Headline** (700, 52px on the big screen): the category name.
-- **Title** (700, 40px): the category name in the run view; 28px on a phone.
-- **Body** (400, 18px, line-height 1.45, up to 52ch): hints and explanations.
-- **Label** (600, 16px): stage labels, nomination names on tiles (20px on a phone), button text.
+- **Title** (700, 40px): the category name in the run view; 30px on a phone (line-height 1.12), where the outcome headings ("Your vote is in", "Voting has closed") take the same size.
+- **Body** (400, 18px, line-height 1.45, up to 52ch): hints and explanations. On a phone the help line is muted; the host's own description of a category is set in the body voice (foreground at 90%), not muted.
+- **Label** (600, 16px): stage labels, nomination names on tiles (20px on a phone, 18px under a photo), button text. The phone's pinned action is 20px bold; its header (room code, status) 14px.
 
 Counts and scores are numbers people compare: set them large and bold (48px on a column, 80px on the winner's, 72px for the run view's live count).
 
@@ -235,7 +237,21 @@ At the reveal the columns stand along the bottom in podium order (3rd, 2nd, 1st,
 
 **The Overscan Rule.** Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).
 
-Phones are a single column with the vote button pinned at the bottom, within thumb reach. The run view is a main column (the current award, its stage, the live count, one next-step button) beside a running-order panel.
+**The Thumb Reach Rule.** A phone screen has one action, pinned full width at the bottom within thumb reach, and it names what it sends ("Vote for The Worm", "Submit my top 3"). Every other way out ("Change my vote", "Keep my vote", "Start again") is a quiet text button.
+
+### Phone
+
+The vote page is one column, at most 512px wide with 20px side gutters, on the stage colour. From the top:
+
+- **Header** (14px, 600, muted): "Room K7QF" on the left; on the right the live status and the theme toggle (a 36px round ghost icon button, sun or moon). The status is a 10px dot and a word: the success dot pulsing for "Voting is open", otherwise a line-coloured dot for "Voting closed", "Waiting" or "Results next".
+- **The category** (16px under the header): its name at the phone title size, the host's description under it in the body voice, and "Counts towards …" in small muted text when it feeds an aggregate.
+- **One help line** (18px, muted): "Pick one. You can change it until voting closes.", or the ranking's "Tap your top 3 in order…". Dropped when the host's description is there, since that says enough.
+- **The tiles**, from the first viewport down, 12px apart; picture categories two to a row.
+- **The pinned action** at the bottom (see Components), clear of the home indicator (`env(safe-area-inset-bottom)`, at least 20px).
+
+A new category slides in (16px up and a fade, 0.3s; a fade only with reduced motion); its stages change in place. The outcome and the quiet screens are anchored 8vh under the category's name, so they read as that award's answer; only the waiting and deleted-show screens centre in the page.
+
+The run view is a main column (the current award, its stage, the live count, one next-step button) beside a running-order panel.
 
 ## Elevation & Depth
 
@@ -244,7 +260,8 @@ Depth is soft and coloured: a shadow tinted by the theme (black at 40% on Night,
 ### Shadow Vocabulary
 
 - **Soft** (`box-shadow: 0 6px 20px var(--shadow-color)`): tiles, cards, the room code chip.
-- **Lift** (`box-shadow: 0 18px 44px var(--shadow-color)`): the QR code, the live count circle, the main button.
+- **Lift** (`box-shadow: 0 18px 44px var(--shadow-color)`): the QR code, the live count circle, the main button, the phone's vote-in badge.
+- **Bar lift** (`box-shadow: 0 -14px 28px -10px var(--shadow-color)`, with a 2px top edge in `secondary`, Night Chip or Paper Surface Low): the phone's pinned action, only while tiles run on under it; at the end of the list it sits flat on the stage. The edge is there because a shadow alone is lost on the Night stage. Both fade in and out (0.3s).
 
 ### Named Rules
 
@@ -252,7 +269,7 @@ Depth is soft and coloured: a shadow tinted by the theme (black at 40% on Night,
 
 ## Shapes
 
-Generous, friendly rounding: inputs 14px, tiles 20px, cards 24px, podium column tops 40px, buttons fully pill-shaped. The shape set is a circle, a triangle and a squiggle, used as list markers (one per award in the running order), a live dot and confetti. Confetti falls only at a win, on the big screen and on a phone after a vote.
+Generous, friendly rounding: inputs 14px, tiles 20px, cards 24px, podium column tops 40px, buttons fully pill-shaped. The shape set is a circle, a triangle and a squiggle, used as list markers (one per award in the running order), the quiet screens' mark (see Components) and confetti. Confetti falls only at a win, on the big screen and on a phone after a vote. On a phone, the round forms repeat at small sizes: every tick and every empty ranking place is the same round ring, and the place badges are pills.
 
 ## Icons
 
@@ -273,7 +290,8 @@ Phosphor (`@phosphor-icons/react`), imported one by one. Its Bold weight matches
 - **Shape:** pill (9999px).
 - **Primary:** the action colour with dark text (Night) or white text (Paper), 56px tall, 32px side padding; 66px on the run view's next-step button.
 - **Quiet:** muted text with a 2px line-coloured border, for secondary steps such as "Take off the big screen".
-- **Disabled:** surface-low background, muted text, no shadow. It says what's missing ("Pick a nomination").
+- **Disabled:** surface-low background, muted text, no shadow. It says what's missing or why it can't send: "Pick a nomination", "Pick a different one", "That's your vote already", "Pick 2 more", "That's your ranking already".
+- **Quiet text:** the action colour, 18px semibold, underlined (4px offset), no fill: the phone's way out beside its one action ("Change my vote", "Keep my vote", "Start again").
 - **Focus:** a 3px ring in the action colour, offset 3px.
 
 ### Cards / Containers
@@ -290,7 +308,32 @@ Phosphor (`@phosphor-icons/react`), imported one by one. Its Bold weight matches
 
 ### Nomination tile
 
-A 64px-tall rounded tile (20px) with the name and a round check mark. Selected tiles take the action colour. The group is a radio group; the button below names the pick ("Vote for The Worm").
+At least 64px tall, rounded (20px), in the card colour with the Soft shadow, the name at 20px semibold and any description under it in muted 16px (it tells apart nominations with the same name). It presses in a touch when tapped (0.98) and takes a 2px action-colour focus ring. The group is a radio group; the pinned action below names the pick ("Vote for The Worm").
+
+- **Picked:** the tile turns the action colour with its foreground text (the description at 85%), never the winner colour. Nothing is picked until the voter taps.
+- **Tick:** a 28px round ring with a 3px border at the end of the tile. Empty, it is the muted text colour at 70%, which keeps it at 3:1 or more against the tile in both themes; picked, it fills with the action colour's foreground and holds a 10px dot in the action colour.
+- **Pictures:** two to a row. The photo fills the tile's width, square, with 14px corners inside 8px of padding; the tick sits on a round card-coloured disc (action-coloured when picked, Soft shadow) on the photo's top-right corner, so the name below gets the whole width. The name, 18px semibold, fits in two lines at most (CSS line clamping, safe here because it's left-aligned), so the photos stay in step.
+- **Ranking:** the voter taps in order and taps again to take one out. A placed tile shows its place ("1st", "2nd", "3rd") in a pill of one width (52 × 36px, the action colour's foreground with action-coloured 16px bold text), so the badges line up; a tile not placed yet shows the same empty ring as a single pick. Once every place is filled, the rest dim to 50% and can't be tapped.
+- **Your vote:** while the voter changes a vote already in, a small pill chip ("Your vote", 14px semibold) marks that tile: muted fill and muted text, or the action colour's foreground with action-coloured text when that tile is picked again. On a picture it sits on the photo's top-left corner. Only a different pick can be sent.
+
+### Pinned action
+
+The phone's one action (The Thumb Reach Rule): a full-width pill, 60px tall, 20px bold, in the action colour with the Lift shadow, its label cut short with an ellipsis rather than wrapping. It sticks to the bottom of the screen on a stage-coloured bar (16px above, the safe area or 20px below) that lifts with the Bar lift only while tiles run on under it.
+
+- **Ready:** it names what it sends: "Vote for The Worm", "Submit my top 3".
+- **Not ready:** the Disabled button, which says what's missing ("Pick a nomination", "Pick 2 more") or why ("That's your vote already").
+- **Below it:** while changing a vote, a quiet text button to keep the one already in ("Keep my vote", "Keep my ranking").
+
+### Vote outcome
+
+The answer to the voter's tap, anchored 8vh under the category's name and announced to screen readers (`role="status"`):
+
+- **"Your vote is in" / "Your ranking is in":** a 128px circle in the action colour with a 64px Bold check in its foreground (Lift shadow), which springs in from half size (0.5s, `ease-spring`; no zoom with reduced motion); the heading at the phone title size; "You voted for **The Worm**. Watch the big screen for the results." in muted 18px with the name in the foreground colour; then "Change my vote" (or "Change my ranking") as a quiet text button. A ranking lists itself as small tiles under the heading: card-coloured, 16px corners, Soft shadow, each with its place in an action-colour pill (48 × 32px).
+- **"Voting has closed":** the shape marks instead of the check, since there's nothing to celebrate, and what the vote was ("You voted for …", the ranking's tiles, or "You didn't vote in this one"), pointing at the big screen.
+
+### Quiet screens
+
+Waiting for the next award, voting closed, an aggregate on the screen ("Nothing to vote for here") and a deleted show carry the shape set as their mark over the title: a 28px circle (`shape-1`), a 32px triangle (`shape-3`, raised 8px) and a 48 × 20px squiggle (`shape-2`, a 5px round stroke), 12px apart and bottom-aligned. They bob gently (`shape-bob`, 6px up and back over 2.6s, each a beat behind the last), only with motion allowed. Under them the heading at the phone title size and one or two muted lines that say what happens next.
 
 ### Podium column
 
@@ -320,6 +363,8 @@ When the host changes what the results show while they're up, the columns move w
 ### Confetti
 
 The shape set (circles, triangles and squiggles in the four shape colours, read from the theme) on a full-screen canvas: 220 pieces fanned upwards from the winner's column, falling under gravity with a flutter, sized and paced to the stage so every screen sees the same burst. Every piece flies on any capable machine; only if the first 500ms of frames run slow (under about 40 fps) are half of them dropped.
+
+On a phone, a vote going in fires a smaller burst: 120 pieces from the vote-in badge (38% down the screen), each piece 2.2 times the size the screen alone would give it, so it reads on a small screen. None with reduced motion.
 
 ### Live count
 

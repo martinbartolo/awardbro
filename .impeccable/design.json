@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-28T16:44:32+00:00",
+  "generatedAt": "2026-11-28T19:30:00+00:00",
   "title": "Design System: AwardBro",
   "extensions": {
     "colorMeta": {
@@ -558,6 +558,21 @@
           "#e2e7fb",
           "#f3f6fd"
         ]
+      },
+      "paper-success": {
+        "role": "neutral",
+        "displayName": "Paper Success",
+        "canonical": "#0f7d67",
+        "tonalRamp": [
+          "#06302a",
+          "#0a4f43",
+          "#0d6655",
+          "#0f7d67",
+          "#4f9e8d",
+          "#86bfb2",
+          "#bcdfd7",
+          "#e7f3f0"
+        ]
       }
     },
     "typographyMeta": {
@@ -571,7 +586,7 @@
       },
       "title": {
         "displayName": "Title",
-        "purpose": "The category name: on the big screen (stage title, 6.4u), in the run view and on phones."
+        "purpose": "The category name: on the big screen (stage title, 6.4u), in the run view, and on phones (30px), where the outcome headings take the same size."
       },
       "body": {
         "displayName": "Body",
@@ -579,7 +594,7 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Buttons, stage labels, nomination names."
+        "purpose": "Buttons, stage labels, nomination names (20px on a phone tile, 18px under a photo)."
       }
     },
     "shadows": [
@@ -591,7 +606,12 @@
       {
         "name": "shadow-lift",
         "value": "0 18px 44px var(--shadow-color)",
-        "purpose": "The QR code, the live count, the main button."
+        "purpose": "The QR code, the live count, the main button, the phone's vote-in badge."
+      },
+      {
+        "name": "shadow-bar-lift",
+        "value": "0 -14px 28px -10px var(--shadow-color)",
+        "purpose": "The phone's pinned action bar, with a 2px secondary-coloured top edge, only while tiles run on under it; flat at the end of the list. Fades in and out over 0.3s."
       }
     ],
     "motion": [
@@ -614,6 +634,21 @@
         "name": "count-bump",
         "value": "@keyframes count-bump { 40% { transform: scale(1.06) } } 0.5s var(--ease-spring)",
         "purpose": "The live count's hop with each new vote. Not with reduced motion."
+      },
+      {
+        "name": "shape-bob",
+        "value": "@keyframes shape-bob { 50% { transform: translateY(-6px) } } 2.6s ease-in-out infinite",
+        "purpose": "The quiet screens' shape marks bobbing, each a beat behind the last (0, -0.9s, -1.7s). Only with motion allowed."
+      },
+      {
+        "name": "vote-in",
+        "value": "zoom in from 50%, 0.5s var(--ease-spring)",
+        "purpose": "The phone's vote-in badge arriving. No zoom with reduced motion."
+      },
+      {
+        "name": "phone-scene",
+        "value": "opacity 0 to 1, translateY 16px to 0, 0.3s",
+        "purpose": "A new category arriving on the phone; its stages change in place. A fade only with reduced motion."
       }
     ],
     "breakpoints": [
@@ -668,9 +703,24 @@
       "name": "Nomination Tile",
       "kind": "custom",
       "refersTo": "nomination-tile",
-      "description": "One choice in the voter's radio group; selected takes the action colour.",
-      "html": "<div role=\"radiogroup\" class=\"ds-noms\"><button role=\"radio\" aria-checked=\"true\" class=\"ds-nom\">Priya's Robot<i></i></button><button role=\"radio\" aria-checked=\"false\" class=\"ds-nom\">The Worm<i></i></button></div>",
-      "css": ".ds-noms{display:grid;gap:10px;width:320px}.ds-nom{display:flex;align-items:center;min-height:64px;padding:12px 18px;border:0;border-radius:20px;background:var(--card,#2e2c66);color:var(--card-foreground,#fff);font:600 1.25rem Fredoka,ui-rounded,system-ui,sans-serif;text-align:left;box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));cursor:pointer;transition:transform .15s,background .2s}.ds-nom i{margin-left:auto;width:24px;height:24px;border-radius:50%;border:2px solid currentColor;opacity:.6}.ds-nom[aria-checked=true]{background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a)}.ds-nom[aria-checked=true] i{opacity:1;background:currentColor}.ds-nom:active{transform:scale(.98)}.ds-nom:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+      "description": "One choice in the voter's radio group: card-coloured, 20px corners, a round tick ring; the pick takes the action colour, never the winner colour. A ranking tile shows its place; a vote already in wears a \"Your vote\" chip while changing.",
+      "html": "<div role=\"radiogroup\" class=\"ds-noms\"><button role=\"radio\" aria-checked=\"true\" class=\"ds-nom\">Priya's Robot<i></i></button><button role=\"radio\" aria-checked=\"false\" class=\"ds-nom\">The Worm<span class=\"ds-nom-yours\">Your vote</span><i></i></button><button class=\"ds-nom\" aria-pressed=\"true\">Mo's Soup<b>2nd</b></button></div>",
+      "css": ".ds-noms{display:grid;gap:12px;width:340px}.ds-nom{display:flex;align-items:center;gap:16px;min-height:64px;padding:12px 18px;border:0;border-radius:20px;background:var(--card,#2e2c66);color:var(--card-foreground,#fff);font:600 1.25rem/1.25 Fredoka,ui-rounded,system-ui,sans-serif;text-align:left;box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));cursor:pointer;transition:transform .2s,background-color .2s,color .2s}.ds-nom i{margin-left:auto;flex:none;display:grid;place-items:center;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:3px solid color-mix(in srgb,var(--muted-foreground,#bab8e6) 70%,transparent)}.ds-nom[aria-checked=true],.ds-nom[aria-pressed=true]{background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a)}.ds-nom[aria-checked=true] i{border-color:var(--primary-foreground,#16153a);background:var(--primary-foreground,#16153a)}.ds-nom[aria-checked=true] i::after{content:\"\";width:10px;height:10px;border-radius:50%;background:var(--primary,#ff7a5c)}.ds-nom b{margin-left:auto;display:grid;place-items:center;width:52px;height:36px;border-radius:9999px;background:var(--primary-foreground,#16153a);color:var(--primary,#ff7a5c);font-size:1rem;font-weight:700}.ds-nom-yours{margin-left:auto;padding:2px 10px;border-radius:9999px;background:var(--muted,#1f1e4a);color:var(--muted-foreground,#bab8e6);font-size:.875rem}.ds-nom-yours+i{margin-left:0}.ds-nom:active{transform:scale(.98)}.ds-nom:focus-visible{outline:2px solid var(--ring,#ff7a5c);outline-offset:2px}"
+    },
+    {
+      "name": "Pinned Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The phone's one action: full width, 60px, at the bottom in thumb reach, naming the pick; quiet while it can't send, saying what's missing.",
+      "html": "<div class=\"ds-pin\"><button class=\"ds-pin-btn\">Vote for The Worm</button><button class=\"ds-pin-btn\" disabled>Pick 2 more</button><button class=\"ds-pin-quiet\">Keep my vote</button></div>",
+      "css": ".ds-pin{display:grid;gap:12px;width:340px;padding:16px 20px 20px;background:var(--background,#16153a);border-top:2px solid var(--secondary,#45438a);box-shadow:0 -14px 28px -10px var(--shadow-color,rgb(0 0 0/.4))}.ds-pin-btn{height:60px;width:100%;border:0;border-radius:9999px;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);font:700 1.25rem Fredoka,ui-rounded,system-ui,sans-serif;box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:transform .15s}.ds-pin-btn:active{transform:scale(.98)}.ds-pin-btn:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}.ds-pin-btn:disabled{background:var(--muted,#1f1e4a);color:var(--muted-foreground,#bab8e6);box-shadow:none;cursor:default}.ds-pin-quiet{justify-self:center;padding:8px;border:0;background:none;color:var(--primary,#ff7a5c);font:600 1.125rem Fredoka,ui-rounded,system-ui,sans-serif;text-decoration:underline;text-underline-offset:4px;cursor:pointer}.ds-pin-quiet:focus-visible{outline:2px solid var(--ring,#ff7a5c);border-radius:6px}"
+    },
+    {
+      "name": "Vote Outcome",
+      "kind": "custom",
+      "description": "\"Your vote is in\": a 128px action-colour badge with a Bold check, the vote named, and a quiet way to change it. Quiet screens carry the shape marks instead.",
+      "html": "<div class=\"ds-out\" role=\"status\"><div class=\"ds-out-badge\"><svg viewBox=\"0 0 256 256\" width=\"64\" height=\"64\" aria-hidden=\"true\"><polyline points=\"40 144 96 200 224 72\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"24\"/></svg></div><h2>Your vote is in</h2><p>You voted for <strong>The Worm</strong>. Watch the big screen for the results.</p><button class=\"ds-out-quiet\">Change my vote</button><div class=\"ds-marks\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" width=\"28\" height=\"28\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"var(--shape-1,#ff7a5c)\"/></svg><svg viewBox=\"0 0 26 24\" width=\"32\" height=\"32\" style=\"margin-bottom:8px\"><path d=\"M13 1 25 23H1Z\" fill=\"var(--shape-3,#ffc93c)\"/></svg><svg viewBox=\"0 0 44 18\" width=\"48\" height=\"20\"><path d=\"M3 9q6-8 12 0t12 0t12 0\" fill=\"none\" stroke=\"var(--shape-2,#2ec4a6)\" stroke-width=\"5\" stroke-linecap=\"round\"/></svg></div></div>",
+      "css": ".ds-out{display:flex;flex-direction:column;align-items:center;width:340px;text-align:center;font-family:Fredoka,ui-rounded,system-ui,sans-serif;color:var(--foreground,#fff)}.ds-out-badge{display:grid;place-items:center;width:128px;height:128px;margin-bottom:28px;border-radius:50%;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4))}.ds-out h2{margin:0;font-size:1.875rem;font-weight:700;line-height:1.25}.ds-out p{max-width:20rem;margin:12px 0 0;color:var(--muted-foreground,#bab8e6);font-size:1.125rem;line-height:1.375}.ds-out strong{color:var(--foreground,#fff)}.ds-out-quiet{margin-top:24px;padding:8px;border:0;background:none;color:var(--primary,#ff7a5c);font:600 1.125rem Fredoka,ui-rounded,system-ui,sans-serif;text-decoration:underline;text-underline-offset:4px;cursor:pointer}.ds-out-quiet:focus-visible{outline:2px solid var(--ring,#ff7a5c);border-radius:6px}.ds-marks{display:flex;align-items:flex-end;gap:12px;margin-top:40px}@keyframes ds-bob{50%{transform:translateY(-6px)}}@media (prefers-reduced-motion:no-preference){.ds-marks svg{animation:ds-bob 2.6s ease-in-out infinite}.ds-marks svg:nth-child(2){animation-delay:-.9s}.ds-marks svg:nth-child(3){animation-delay:-1.7s}}"
     },
     {
       "name": "Podium",
@@ -704,12 +754,12 @@
   ],
   "narrative": {
     "northStar": "The Podium Night",
-    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. A page puts its theme on `<html>` (`data-theme=\"light\"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.",
+    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. On the vote page that override is the theme toggle in the header, remembered on the device (`localStorage`); until the voter picks one, the page follows `prefers-color-scheme` live, and an inline script sets the theme before the first paint so a light phone never flashes dark. It is the device's theme, separate from the big screen's per-show one. A page puts its theme on `<html>` (`data-theme=\"light\"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.",
     "keyCharacteristics": [
       "Rounded everything: Fredoka type, pill buttons, rounded-top podium columns.",
       "Solid, saturated colour that survives a washed-out projector; no glows or gradients.",
       "Results as a podium race: columns rise, each nomination in its own colour, the leader stalls, the winner turns gold and lands.",
-      "A small shape set (circle, triangle, squiggle) as markers and confetti, nothing more.",
+      "A small shape set (circle, triangle, squiggle) as markers, the quiet screens' mark and confetti, nothing more.",
       "Soft coloured shadows; never hard offset shadows."
     ],
     "rules": [
@@ -741,6 +791,11 @@
       {
         "name": "The Overscan Rule",
         "body": "Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).",
+        "section": "layout"
+      },
+      {
+        "name": "The Thumb Reach Rule",
+        "body": "A phone screen has one action, pinned full width at the bottom within thumb reach, and it names what it sends (\"Vote for The Worm\", \"Submit my top 3\"). Every other way out (\"Change my vote\", \"Keep my vote\", \"Start again\") is a quiet text button.",
         "section": "layout"
       },
       {
