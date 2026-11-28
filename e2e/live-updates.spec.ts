@@ -6,6 +6,7 @@ import {
   createShow,
   expect,
   expectResults,
+  outcome,
   runShow,
   runStep,
   test,
@@ -69,7 +70,7 @@ test("the big screen and phones follow the show as it happens", async ({
   await expect(totalVotes(screen)).toHaveText("1", LIVE);
 
   await runStep(host, "Best Film", "Close voting", "Voting closed");
-  await expect(voter.getByText("Voting has closed")).toBeVisible(LIVE);
+  await expect(outcome(voter, "Voting has closed")).toBeVisible(LIVE);
   await runStep(host, "Best Film", "Reveal the winner", "Revealed");
   await expectResults(
     screen,

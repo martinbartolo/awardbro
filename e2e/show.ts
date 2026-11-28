@@ -215,25 +215,31 @@ const nominationTile = (voter: Page, role: "radio" | "button", name: string) =>
     name: new RegExp(`^${literal(name)}(?=$|\\s)`),
   });
 
+/** What the vote page says in place of the tiles, by its heading: "Your vote is in", "Voting has closed" */
+export const outcome = (voter: Page, heading: string) =>
+  voter.getByRole("status").filter({
+    has: voter.getByRole("heading", { name: heading }),
+  });
+
 /** The voter's vote as the page shows it once it's in: "You voted for …" */
-export const voteIsIn = (voter: Page) =>
-  voter.getByRole("status").filter({ hasText: "Your vote is in" });
+export const voteIsIn = (voter: Page) => outcome(voter, "Your vote is in");
 
 /**
- * A voter votes (or changes their vote) in a normal or image category, and waits until the
- * server has saved it. With `waitForServer: false`, only until the page shows it.
+ * A voter votes in a normal or image category, or with `change`, changes the vote they have, and
+ * waits until the server has saved it. With `waitForServer: false`, only until the page shows it.
  */
 export async function vote(
   voter: Page,
   nomination: string,
   {
+    change = false,
     waitForServer = true,
     ...options
-  }: { timeout?: number; waitForServer?: boolean } = {},
+  }: { change?: boolean; timeout?: number; waitForServer?: boolean } = {},
 ) {
-  // A vote already in: change it
-  const change = voter.getByRole("button", { name: "Change my vote" });
-  if (await change.isVisible()) await change.click();
+  if (change) {
+    await voter.getByRole("button", { name: "Change my vote" }).click();
+  }
   await nominationTile(voter, "radio", nomination).click();
   // The page shows the vote as in before the server answers, so wait for the call itself:
   // a host action straight after it could otherwise reach the server first (tRPC batches
@@ -251,11 +257,16 @@ export async function vote(
   await saved;
 }
 
-/** A voter ranks nominations, best first, replacing any ranking they had */
-export async function rank(voter: Page, nominations: string[]) {
-  // A ranking already in: change it, starting from nothing
-  const change = voter.getByRole("button", { name: "Change my ranking" });
-  if (await change.isVisible()) await change.click();
+/** A voter ranks nominations, best first, or with `change`, replaces the ranking they have */
+export async function rank(
+  voter: Page,
+  nominations: string[],
+  { change = false } = {},
+) {
+  // A change starts from nothing
+  if (change) {
+    await voter.getByRole("button", { name: "Change my ranking" }).click();
+  }
   for (const nomination of nominations) {
     await nominationTile(voter, "button", nomination).click();
   }
@@ -268,9 +279,7 @@ export async function rank(voter: Page, nominations: string[]) {
     .getByRole("button", { name: `Submit my top ${nominations.length}` })
     .click();
   await saved;
-  await expect(
-    voter.getByRole("status").filter({ hasText: "Your ranking is in" }),
-  ).toBeVisible();
+  await expect(outcome(voter, "Your ranking is in")).toBeVisible();
 }
 
 /**

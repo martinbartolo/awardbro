@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
+
+import { clearDocumentTheme, setDocumentTheme, type Theme } from "~/lib/theme";
 
 /**
  * Keeps the screen awake while the page is open (Screen Wake Lock), so the big screen doesn't
@@ -46,36 +48,10 @@ export function useWakeLock() {
   }, []);
 }
 
-/**
- * Puts a page's theme on `<html>` while it's open, so everything follows it, including dialogs,
- * tooltips and toasts, which render outside the page. Light is `data-theme="light"`; dark, the
- * default, has none.
- */
-export function useDocumentTheme(theme: "dark" | "light") {
+/** Puts a page's theme on `<html>` while it's open (see `~/lib/theme`) */
+export function useDocumentTheme(theme: Theme) {
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "light") root.dataset.theme = "light";
-    else delete root.dataset.theme;
-    return () => {
-      delete root.dataset.theme;
-    };
+    setDocumentTheme(theme);
+    return clearDocumentTheme;
   }, [theme]);
 }
-
-const subscribeToTheme = (onChange: () => void) => {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-  return () => observer.disconnect();
-};
-
-/** The theme on `<html>` (see `useDocumentTheme`): dark unless a page has set light */
-export const useActiveTheme = () =>
-  useSyncExternalStore(
-    subscribeToTheme,
-    () =>
-      document.documentElement.dataset.theme === "light" ? "light" : "dark",
-    () => "dark" as const,
-  );

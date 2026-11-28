@@ -28,39 +28,47 @@ export function FittedText({
     const box = element?.parentElement;
     if (!element || !box) return;
 
+    // Fits again only when the box's width changes (the first ResizeObserver call reports the
+    // width it was observed at, so it's skipped too)
+    let fittedWidth = -1;
     const fit = () => {
+      const width = box.clientWidth;
+      if (width === fittedWidth) return;
+      fittedWidth = width;
+
       const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
-      const tooTall = () => element.offsetHeight > lineHeight * lines + 1;
-      element.textContent = text;
-      if (!tooTall()) {
+      const fits = (shown: string) => {
+        element.textContent = shown;
+        return element.offsetHeight <= lineHeight * lines + 1;
+      };
+      if (fits(text)) {
         setShown(text);
         return;
       }
       const ending = (cut: string) => `${cut.replace(/[\s,.;:–-]+$/, "")}…`;
-      /** The longest start of the text that fits, cut letter by letter */
-      const byLetters = () => {
-        let letters = text;
-        do {
-          letters = letters.slice(0, -1);
-          element.textContent = ending(letters);
-        } while (letters.length > 1 && tooTall());
-        return element.textContent;
-      };
-      /** The same, cut at a word (null when even the first word is too long) */
-      const byWords = () => {
-        let words = text.split(/\s+/);
-        do {
-          words = words.slice(0, -1);
-          element.textContent = ending(words.join(" "));
-        } while (words.length > 1 && tooTall());
-        return words.length > 0 && !tooTall() ? element.textContent : null;
-      };
-      // A cut at a word reads best, unless it throws away much more than a cut mid-word would
+
+      // The longest start of the text that fits, found by halving (a few layouts, not one per
+      // letter)
+      let low = 1;
+      let high = text.length - 1;
+      while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        if (fits(ending(text.slice(0, middle)))) low = middle;
+        else high = middle - 1;
+      }
+      const byLetters = ending(text.slice(0, low));
+
+      // A cut at a word reads best, unless it throws away much more than the cut mid-word
       // ("The…" where "The leftove…" fits)
-      const letters = byLetters();
-      const words = byWords();
+      const words = text
+        .slice(0, low + 1)
+        .split(/\s+/)
+        .slice(0, -1);
+      const byWords = words.length > 0 ? ending(words.join(" ")) : null;
       const best =
-        words && words.length >= letters.length * 0.6 ? words : letters;
+        byWords && byWords.length >= byLetters.length * 0.6
+          ? byWords
+          : byLetters;
       element.textContent = best;
       setShown(best);
     };

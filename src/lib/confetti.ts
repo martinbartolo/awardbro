@@ -29,6 +29,12 @@ const MEASURE_MS = 500;
 /** An average frame longer than this (under ~40 fps) counts as struggling */
 const SLOW_FRAME_MS = 25;
 
+/** The shape set's colours, as the theme where `element` sits has them */
+export const shapeColours = (element: Element) => {
+  const style = getComputedStyle(element);
+  return [1, 2, 3, 4].map(i => style.getPropertyValue(`--shape-${i}`).trim());
+};
+
 /** Hits the canvas with one burst of confetti; returns a function that stops it */
 export function launchConfetti(
   canvas: HTMLCanvasElement,
