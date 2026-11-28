@@ -42,7 +42,7 @@ AwardBro turns a group's inside jokes into a real awards night: the host builds 
 - Shows are found by room code (`/vote/K7QF`); `/manage/<code>` and `/manage/<code>/run` for hosts, `/present/<code>` for the big screen.
 - Each screen explains itself; there is no help page.
 - English only, no translations planned.
-- Stack: Next.js App Router, Tailwind CSS 4, Radix primitives, `motion`, `lucide-react`, on Vercel.
+- Stack: Next.js App Router, Tailwind CSS 4, Radix primitives, `motion`, `@phosphor-icons/react`, on Vercel.
 - End-to-end tests find elements by role, label and visible text, so copy changes go with test updates.
 
 ## Brand Commitments

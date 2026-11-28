@@ -227,6 +227,18 @@ Depth is soft and coloured: a shadow tinted by the theme (black at 40% on Night,
 
 Generous, friendly rounding: inputs 14px, tiles 20px, cards 24px, podium column tops 40px, buttons fully pill-shaped. The shape set is a circle, a triangle and a squiggle, used as list markers (one per award in the running order), a live dot and confetti. Confetti falls only at a win, on the big screen and on a phone after a vote.
 
+## Icons
+
+Phosphor (`@phosphor-icons/react`), imported one by one. Its Bold weight matches Fredoka's heavy strokes, and it's the default for every icon (`IconProvider` in the root layout).
+
+- **Size:** `Button` sizes its icons (16px), so an icon inside one has no size of its own. Elsewhere set it with `size-*`: 16px next to body text, 14px in badges, 20px next to a confirmation line; larger only as illustration.
+- **Colour:** `currentColor`, so an icon follows its text. Tint it only with a text colour class (`text-primary`, `text-muted-foreground`), as you would text; never a fill or a colour of its own.
+- **Names:** an icon is never the only label, and screen readers skip it (`aria-hidden`, set by `IconProvider`). An icon-only button has an `aria-label` and a tooltip; elsewhere the text next to it says what it means.
+
+### Named Rules
+
+**The Duotone Moment Rule.** Bold for controls; Duotone (`weight="duotone"`) only for the few expressive moments: the category-type badges, a voter's vote confirmation and empty states. Its second layer is the text colour at 20%, so it works in both themes without a token of its own. Never Duotone on a button.
+
 ## Components
 
 ### Buttons
