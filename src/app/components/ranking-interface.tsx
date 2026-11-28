@@ -49,11 +49,16 @@ export function RankingInterface({
   const queryClient = useQueryClient();
   const [confetti, burst] = useVoteConfetti();
 
-  // The ranking that counts, best first
-  const saved = (myVotes ?? [])
+  // The ranking that counts, best first, each with its place as it was sent (a nomination the
+  // host has deleted since is gone from it, and the others keep their places)
+  const ranked = (myVotes ?? [])
     .filter((v): v is Ranking => v.rank !== null)
-    .sort((a, b) => a.rank - b.rank)
-    .map(v => v.nominationId);
+    .sort((a, b) => a.rank - b.rank);
+  const saved = ranked.map(v => v.nominationId);
+  const placed = ranked.flatMap(({ nominationId, rank }) => {
+    const nomination = nominations.find(n => n.id === nominationId);
+    return nomination ? [{ nomination, rank }] : [];
+  });
 
   // The ranking being made, before it's sent: null when the voter isn't making one (the ranking
   // in shows instead). A change starts from nothing.
@@ -72,10 +77,13 @@ export function RankingInterface({
         change: (_before, { rankings }) =>
           [...rankings].sort((a, b) => a.rank - b.rank),
         onError: (error, { rankings }) => {
+          // Unless they've started a new ranking meanwhile: that one stays
           setOrder(
-            [...rankings]
-              .sort((a, b) => a.rank - b.rank)
-              .map(r => r.nominationId),
+            current =>
+              current ??
+              [...rankings]
+                .sort((a, b) => a.rank - b.rank)
+                .map(r => r.nominationId),
           );
           toast.error(error.message || "Your ranking didn't go in. Try again.");
         },
@@ -95,8 +103,10 @@ export function RankingInterface({
           ? [...current, id]
           : current,
     );
+  // One ranking on its way at a time, so the last one sent is the one that counts
+  const sending = submitRanking.isPending;
   const send = () => {
-    if (!complete || unchanged) return;
+    if (!complete || unchanged || sending) return;
     setOrder(null);
     burst();
     submitRanking.mutate({
@@ -108,6 +118,7 @@ export function RankingInterface({
     });
   };
   const label = () => {
+    if (sending) return "Saving your last ranking...";
     if (!complete) return `Pick ${rankingTop - current.length} more`;
     return unchanged
       ? "That's your ranking already"
@@ -121,25 +132,23 @@ export function RankingInterface({
       <VoteStages
         noun="ranking"
         summary={
-          saved.length > 0 && (
+          placed.length > 0 && (
             // The ranking as it counts: small tiles with their places, as on the ranking screen
             <ol className="w-full space-y-2 text-left">
-              {saved
-                .flatMap(id => nominations.filter(n => n.id === id))
-                .map((nomination, i) => (
-                  <li
-                    key={nomination.id}
-                    className="bg-card text-card-foreground shadow-soft flex items-center gap-3 rounded-[16px] px-3 py-2.5"
-                  >
-                    {/* One width for every place, so the names line up */}
-                    <span className="bg-primary text-primary-foreground grid h-8 w-12 shrink-0 place-items-center rounded-full text-sm font-bold">
-                      {getOrdinal(i + 1)}
-                    </span>
-                    <span className="min-w-0 font-semibold break-words">
-                      {nomination.name}
-                    </span>
-                  </li>
-                ))}
+              {placed.map(({ nomination, rank }) => (
+                <li
+                  key={nomination.id}
+                  className="bg-card text-card-foreground shadow-soft flex items-center gap-3 rounded-[16px] px-3 py-2.5"
+                >
+                  {/* One width for every place, so the names line up */}
+                  <span className="bg-primary text-primary-foreground grid h-8 w-12 shrink-0 place-items-center rounded-full text-sm font-bold">
+                    {getOrdinal(rank)}
+                  </span>
+                  <span className="min-w-0 font-semibold break-words">
+                    {nomination.name}
+                  </span>
+                </li>
+              ))}
             </ol>
           )
         }
@@ -195,7 +204,7 @@ export function RankingInterface({
           })}
         </div>
         <PinnedAction
-          disabled={!complete || unchanged}
+          disabled={!complete || unchanged || sending}
           onClick={send}
           below={
             changing && (

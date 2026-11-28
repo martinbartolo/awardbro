@@ -213,13 +213,6 @@
   }
 }
 
-/* The live count gives a little hop with each vote. */
-@keyframes count-bump {
-  40% {
-    transform: scale(1.06);
-  }
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;

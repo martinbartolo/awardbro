@@ -94,11 +94,13 @@ export function LiveVotingSession({
     ? null
     : !category
       ? { label: "Waiting", live: false }
-      : aggregate
-        ? { label: "Results next", live: false }
-        : closed
-          ? { label: "Voting closed", live: false }
-          : { label: "Voting is open", live: true };
+      : category.revealed
+        ? { label: "Results are up", live: false }
+        : aggregate
+          ? { label: "Results next", live: false }
+          : closed
+            ? { label: "Voting closed", live: false }
+            : { label: "Voting is open", live: true };
 
   return (
     <main className="bg-background text-foreground flex min-h-dvh flex-col">

@@ -1,3 +1,7 @@
+import {
+  LIGHT_QUERY,
+  THEME_STORAGE_KEY as STORAGE_KEY,
+} from "~/lib/device-theme-script";
 import { setDocumentTheme, type Theme } from "~/lib/theme";
 
 /**
@@ -5,15 +9,6 @@ import { setDocumentTheme, type Theme } from "~/lib/theme";
  * setting, unless they've picked one, which is remembered on the device. The big screen doesn't
  * use this: the host sets its theme per show.
  */
-
-const STORAGE_KEY = "awardbro-theme";
-const LIGHT_QUERY = "(prefers-color-scheme: light)";
-
-/**
- * Sets the theme before the page first paints, so a light phone never flashes dark. An inline
- * script in the page's HTML; its text is fixed, nothing in it comes from a visitor.
- */
-export const DEVICE_THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("${STORAGE_KEY}");if(t!=="light"&&t!=="dark")t=matchMedia("${LIGHT_QUERY}").matches?"light":"dark";if(t==="light")document.documentElement.dataset.theme="light"}catch(e){}})()`;
 
 /** The theme the visitor picked on this device, if any */
 function savedTheme(): Theme | null {

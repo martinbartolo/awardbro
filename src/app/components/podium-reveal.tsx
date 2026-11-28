@@ -266,7 +266,8 @@ export function PodiumReveal({
                       bottom: `calc(${barHeight(height)} + var(--u) * ${NAME_GAP})`,
                     }}
                   >
-                    {column.name}
+                    {/* Two lines at most: the room above the columns is kept for two */}
+                    <FittedText text={column.name} lines={2} />
                   </p>
                 )}
 
