@@ -46,7 +46,7 @@ const trpc = createTRPCOptionsProxy<AppRouter>({
 
 /** The page's cached queries, by name */
 const queries = {
-  show: trpc.award.getSession.queryKey({ code: "K7QF", activeOnly: true }),
+  show: trpc.award.getSession.queryKey({ code: "K7QF", bigScreen: true }),
   // The vote page's
   activeCategory: trpc.award.getActiveCategory.queryKey({ code: "K7QF" }),
   categoryA: trpc.award.getCategory.queryKey({ id: "a" }),

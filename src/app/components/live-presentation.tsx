@@ -65,7 +65,7 @@ export function LivePresentation({
     isError: isSessionError,
   } = useQuery(
     trpc.award.getSession.queryOptions(
-      { code, activeOnly: true },
+      { code, bigScreen: true },
       {
         initialData: initialSession,
         retry: 3,
@@ -151,7 +151,7 @@ export function LivePresentation({
                   <motion.div
                     key={category.id}
                     className={`bg-background rounded-lg p-8 transition-all duration-500 ${
-                      !category.revealed && "opacity-50"
+                      !category.reveals.revealed && "opacity-50"
                     }`}
                     variants={categoryVariants}
                     initial="hidden"
@@ -179,10 +179,10 @@ export function LivePresentation({
                       </div>
                     )}
 
-                    {category.revealed ? (
+                    {category.reveals.revealed ? (
                       <motion.div
                         className={`grid grid-cols-1 gap-8 ${
-                          category.winnerOnly
+                          category.reveals.winnerOnly
                             ? "min-h-[200px] place-items-center"
                             : ""
                         }`}
@@ -191,12 +191,16 @@ export function LivePresentation({
                         transition={{ delay: 0.3 }}
                       >
                         {(() => {
+                          // Best first; nominations without a place (no votes, or hidden) last
                           const sortedNominations = [
                             ...category.nominations,
-                          ].sort((a, b) => b._count.votes - a._count.votes);
+                          ].sort(
+                            (a, b) =>
+                              (a.place ?? Number.MAX_SAFE_INTEGER) -
+                              (b.place ?? Number.MAX_SAFE_INTEGER),
+                          );
 
-                          const topNomination = sortedNominations[0];
-                          if (!topNomination) {
+                          if (!sortedNominations.length) {
                             return (
                               <div className="text-muted-foreground w-full rounded-xl border border-dashed p-10 text-center text-xl">
                                 No nominations yet.
@@ -204,30 +208,23 @@ export function LivePresentation({
                             );
                           }
 
-                          const totalScore = sortedNominations.reduce(
-                            (sum, nom) => sum + nom._count.votes,
-                            0,
-                          );
-                          const highestVoteCount = topNomination._count.votes;
+                          // Only crown a winner when at least one vote/point has been cast,
+                          // or there's only one nominee and its score is shown (even 0)
                           const winners = sortedNominations.filter(
-                            n => n._count.votes === highestVoteCount,
+                            n =>
+                              n.place === 1 ||
+                              (sortedNominations.length === 1 &&
+                                n.score !== null),
                           );
-
-                          // Only crown a winner when at least one vote/point has been cast
-                          // (or there's only one nominee).
-                          const hasWinner =
-                            totalScore > 0 || sortedNominations.length === 1;
-                          const isTied = hasWinner && winners.length > 1;
+                          const hasWinner = winners.length > 0;
+                          const isTied = winners.length > 1;
                           const isCompleteTie =
-                            hasWinner &&
                             sortedNominations.length > 1 &&
                             winners.length === sortedNominations.length;
 
                           // Filter to winners only if winnerOnly is enabled
-                          const displayNominations = category.winnerOnly
-                            ? hasWinner
-                              ? winners
-                              : []
+                          const displayNominations = category.reveals.winnerOnly
+                            ? winners
                             : sortedNominations;
 
                           return (
@@ -260,7 +257,7 @@ export function LivePresentation({
                                   role="list"
                                   aria-label={`${category.name} results`}
                                   className={`grid w-full grid-cols-1 gap-8 ${
-                                    category.winnerOnly
+                                    category.reveals.winnerOnly
                                       ? "place-items-center"
                                       : ""
                                   }`}
@@ -268,9 +265,7 @@ export function LivePresentation({
                                   {displayNominations.map(
                                     (nomination, index) => {
                                       const isWinner =
-                                        hasWinner &&
-                                        nomination._count.votes ===
-                                          highestVoteCount;
+                                        winners.includes(nomination);
 
                                       return (
                                         <li
@@ -287,9 +282,6 @@ export function LivePresentation({
                                             isWinner={isWinner}
                                             isTied={isTied}
                                             category={category}
-                                            hideVoteCounts={
-                                              category.hideVoteCounts
-                                            }
                                           />
                                         </li>
                                       );

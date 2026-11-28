@@ -91,9 +91,7 @@ export function ManageShow({
                         s => s.id,
                       ),
                       // Hosts get every score, and any vote gives a nomination one
-                      hasVotes: category.nominations.some(
-                        n => n._count.votes > 0,
-                      ),
+                      hasVotes: category.nominations.some(n => !!n.score),
                     }}
                     sourceOptions={sourceOptions}
                   >
@@ -148,7 +146,8 @@ export function ManageShow({
                           nomination={nomination}
                           categoryType={category.type}
                           isImage={showsPictures(category)}
-                          score={`${nomination._count.votes} ${getScoreLabel(category, nomination._count.votes)}`}
+                          // Hosts get every score
+                          score={`${nomination.score ?? 0} ${getScoreLabel(category, nomination.score ?? 0)}`}
                         />
                       ))}
                     </ul>

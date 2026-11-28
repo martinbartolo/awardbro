@@ -469,7 +469,7 @@ function screen(who: Person, sessionInput: Inputs["getSession"]): Screen {
 const runView = screen(host, { code: show.code });
 const bigScreen = screen(person("big screen"), {
   code: show.code,
-  activeOnly: true,
+  bigScreen: true,
 });
 
 // ---------------------------------------------------------------------------------------------

@@ -437,11 +437,13 @@ describe("scores", () => {
     const expected = { Dune: 2, Barbie: 2, Oppenheimer: 0 };
 
     const category = await visitor().api.getCategory({ id: show.aggregate.id });
-    // On the big screen (an aggregate takes no votes, so it's never open)
-    await setStage(host, show.aggregate.id, "closed");
+    // On the big screen, which shows only revealed scores (and needs every source revealed)
+    for (const id of [show.normal.id, show.ranking.id, show.aggregate.id]) {
+      await reveal(host, id);
+    }
     const { categories } = await visitor().api.getSession({
       code: show.show.code,
-      activeOnly: true,
+      bigScreen: true,
     });
 
     expect(scoresByName(category.nominations)).toEqual(expected);
@@ -485,7 +487,7 @@ describe("scores", () => {
     // Only the active aggregate is loaded, so its sources' nominations take one more
     expect(
       await countOperations(api =>
-        api.getSession({ code: show.show.code, activeOnly: true }),
+        api.getSession({ code: show.show.code, bigScreen: true }),
       ),
     ).toBe(3);
     expect(
