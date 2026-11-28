@@ -143,6 +143,7 @@ Rules:
 - The Seeded Colour Rule. Column colours look random but aren't: they are shuffled with the award as the seed, so the big screen, the host's laptop and every reload show the same colours.
 - The Projector Rule. Colour is solid and saturated.
 - The No Kicker Rule. No small uppercase label above a heading.
+- The Duotone Moment Rule. Bold for controls; Duotone (`weight="duotone"`) only for the few expressive moments: the category-type badges, a voter's vote confirmation and empty states.
 - The No Hard Offset Rule. Never a solid offset shadow (the sticker or Memphis look).
 
 Elevation:
