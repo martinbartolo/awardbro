@@ -176,7 +176,7 @@ Deep navy night with warm sparks, or warm paper with a confident blue: either wa
 ### Tertiary
 
 - **The shape colours** (`shape-1` to `shape-4`): Coral (Ember Coral at Night, Podium Coral on Paper), Mint, Gold and Periwinkle (Paper Blue on Paper). Confetti and the big screen. They never carry text.
-- **The mark colours** (`mark-1` to `mark-3`, as `text-mark-n`): the shape colours without the theme's winner colour (The Gold Is Earned Rule). `mark-1` is Coral at Night and Gold on Paper, `mark-2` Periwinkle (Paper Blue on Paper), `mark-3` Mint. Everything that draws a shape outside a win uses them: the quiet screens' marks, the running-order markers and the category-type badges' icons.
+- **The mark colours** (`mark-1` to `mark-3`, as `text-mark-n`): the shape colours without the theme's winner colour (The Gold Is Earned Rule). `mark-1` is Coral at Night and a deep gold (#a86b00) on Paper, `mark-2` Periwinkle (Paper Blue on Paper), `mark-3` Mint at Night and Paper Success teal (#0f7d67) on Paper, deep enough to read on the paper surfaces. Everything that draws a shape outside a win uses them: the quiet screens' marks, the running-order markers and the category-type badges' icons.
 - **The column palette** (`column-1` to `column-7`): each nomination's column at the reveal. Night: coral, mint, periwinkle, pink, lime, cyan and lilac. Paper: gold, mint, sky, pink, lilac, lime and cornflower, softer so dark text reads on them. All take dark text (`column-foreground`) and none is the winner colour.
 
 ### Neutral
@@ -358,7 +358,7 @@ The answer to the voter's tap, anchored 8vh under the category's name and announ
 
 ### Quiet screens
 
-Waiting for the next award, voting closed, an aggregate on the screen ("Nothing to vote for here") and a deleted show carry the shape set as their mark over the title: a 28px circle (`mark-1`: Coral at Night, Gold on Paper, so never the winner colour), a 32px triangle (`mark-2`, raised 8px) and a 48 × 20px squiggle (`mark-3`, a 5px round stroke), 12px apart and bottom-aligned. The run view's empty ("No awards yet") and end ("That's the show!") cards carry the same mark. They bob gently (`shape-bob`, 6px up and back over 2.6s, each a beat behind the last), only with motion allowed. Under them the heading at the phone title size and one or two muted lines that say what happens next.
+Waiting for the next award, voting closed, an aggregate on the screen ("Nothing to vote for here") and a deleted show carry the shape set as their mark over the title: a 28px circle (`mark-1`: Coral at Night, deep gold on Paper, so never the winner colour), a 32px triangle (`mark-2`, raised 8px) and a 48 × 20px squiggle (`mark-3`, a 5px round stroke), 12px apart and bottom-aligned. The run view's empty ("No awards yet") and end ("That's the show!") cards carry the same mark. They bob gently (`shape-bob`, 6px up and back over 2.6s, each a beat behind the last), only with motion allowed. Under them the heading at the phone title size and one or two muted lines that say what happens next.
 
 ### Category type badge
 
