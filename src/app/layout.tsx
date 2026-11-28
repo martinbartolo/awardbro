@@ -2,8 +2,8 @@ import "~/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Fredoka } from "next/font/google";
-import { Toaster } from "sonner";
 
+import { Toaster } from "~/components/ui/sonner";
 import { TRPCReactProvider } from "~/trpc/react";
 
 import ogImage from "./opengraph-image.png";
