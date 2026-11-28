@@ -14,7 +14,7 @@ A **host** creates an award show (a `Session`), adds categories and nominations 
 | `/vote/[code]`       | Voters     | Vote in the active category                                               |
 | `/present/[code]`    | Big screen | Live view of the active category and the reveal                           |
 
-Shows are found by their room code, such as `/vote/K7QF`. Links from before room codes use the show's slug; they, and a code in lowercase, redirect to the code URL (`showPageCode` in `src/server/shows.ts`). No code reads like another show's slug: the room code migrations and `generate_room_code()` make sure of it.
+Shows are found by their room code, such as `/vote/K7QF`. Links from before room codes use the show's slug; they, and a code in lowercase, redirect to the code URL (`showPage` in `src/server/shows.ts`). No code reads like another show's slug: the room code migrations and `generate_room_code()` make sure of it.
 
 There is no help page: each screen explains itself (the category types, the next step when running the show). `/help` redirects to the homepage for old links.
 
