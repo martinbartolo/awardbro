@@ -11,6 +11,7 @@ import {
   runStep,
   test,
   vote,
+  voteIsIn,
   waitForCategory,
 } from "./show";
 
@@ -90,17 +91,18 @@ test("a vote shows as cast straight away, and goes back to the choice if it fail
   await slow.stop();
 
   await interfere(voter, "award.vote", "fail");
-  await voter.getByRole("button", { name: /^Barbie/ }).click();
-  await voter.getByRole("button", { name: "Update Vote" }).click();
-  const yourVote = voter.getByText("(Submitted)").locator("..");
-  await expect(yourVote).toContainText("Barbie", STRAIGHT_AWAY);
-  // Told why, with Barbie chosen again but not saved, ready to try again
+  await voter.getByRole("button", { name: "Change my vote" }).click();
+  await voter.getByRole("radio", { name: /^Barbie/ }).click();
+  await voter.getByRole("button", { name: "Vote for Barbie" }).click();
+  await expect(voteIsIn(voter)).toContainText(
+    "You voted for Barbie.",
+    STRAIGHT_AWAY,
+  );
+  // Told why, back on Barbie but not saved, ready to try again
+  await expect(voter.getByText(/didn't go in|Failed to fetch/)).toBeVisible();
+  await expect(voter.getByRole("radio", { name: /^Barbie/ })).toBeChecked();
   await expect(
-    voter.getByText(/Error casting vote|Failed to fetch/),
-  ).toBeVisible();
-  await expect(voter.getByText("(Submitted)")).toBeHidden();
-  await expect(
-    voter.getByRole("button", { name: "Update Vote" }),
+    voter.getByRole("button", { name: "Vote for Barbie" }),
   ).toBeEnabled();
 });
 

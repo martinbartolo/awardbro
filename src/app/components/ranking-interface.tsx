@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import { XIcon } from "@phosphor-icons/react";
 import {
   type QueryKey,
   useMutation,
@@ -10,12 +9,18 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
 import { optimistic } from "~/lib/optimistic";
 import { cn, getOrdinal } from "~/lib/utils";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { NominationDescription } from "./nomination-description";
+import {
+  PinnedAction,
+  QuietButton,
+  tileClass,
+  useVoteConfetti,
+  VoteOutcome,
+} from "./vote-parts";
 
 type Ranking = {
   nominationId: string;
@@ -37,11 +42,15 @@ type Nomination = {
   description?: string | null;
 };
 
+/**
+ * Ranking the top N: the voter taps nominations in order, each tapped tile showing its place,
+ * and taps one again to take it out. The pinned button sends the ranking once it's complete.
+ */
 export function RankingInterface({
   nominations,
   categoryId,
   rankingTop,
-  myVotes: currentRankings,
+  myVotes,
   myVotesKey,
   closed,
 }: {
@@ -51,247 +60,208 @@ export function RankingInterface({
   /** Voting has closed: show the voter's ranking without the form */
   closed: boolean;
 } & MyVotesProps) {
-  // Track user modifications separately - null means use server data
-  const [userRankings, setUserRankings] = useState<Ranking[] | null>(null);
   const trpc = useTRPC();
-
-  // Derive rankings from server data or user modifications
-  const rankings = useMemo(() => {
-    // If user has made modifications, use those
-    if (userRankings !== null) {
-      return userRankings;
-    }
-    // Otherwise derive from server data
-    return (currentRankings ?? [])
-      .filter(v => v.rank !== null)
-      .map(v => ({
-        nominationId: v.nominationId,
-        rank: v.rank!,
-      }))
-      .sort((a, b) => a.rank - b.rank);
-  }, [currentRankings, userRankings]);
-
-  // Drop an unsaved ranking once voting closes, so the voter sees what was
-  // counted, and reopening starts from it
-  if (closed && userRankings !== null) setUserRankings(null);
-
-  const setRankings = (newRankings: Ranking[]) => {
-    setUserRankings(newRankings);
-  };
-
-  // The ranking shows as saved straight away. If saving fails, it goes back to
-  // the voter's unsaved ranking, so they can try again.
   const queryClient = useQueryClient();
+  const [confetti, burst] = useVoteConfetti();
+
+  // The ranking that counts, best first
+  const saved = (myVotes ?? [])
+    .filter((v): v is Ranking => v.rank !== null)
+    .sort((a, b) => a.rank - b.rank)
+    .map(v => v.nominationId);
+  const named = (ids: string[]) =>
+    ids.flatMap(id => nominations.filter(n => n.id === id));
+
+  // The ranking being made, before it's sent (null: none started), and whether the voter is
+  // changing one already in
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [changing, setChanging] = useState(false);
+  // Once voting closes, drop anything unsent: the voter sees what was counted
+  if (closed && (order !== null || changing)) {
+    setOrder(null);
+    setChanging(false);
+  }
+
+  // The ranking shows as in straight away. If saving fails, the voter is back on their
+  // ranking, so they can try again.
   const submitRanking = useMutation(
-    trpc.award.submitRanking.mutationOptions({
-      ...optimistic<{ rankings: Ranking[] }, MyVotes, { message: string }>({
+    trpc.award.submitRanking.mutationOptions(
+      optimistic<{ rankings: Ranking[] }, MyVotes, { message: string }>({
         queryClient,
         queryKey: myVotesKey,
-        change: (_before, { rankings: submitted }) =>
-          [...submitted].sort((a, b) => a.rank - b.rank),
-        onError: (error, { rankings: submitted }) => {
-          setUserRankings(submitted);
-          toast.error(
-            error.message || "Error submitting rankings. Please try again.",
+        change: (_before, { rankings }) =>
+          [...rankings].sort((a, b) => a.rank - b.rank),
+        onError: (error, { rankings }) => {
+          setOrder(
+            [...rankings]
+              .sort((a, b) => a.rank - b.rank)
+              .map(r => r.nominationId),
           );
+          setChanging(true);
+          toast.error(error.message || "Your ranking didn't go in. Try again.");
         },
       }),
-      onSuccess: () => {
-        toast.success("Rankings submitted successfully!");
-      },
-    }),
+    ),
   );
-  const isSubmitting = submitRanking.isPending;
 
-  const handleAddRanking = (nominationId: string) => {
-    if (rankings.length >= rankingTop) return;
-    if (rankings.some(r => r.nominationId === nominationId)) return;
-
-    const nextRank = rankings.length + 1;
-    setRankings([...rankings, { nominationId, rank: nextRank }]);
+  const current = order ?? (changing ? saved : []);
+  const complete = current.length === rankingTop;
+  const toggle = (id: string) =>
+    setOrder(
+      current.includes(id)
+        ? current.filter(other => other !== id)
+        : current.length < rankingTop
+          ? [...current, id]
+          : current,
+    );
+  const send = () => {
+    if (!complete) return;
+    setOrder(null);
+    setChanging(false);
+    if (current.join() === saved.join()) return;
+    burst();
+    submitRanking.mutate({
+      categoryId,
+      rankings: current.map((nominationId, i) => ({
+        nominationId,
+        rank: i + 1,
+      })),
+    });
   };
 
-  const handleRemoveRanking = (nominationId: string) => {
-    const filtered = rankings.filter(r => r.nominationId !== nominationId);
-    // Re-number ranks
-    const renumbered = filtered.map((r, idx) => ({
-      ...r,
-      rank: idx + 1,
-    }));
-    setRankings(renumbered);
-  };
-
-  const handleSubmit = () => {
-    if (rankings.length !== rankingTop) {
-      toast.error(`Please rank exactly ${rankingTop} nominations`);
-      return;
-    }
-    submitRanking.mutate({ categoryId, rankings });
-    setUserRankings(null);
-  };
-
-  const isComplete = rankings.length === rankingTop;
-  const rankedNominationIds = new Set(rankings.map(r => r.nominationId));
-
-  // Create slots for visual display
-  const slots = Array.from({ length: rankingTop }, (_, i) => {
-    const ranking = rankings.find(r => r.rank === i + 1);
-    const nomination = ranking
-      ? nominations.find(n => n.id === ranking.nominationId)
-      : null;
-    return { rank: i + 1, nomination };
-  });
-
-  const hasExistingRankings = !!currentRankings?.length;
+  const rankingList = (ids: string[]) => (
+    <ol className="mt-4 space-y-1 text-left">
+      {named(ids).map((nomination, i) => (
+        <li key={nomination.id} className="flex gap-3">
+          <span className="text-primary w-10 shrink-0 font-bold">
+            {getOrdinal(i + 1)}
+          </span>
+          <span className="text-foreground font-semibold">
+            {nomination.name}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Instructions */}
-      <p className="text-muted-foreground text-sm">
-        {closed ? (
-          "Watch the big screen for the results."
-        ) : (
-          <>
-            Rank your top {rankingTop} choices. {getOrdinal(1)} place gets{" "}
-            {rankingTop} points, {getOrdinal(2)} place gets {rankingTop - 1}{" "}
-            points, etc.
-          </>
-        )}
-      </p>
-
-      {/* Ranking slots */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Your Rankings:</h3>
-        <div className="grid gap-2">
-          {slots.map(slot => (
-            <div
-              key={slot.rank}
-              className={cn(
-                "flex items-center gap-3 rounded-lg border-2 border-dashed p-3 transition-all",
-                slot.nomination
-                  ? "border-primary bg-primary/10"
-                  : "border-muted-foreground/30 bg-muted/30",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                  slot.nomination
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {slot.rank}
-              </span>
-              {slot.nomination ? (
-                <div className="flex flex-1 items-center justify-between gap-2">
-                  {/* The description tells apart nominations with the same name */}
-                  <div className="min-w-0">
-                    <span className="font-medium">{slot.nomination.name}</span>
-                    <NominationDescription
-                      description={slot.nomination.description ?? null}
-                      className="text-muted-foreground line-clamp-1 text-xs"
-                      imageClassName="relative mt-1 h-10 w-16"
-                      thumbnail
-                    />
-                  </div>
-                  {!closed && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveRanking(slot.nomination!.id)}
-                      tooltip="Remove"
-                      aria-label={`Remove ${slot.nomination.name} from ${getOrdinal(slot.rank)} place`}
-                      disabled={isSubmitting}
-                      className="h-8 w-8 p-0"
-                    >
-                      <XIcon />
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <span className="text-muted-foreground text-sm">
-                  {!closed
-                    ? `Click a nomination below to assign ${getOrdinal(slot.rank)} place`
-                    : currentRankings
-                      ? "Not ranked"
-                      : "Checking your ranking..."}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {!closed && (
+    <>
+      {/* In one place while the form gives way to "Your ranking is in" */}
+      {confetti}
+      {closed ? (
+        <VoteOutcome title="Voting has closed" done={false}>
+          {saved.length > 0 ? (
+            <>
+              Your ranking:
+              {rankingList(saved)}
+              <p className="mt-4">Watch the big screen for the results.</p>
+            </>
+          ) : myVotes ? (
+            "You didn't rank this one. Watch the big screen for the results."
+          ) : (
+            "Checking your ranking..."
+          )}
+        </VoteOutcome>
+      ) : saved.length > 0 && !changing ? (
+        <VoteOutcome
+          title="Your ranking is in"
+          action={
+            <QuietButton onClick={() => setChanging(true)}>
+              Change my ranking
+            </QuietButton>
+          }
+        >
+          {rankingList(saved)}
+          <p className="mt-4">Watch the big screen for the results.</p>
+        </VoteOutcome>
+      ) : (
         <>
-          {/* Available nominations */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Available Nominations:</h3>
-            <div className="space-y-2">
-              {nominations.map(nomination => {
-                const isRanked = rankedNominationIds.has(nomination.id);
-                const currentRank = rankings.find(
-                  r => r.nominationId === nomination.id,
-                )?.rank;
-
-                return (
-                  <button
-                    key={nomination.id}
-                    onClick={() => !isRanked && handleAddRanking(nomination.id)}
-                    disabled={isSubmitting || (isComplete && !isRanked)}
+          <p className="text-muted-foreground mb-5 text-lg leading-snug">
+            Tap your top {rankingTop} in order. {getOrdinal(1)} place gets{" "}
+            {rankingTop} points.
+            {current.length > 0 && (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => setOrder([])}
+                  className="text-primary font-semibold underline underline-offset-4"
+                >
+                  Start again
+                </button>
+              </>
+            )}
+          </p>
+          <div className="grid gap-3">
+            {nominations.map(nomination => {
+              const place = current.indexOf(nomination.id) + 1;
+              const full = complete && !place;
+              return (
+                <button
+                  key={nomination.id}
+                  type="button"
+                  aria-pressed={place > 0}
+                  disabled={full}
+                  onClick={() => toggle(nomination.id)}
+                  className={cn(
+                    tileClass(place > 0, full),
+                    "flex min-h-16 items-center gap-4 px-[18px] py-3",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xl leading-tight font-semibold break-words">
+                      {nomination.name}
+                    </span>
+                    {/* The description tells apart nominations with the same name */}
+                    {nomination.description && (
+                      <NominationDescription
+                        description={nomination.description}
+                        className={cn(
+                          "mt-1 text-base leading-snug break-words",
+                          place
+                            ? "text-primary-foreground/85"
+                            : "text-muted-foreground",
+                        )}
+                        imageClassName="relative mt-2 h-24 w-full [&_img]:rounded-[12px]"
+                      />
+                    )}
+                  </span>
+                  <span
                     className={cn(
-                      "w-full text-left transition-all",
-                      "rounded-lg p-4",
-                      isRanked
-                        ? "bg-primary/20 ring-primary opacity-60 ring-2"
-                        : isComplete
-                          ? "cursor-not-allowed bg-white/5 opacity-40"
-                          : "cursor-pointer bg-white/10 hover:bg-white/20",
-                      isSubmitting && "cursor-not-allowed opacity-50",
+                      "grid h-9 min-w-9 shrink-0 place-items-center rounded-full px-2 text-base font-bold",
+                      place
+                        ? "bg-primary-foreground text-primary"
+                        : "border-input border-[3px]",
                     )}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold">
-                          {nomination.name}
-                          {isRanked && (
-                            <span className="text-primary ml-2 text-sm">
-                              (Ranked {getOrdinal(currentRank!)})
-                            </span>
-                          )}
-                        </div>
-                        {nomination.description && (
-                          <NominationDescription
-                            description={nomination.description}
-                            className="text-muted-foreground text-sm"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    {place ? getOrdinal(place) : ""}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-
-          {/* Submit button */}
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleSubmit}
-            disabled={isSubmitting || !isComplete}
+          <PinnedAction
+            disabled={!complete}
+            onClick={send}
+            below={
+              changing && saved.length > 0 ? (
+                <QuietButton
+                  onClick={() => {
+                    setOrder(null);
+                    setChanging(false);
+                  }}
+                >
+                  Keep my ranking
+                </QuietButton>
+              ) : undefined
+            }
           >
-            {isSubmitting
-              ? "Submitting Rankings..."
-              : hasExistingRankings
-                ? "Update Rankings"
-                : isComplete
-                  ? "Submit Rankings"
-                  : `Select ${rankingTop - rankings.length} more`}
-          </Button>
+            {complete
+              ? `Submit my top ${rankingTop}`
+              : `Pick ${rankingTop - current.length} more`}
+          </PinnedAction>
         </>
       )}
-    </div>
+    </>
   );
 }

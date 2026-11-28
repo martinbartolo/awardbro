@@ -77,7 +77,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={fredoka.variable} dir="ltr">
+    // Pages put their theme on <html> (data-theme), the vote page before React starts
+    <html
+      lang="en"
+      className={fredoka.variable}
+      dir="ltr"
+      suppressHydrationWarning
+    >
       <body>
         <IconProvider>
           <TRPCReactProvider>{children}</TRPCReactProvider>
