@@ -1,6 +1,12 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useRef } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CheckIcon } from "@phosphor-icons/react";
 import { useReducedMotion } from "motion/react";
@@ -63,18 +69,42 @@ export function PinnedAction({
   /** A quieter way out under it, such as keeping the vote already made */
   below?: ReactNode;
 }) {
+  // While tiles run on under the bar, it lifts off them with a soft shadow; at the end of the
+  // list it sits flat. (A marker just above the bar is on screen once the list has ended.)
+  const end = useRef<HTMLDivElement>(null);
+  const [covering, setCovering] = useState(false);
+  useEffect(() => {
+    const marker = end.current;
+    if (!marker) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setCovering(!entry?.isIntersecting),
+      // The bar's own height, so "on screen" means above it
+      { rootMargin: "0px 0px -120px 0px" },
+    );
+    observer.observe(marker);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="bg-background sticky bottom-0 -mx-5 mt-auto px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <Button
-        // Quiet until there's something to send
-        className="shadow-lift disabled:bg-muted disabled:text-muted-foreground h-15 w-full rounded-full text-xl font-bold disabled:opacity-100 disabled:shadow-none"
-        disabled={disabled}
-        onClick={onClick}
+    <>
+      <div ref={end} aria-hidden className="h-px" />
+      <div
+        className={cn(
+          "bg-background sticky bottom-0 -mx-5 mt-auto px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] transition-shadow duration-300",
+          covering && "shadow-[0_-14px_28px_-10px_var(--shadow-color)]",
+        )}
       >
-        <span className="truncate">{children}</span>
-      </Button>
-      {below && <div className="mt-2 flex justify-center">{below}</div>}
-    </div>
+        <Button
+          // Quiet until there's something to send
+          className="shadow-lift disabled:bg-muted disabled:text-muted-foreground h-15 w-full rounded-full text-xl font-bold disabled:opacity-100 disabled:shadow-none"
+          disabled={disabled}
+          onClick={onClick}
+        >
+          <span className="truncate">{children}</span>
+        </Button>
+        {below && <div className="mt-2 flex justify-center">{below}</div>}
+      </div>
+    </>
   );
 }
 
@@ -99,7 +129,7 @@ export function QuietButton({
 
 /**
  * The end of a vote: "Your vote is in", or once voting has closed, what the voter's vote was.
- * Centred in the space left on the screen.
+ * Anchored a little below the category's name, so it reads as that category's answer.
  */
 export function VoteOutcome({
   title,
@@ -115,7 +145,7 @@ export function VoteOutcome({
 }) {
   return (
     <div
-      className="flex flex-1 flex-col items-center justify-center py-10 text-center"
+      className="flex flex-1 flex-col items-center pt-[8vh] pb-10 text-center"
       // Announced when it appears, as the answer to the voter's tap
       role="status"
     >
@@ -144,10 +174,27 @@ export function Tick({ checked }: { checked: boolean }) {
         "grid size-7 shrink-0 place-items-center rounded-full border-[3px] transition-colors",
         checked
           ? "border-primary-foreground bg-primary-foreground"
-          : "border-input",
+          : // At least 3:1 against the tile in both themes
+            "border-muted-foreground/70",
       )}
     >
       {checked && <span className="bg-primary size-2.5 rounded-full" />}
+    </span>
+  );
+}
+
+/** Marks the vote already in on a tile, while the voter picks again */
+export function YourVote({ onPicked }: { onPicked: boolean }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold",
+        onPicked
+          ? "bg-primary-foreground text-primary"
+          : "bg-muted text-muted-foreground",
+      )}
+    >
+      Your vote
     </span>
   );
 }

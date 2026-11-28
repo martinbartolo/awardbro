@@ -113,7 +113,7 @@ export function LiveVotingSession({
                 className={cn(
                   "size-2.5 rounded-full",
                   status.live
-                    ? "bg-success ring-success/25 ring-4"
+                    ? "bg-success ring-success/25 ring-4 motion-safe:animate-pulse"
                     : "bg-border",
                 )}
               />
@@ -154,7 +154,8 @@ export function LiveVotingSession({
                     {category.name}
                   </h1>
                   {category.description && (
-                    <p className="text-muted-foreground mt-1.5 text-lg leading-snug">
+                    // The host's own words: in the body voice, not muted like the app's help
+                    <p className="text-foreground/90 mt-2 text-lg leading-snug">
                       {category.description}
                     </p>
                   )}
@@ -166,7 +167,7 @@ export function LiveVotingSession({
                   )}
                 </div>
                 {aggregate ? (
-                  <Centred title="Nothing to vote for here">
+                  <Centred title="Nothing to vote for here" anchored>
                     This award adds up earlier ones. Watch the big screen for
                     the results.
                   </Centred>
@@ -182,6 +183,7 @@ export function LiveVotingSession({
                       myVotes={myVotes}
                       myVotesKey={myVotesOptions.queryKey}
                       closed={closed}
+                      described={!!category.description}
                     />
                   </div>
                 )}
@@ -198,12 +200,20 @@ export function LiveVotingSession({
 function Centred({
   title,
   children,
+  anchored = false,
 }: {
   title: string;
   children: React.ReactNode;
+  /** Under a category's name: a little below it, rather than in the middle of the screen */
+  anchored?: boolean;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center">
+    <div
+      className={cn(
+        "flex flex-1 flex-col items-center pb-16 text-center",
+        anchored ? "pt-[8vh]" : "justify-center",
+      )}
+    >
       <ShapeMarks className="mb-6" />
       <h2 className="text-3xl leading-tight font-bold text-balance">{title}</h2>
       <p className="text-muted-foreground mt-3 max-w-xs text-lg leading-snug">

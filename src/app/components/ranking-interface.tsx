@@ -104,8 +104,10 @@ export function RankingInterface({
     ),
   );
 
-  const current = order ?? (changing ? saved : []);
+  // A change starts from nothing: the ranking already in stays until a new one is sent
+  const current = order ?? [];
   const complete = current.length === rankingTop;
+  const unchanged = current.join() === saved.join();
   const toggle = (id: string) =>
     setOrder(
       current.includes(id)
@@ -115,10 +117,9 @@ export function RankingInterface({
           : current,
     );
   const send = () => {
-    if (!complete) return;
+    if (!complete || unchanged) return;
     setOrder(null);
     setChanging(false);
-    if (current.join() === saved.join()) return;
     burst();
     submitRanking.mutate({
       categoryId,
@@ -129,14 +130,18 @@ export function RankingInterface({
     });
   };
 
+  // The ranking as it counts: small tiles with their places, as on the ranking screen
   const rankingList = (ids: string[]) => (
-    <ol className="mt-4 space-y-1 text-left">
+    <ol className="mt-5 w-full max-w-xs space-y-2 text-left">
       {named(ids).map((nomination, i) => (
-        <li key={nomination.id} className="flex gap-3">
-          <span className="text-primary w-10 shrink-0 font-bold">
+        <li
+          key={nomination.id}
+          className="bg-card text-card-foreground shadow-soft flex items-center gap-3 rounded-[16px] px-3 py-2.5"
+        >
+          <span className="bg-primary text-primary-foreground grid h-8 min-w-8 shrink-0 place-items-center rounded-full px-2 text-sm font-bold">
             {getOrdinal(i + 1)}
           </span>
-          <span className="text-foreground font-semibold">
+          <span className="min-w-0 font-semibold break-words">
             {nomination.name}
           </span>
         </li>
@@ -179,6 +184,7 @@ export function RankingInterface({
           <p className="text-muted-foreground mb-5 text-lg leading-snug">
             Tap your top {rankingTop} in order. {getOrdinal(1)} place gets{" "}
             {rankingTop} points.
+            {changing && " Your ranking stays until you send a new one."}
             {current.length > 0 && (
               <>
                 {" "}
@@ -241,7 +247,7 @@ export function RankingInterface({
             })}
           </div>
           <PinnedAction
-            disabled={!complete}
+            disabled={!complete || unchanged}
             onClick={send}
             below={
               changing && saved.length > 0 ? (
@@ -256,9 +262,11 @@ export function RankingInterface({
               ) : undefined
             }
           >
-            {complete
-              ? `Submit my top ${rankingTop}`
-              : `Pick ${rankingTop - current.length} more`}
+            {!complete
+              ? `Pick ${rankingTop - current.length} more`
+              : unchanged
+                ? "That's your ranking already"
+                : `Submit my top ${rankingTop}`}
           </PinnedAction>
         </>
       )}

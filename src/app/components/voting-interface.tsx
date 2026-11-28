@@ -24,6 +24,7 @@ import {
   tileClass,
   useVoteConfetti,
   VoteOutcome,
+  YourVote,
 } from "./vote-parts";
 
 type Nomination = {
@@ -45,11 +46,14 @@ export function VotingInterface({
   myVotes,
   myVotesKey,
   closed,
+  described = false,
 }: {
   nominations: Nomination[];
   categoryId: string;
   categoryType: CategoryType;
   rankingTop?: number | null;
+  /** The category has a description under its name, which says enough for a single pick */
+  described?: boolean;
   /** Voting has closed: show the voter's vote without the form */
   closed: boolean;
 } & MyVotesProps) {
@@ -70,6 +74,7 @@ export function VotingInterface({
     <PickOne
       nominations={nominations}
       pictures={categoryType === "IMAGE"}
+      described={described}
       myVotes={myVotes}
       myVotesKey={myVotesKey}
       closed={closed}
@@ -80,12 +85,14 @@ export function VotingInterface({
 function PickOne({
   nominations,
   pictures,
+  described,
   myVotes,
   myVotesKey,
   closed,
 }: {
   nominations: Nomination[];
   pictures: boolean;
+  described: boolean;
   closed: boolean;
 } & MyVotesProps) {
   const trpc = useTRPC();
@@ -120,14 +127,14 @@ function PickOne({
     ),
   );
 
-  const choiceId = picked ?? savedId;
-  const choice = nominations.find(n => n.id === choiceId);
+  // Nothing is picked until the voter taps a tile; while changing, the vote already in is
+  // marked on its tile, and only a different pick can be sent
+  const choice = nominations.find(n => n.id === picked);
+  const isNew = !!choice && choice.id !== savedId;
   const send = () => {
-    if (!choice) return;
+    if (!choice || !isNew) return;
     setPicked(null);
     setChanging(false);
-    // Picking the vote already in changes nothing
-    if (choice.id === savedId) return;
     burst();
     vote.mutate({ nominationId: choice.id });
   };
@@ -165,18 +172,26 @@ function PickOne({
         </VoteOutcome>
       ) : (
         <>
-          <p className="text-muted-foreground mb-5 text-lg leading-snug">
-            {changing && saved
-              ? `Pick again. Your vote for ${saved.name} stays until you vote.`
-              : "Pick one. You can change it until voting closes."}
-          </p>
+          {changing && saved ? (
+            <p className="text-muted-foreground mb-5 text-lg leading-snug">
+              Your vote for {saved.name} stays until you pick another.
+            </p>
+          ) : (
+            // The host's description under the heading says enough on its own
+            !described && (
+              <p className="text-muted-foreground mb-5 text-lg leading-snug">
+                Pick one. You can change it until voting closes.
+              </p>
+            )
+          )}
           <div
             role="radiogroup"
             aria-label="Nominations"
             className={cn("grid gap-3", pictures && "grid-cols-2")}
           >
             {nominations.map(nomination => {
-              const isPicked = nomination.id === choiceId;
+              const isPicked = nomination.id === picked;
+              const isYourVote = changing && nomination.id === savedId;
               return (
                 <button
                   key={nomination.id}
@@ -193,21 +208,34 @@ function PickOne({
                 >
                   {pictures ? (
                     <>
-                      <NominationDescription
-                        description={nomination.description ?? null}
-                        isImage
-                        imageClassName="relative aspect-square w-full [&_img]:size-full [&_img]:rounded-[14px] [&_img]:object-cover"
-                      />
-                      <span className="flex items-center gap-2 px-1">
-                        <span className="min-w-0 flex-1">
-                          {/* Two lines at most, so the photos stay in step */}
-                          <FittedText
-                            text={nomination.name}
-                            lines={2}
-                            className="text-lg leading-tight font-semibold break-words"
-                          />
+                      <span className="relative block">
+                        <NominationDescription
+                          description={nomination.description ?? null}
+                          isImage
+                          imageClassName="relative aspect-square w-full [&_img]:size-full [&_img]:rounded-[14px] [&_img]:object-cover"
+                        />
+                        {/* On the photo's corner, so the name below gets the tile's width */}
+                        <span
+                          className={cn(
+                            "shadow-soft absolute top-2 right-2 rounded-full p-1",
+                            isPicked ? "bg-primary" : "bg-card",
+                          )}
+                        >
+                          <Tick checked={isPicked} />
                         </span>
-                        <Tick checked={isPicked} />
+                        {isYourVote && (
+                          <span className="absolute top-2.5 left-2.5">
+                            <YourVote onPicked={isPicked} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="px-1">
+                        {/* Two lines at most, so the photos stay in step */}
+                        <FittedText
+                          text={nomination.name}
+                          lines={2}
+                          className="text-lg leading-tight font-semibold break-words"
+                        />
                       </span>
                     </>
                   ) : (
@@ -230,6 +258,7 @@ function PickOne({
                           />
                         )}
                       </span>
+                      {isYourVote && <YourVote onPicked={isPicked} />}
                       <Tick checked={isPicked} />
                     </>
                   )}
@@ -238,7 +267,7 @@ function PickOne({
             })}
           </div>
           <PinnedAction
-            disabled={!choice}
+            disabled={!isNew}
             onClick={send}
             below={
               changing && saved ? (
@@ -253,7 +282,13 @@ function PickOne({
               ) : undefined
             }
           >
-            {choice ? `Vote for ${choice.name}` : "Pick a nomination"}
+            {!choice
+              ? changing
+                ? "Pick a different one"
+                : "Pick a nomination"
+              : isNew
+                ? `Vote for ${choice.name}`
+                : "That's your vote already"}
           </PinnedAction>
         </>
       )}

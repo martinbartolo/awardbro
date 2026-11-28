@@ -145,7 +145,7 @@ Rules:
 - The Stage Unit Rule. Everything on the big screen is sized in stage units: type from the `text-stage-*` scale, spacing from Tailwind's scale (which counts in half-units there), anything else as a multiple of `u`.
 - The No Kicker Rule. No small uppercase label above a heading.
 - The Overscan Rule. Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).
-- The Duotone Moment Rule. Bold for controls; Duotone (`weight="duotone"`) only for the few expressive moments: the category-type badges, a voter's vote confirmation and empty states.
+- The Duotone Moment Rule. Bold for controls; Duotone (`weight="duotone"`) only for the category-type badges. A voter's vote confirmation is a Bold check on an action-colour badge, and the quiet screens (waiting, voting closed, an aggregate) carry the shape set as their mark, not an icon.
 - The No Hard Offset Rule. Never a solid offset shadow (the sticker or Memphis look).
 
 Elevation:
