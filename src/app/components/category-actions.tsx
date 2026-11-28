@@ -82,6 +82,7 @@ export function DeleteCategoryButton({ categoryId }: { categoryId: string }) {
         size="iconSm"
         tooltip="Delete category"
         aria-label="Delete category"
+        className="hover:text-destructive"
       >
         <TrashIcon />
       </Button>

@@ -25,7 +25,9 @@ const buttonVariants = cva(
           "border-2 border-primary bg-background text-primary shadow-xs hover:bg-primary hover:text-primary-foreground",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-        ghost: "text-primary hover:bg-primary/20 hover:text-primary",
+        // Quiet: icon actions and the way out beside a main button, never the action colour
+        ghost:
+          "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -58,14 +58,16 @@ export function RunShowCard({
   return (
     <section
       aria-labelledby="run-show"
-      className="bg-card mb-8 flex flex-col gap-6 rounded-lg p-6 sm:flex-row sm:items-end sm:justify-between"
+      className="bg-card shadow-soft mb-10 flex flex-col gap-6 rounded-[24px] p-6 sm:flex-row sm:items-end sm:justify-between sm:p-7"
     >
       <div>
         <h2 id="run-show" className="text-muted-foreground text-sm font-medium">
           Room code
         </h2>
-        <p className="font-mono text-5xl font-bold tracking-wide">{code}</p>
-        <p className="text-muted-foreground mt-2 text-sm">
+        <p className="text-5xl leading-none font-bold tracking-[0.06em]">
+          {code}
+        </p>
+        <p className="text-muted-foreground mt-3 max-w-xs text-sm">
           Voters scan the QR code on the big screen, or enter this code on the
           homepage.
         </p>
@@ -106,13 +108,22 @@ export function RunShowCard({
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button asChild size="lg" variant="outline">
+          <Button
+            asChild
+            size="lg"
+            variant="ghost"
+            className="border-border h-12 rounded-full border-2 px-5"
+          >
             <Link href={showPaths.present(code)} target="_blank">
               Open Big Screen
               <ArrowSquareOutIcon />
             </Link>
           </Button>
-          <Button asChild size="lg" className="group">
+          <Button
+            asChild
+            size="lg"
+            className="group shadow-soft h-12 rounded-full px-6 text-base font-semibold"
+          >
             <Link href={showPaths.run(code)}>
               Run the Show
               <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-1" />
@@ -156,7 +167,7 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
   return (
     <section
       aria-labelledby="danger-zone"
-      className="border-destructive/40 rounded-lg border p-6"
+      className="border-destructive/40 rounded-[24px] border-2 p-6 sm:p-7"
     >
       <h2
         id="danger-zone"

@@ -17,6 +17,7 @@ import {
 import { MoveCategoryButtons } from "~/app/components/move-category-buttons";
 import { NominationItem } from "~/app/components/nomination-item";
 import { DangerZone, RunShowCard } from "~/app/components/show-controls";
+import { ThemeToggle } from "~/app/components/theme-toggle";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useHostShow } from "~/lib/hooks/useHostShow";
 import { showsPictures } from "~/lib/images";
@@ -48,12 +49,16 @@ export function ManageShow({
 
   return (
     <main className="bg-background text-foreground min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <header className="mb-6 px-1">
-          <h1 className="text-foreground text-3xl font-bold sm:text-4xl">
-            {session.name}
-          </h1>
-          <p className="text-muted-foreground mt-1">Manage your award show</p>
+      {/* One working column: the show's setup reads top to bottom, in running order */}
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+        <header className="mb-6 flex items-start gap-3 px-1">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-foreground text-3xl font-bold text-balance sm:text-4xl">
+              {session.name}
+            </h1>
+            <p className="text-muted-foreground mt-1">Set up your show</p>
+          </div>
+          <ThemeToggle />
         </header>
 
         <RunShowCard
@@ -65,12 +70,17 @@ export function ManageShow({
         <div className="space-y-8">
           {/* Categories in running order, then adding one at the end */}
           <section aria-labelledby="categories" className="space-y-4">
-            <h2
-              id="categories"
-              className="text-foreground text-2xl font-semibold"
-            >
-              Categories
-            </h2>
+            <div className="px-1">
+              <h2
+                id="categories"
+                className="text-foreground text-2xl font-bold"
+              >
+                Categories
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Each one is an award, in the order they&apos;re presented.
+              </p>
+            </div>
             {session.categories.length === 0 && (
               <p className="text-muted-foreground text-sm">
                 Each category is one award. Add the first one.
@@ -81,9 +91,9 @@ export function ManageShow({
                 key={category.id}
                 role="region"
                 aria-label={category.name}
-                className="border-border"
+                className="shadow-soft gap-0 overflow-hidden rounded-[24px] border-0 py-0"
               >
-                <CardHeader className="border-border border-b p-4 sm:p-6">
+                <CardHeader className="border-border border-b p-4 sm:p-5">
                   <CategoryEditor
                     category={{
                       id: category.id,
@@ -141,7 +151,7 @@ export function ManageShow({
                     )}
                   </CategoryEditor>
                 </CardHeader>
-                <CardContent className="p-0 pb-2">
+                <CardContent className="p-0 pb-3">
                   {category.nominations.length > 0 ? (
                     <ul className="divide-border divide-y">
                       {category.nominations.map(nomination => (

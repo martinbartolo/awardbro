@@ -36,3 +36,46 @@ export function ShapeMarks({ className }: { className?: string }) {
     </div>
   );
 }
+
+const SHAPE_COLOURS = [
+  "text-shape-1",
+  "text-shape-2",
+  "text-shape-3",
+  "text-shape-4",
+];
+
+/**
+ * One shape from the set, as a small marker beside an item in a list (the run view's running
+ * order): circle, triangle, squiggle in turn, in the shape colours in turn.
+ */
+export function ShapeMark({
+  index,
+  className,
+}: {
+  index: number;
+  className?: string;
+}) {
+  const colour = SHAPE_COLOURS[index % SHAPE_COLOURS.length];
+  const shape = index % 3;
+  return (
+    <svg
+      aria-hidden
+      viewBox={shape === 2 ? "0 0 44 18" : "0 0 24 24"}
+      className={cn("size-3.5 shrink-0", colour, className)}
+    >
+      {shape === 0 ? (
+        <circle cx="12" cy="12" r="10" fill="currentColor" />
+      ) : shape === 1 ? (
+        <path d="M12 2 23 22H1Z" fill="currentColor" />
+      ) : (
+        <path
+          d="M3 9q6-8 12 0t12 0t12 0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}

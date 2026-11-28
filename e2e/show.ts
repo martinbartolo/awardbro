@@ -152,7 +152,8 @@ export const currentCategory = (host: Page, category: string) =>
 
 /**
  * The host takes a step of the show in the run view, for the category it's on: the button's name,
- * and the stage the category is in afterwards ("Voting", "Voting closed", "Revealed")
+ * and the stage the category is in afterwards ("Voting", "Voting closed", "Revealed"), the step
+ * its stepper marks as current
  */
 export async function runStep(
   host: Page,
@@ -163,7 +164,10 @@ export async function runStep(
 ) {
   const current = currentCategory(host, category);
   await current.getByRole("button", { name: button, exact: true }).click();
-  await expect(current.getByText(stage, { exact: true })).toBeVisible(options);
+  await expect(current.locator('[aria-current="step"]')).toHaveText(
+    stage,
+    options,
+  );
 }
 
 /** The host moves on from a revealed category to the next one */

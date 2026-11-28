@@ -33,6 +33,7 @@ export const CATEGORY_TYPES: Record<
     description: string;
     icon: Icon;
     /** Its badge's colours on the manage page (a normal category has no badge) */
+    /** The icon's colour in the badge (a shape colour); none for a normal category */
     badgeClassName?: string;
   }
 > = {
@@ -45,21 +46,21 @@ export const CATEGORY_TYPES: Record<
     label: "Image",
     description: "Voters pick one picture. Each nomination is a picture link.",
     icon: ImageIcon,
-    badgeClassName: "bg-blue-500/15 text-blue-600",
+    badgeClassName: "text-shape-4",
   },
   RANKING: {
     label: "Ranking",
     description:
       "Voters rank their favourites. Higher places score more points.",
     icon: ListNumbersIcon,
-    badgeClassName: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    badgeClassName: "text-shape-2",
   },
   AGGREGATE: {
     label: "Aggregate",
     description:
       "Adds up the results of other categories. No voting of its own.",
     icon: StackIcon,
-    badgeClassName: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
+    badgeClassName: "text-shape-1",
   },
 };
 
@@ -74,11 +75,12 @@ export function CategoryTypeBadge({
   const { label, icon: Icon, badgeClassName } = CATEGORY_TYPES[type];
   if (!badgeClassName) return null;
   return (
+    // The type in the foreground colour, its icon in one of the shape colours (readable in both themes)
     <Badge
       variant="secondary"
-      className={cn("gap-1 px-2.5 py-1", badgeClassName)}
+      className="bg-muted text-foreground gap-1.5 rounded-full px-2.5 py-1"
     >
-      <Icon weight="duotone" className="size-3.5" />
+      <Icon weight="duotone" className={cn("size-3.5", badgeClassName)} />
       {label}
       {type === "RANKING" && ` (Top ${rankingTop})`}
     </Badge>
