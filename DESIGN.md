@@ -142,7 +142,9 @@ Rules:
 - The Gold Is Earned Rule. The winner colour belongs to the winner alone: never a button, never a runner-up's column.
 - The Seeded Colour Rule. Column colours look random but aren't: they are shuffled with the award as the seed, so the big screen, the host's laptop and every reload show the same colours.
 - The Projector Rule. Colour is solid and saturated.
+- The Stage Unit Rule. Everything on the big screen is sized in stage units: type from the `text-stage-*` scale, spacing from Tailwind's scale (which counts in half-units there), anything else as a multiple of `u`.
 - The No Kicker Rule. No small uppercase label above a heading.
+- The Overscan Rule. Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).
 - The Duotone Moment Rule. Bold for controls; Duotone (`weight="duotone"`) only for the few expressive moments: the category-type badges, a voter's vote confirmation and empty states.
 - The No Hard Offset Rule. Never a solid offset shadow (the sticker or Memphis look).
 
@@ -164,5 +166,6 @@ Do:
 - Do write copy that says what happens next ("Watch the big screen for the results.").
 - Do respect `prefers-reduced-motion`: show the end state at once.
 - Do check every text pair against both themes; body text stays at 4.5:1 or more.
+- Do size everything on the big screen in stage units, and keep what must be read clear of the outer 5%.
 
 Full: .impeccable/design-full.md (read a section when you need its detail)
