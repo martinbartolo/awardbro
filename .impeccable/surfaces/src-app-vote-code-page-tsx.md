@@ -15,7 +15,7 @@ Audience: people in the room, standing, often a drink in, one thumb, on any phon
 
 THESIS: The phone is the remote. One live category, the nominations as big rounded tiles in a radio group, and one button in thumb reach that names the pick ("Vote for The Worm"). Refuses the form-on-a-card layout (instructions, an empty "Your vote" box, then the options) that pushed the first option below the fold.
 
-OWN-WORLD: Podium, the same tokens as the big screen. Rounded tiles (20px) on the stage colour, the selected tile in the action colour (coral at Night, blue on Paper), never the winner colour. Fredoka, chunky. Soft shadows. The shape-set confetti, small, when a vote goes in.
+OWN-WORLD: Podium, the same tokens as the big screen. Rounded tiles (20px) on the stage colour, the selected tile in the action colour (coral at Night, blue on Paper), never the winner colour. Fredoka, chunky. Soft shadows. No confetti: it means a winner, so it's kept for the reveal on the big screen.
 
 STORY: The voter sees which award is live, taps a nomination, taps "Vote for …", and gets "Your vote is in" with an obvious way to change it. When voting closes, the phone says so and points at the big screen.
 
@@ -30,5 +30,5 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 - Theme follows the phone's light or dark setting, with a small override remembered on the device, set before first paint.
 - Image categories: photos large enough to judge, two to a row.
 - Rankings: tap in order; a tapped tile shows its place; tap again to take it out.
-- Confetti: small burst when a vote goes in; full on a capable phone, thinning only when frames run long; none with reduced motion.
+- No confetti on the phone: it's the reveal's, so a vote going in gets the check badge only (decided 2026-11-28; BAR-23 first asked for a small burst).
 - No vibration (decided 2026-11-28).

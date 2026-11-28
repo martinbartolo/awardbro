@@ -364,7 +364,7 @@ When the host changes what the results show while they're up, the columns move w
 
 The shape set (circles, triangles and squiggles in the four shape colours, read from the theme) on a full-screen canvas: 220 pieces fanned upwards from the winner's column, falling under gravity with a flutter, sized and paced to the stage so every screen sees the same burst. Every piece flies on any capable machine; only if the first 500ms of frames run slow (under about 40 fps) are half of them dropped.
 
-On a phone, a vote going in fires a smaller burst: 120 pieces from the vote-in badge (38% down the screen), each piece 2.2 times the size the screen alone would give it, so it reads on a small screen. None with reduced motion.
+Confetti means a winner, so it's the reveal's alone: a vote going in on a phone gets the check badge, never confetti (decided 2026-11-28, so the crown keeps its punch on the ninth award).
 
 ### Live count
 
