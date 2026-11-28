@@ -7,9 +7,9 @@ Award show app: hosts build a show, voters vote from their phones, results are r
 
 ## Commands
 
-- `pnpm check` (types + lint) and `pnpm test` before every commit; `pnpm build` before every PR.
-- `pnpm test:integration` when changing the API or the schema. It needs `TEST_DATABASE_URL` pointing at a database named `*_test` (see "Integration tests" in @docs/development.md); CI runs it when the schema or the API changes.
-- `pnpm test:e2e` when changing pages or components (`src/app`): whole shows in a browser, against the same `*_test` database (see "End-to-end tests" in @docs/development.md); CI runs it when anything the app is built from changes.
+- `pnpm check` (types + lint) and `pnpm test` before every commit (seconds); commit each logical step as it's done.
+- The slow checks run once per change, after the reviews, on the final code: `pnpm build`, then `pnpm test:integration` when changing the API or the schema, and `pnpm test:e2e` when changing pages or components (`src/app`). Both run against the local test database: `pnpm db:test:start`, then `TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:5433/awardbro_test"`, and `pnpm db:test:stop` afterwards so nothing keeps running (see "Integration tests" in @docs/development.md). Not a Neon branch. CI runs them too.
+- Don't change files while a test run is reading them. If a suite fails twice for a reason outside the code (database, network, timeout), stop, find the cause and tell the user, rather than running it again.
 - Prisma has no global install: use `pnpm exec prisma …`.
 
 ## Workflow for every change
