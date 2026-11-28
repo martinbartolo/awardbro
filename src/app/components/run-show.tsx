@@ -191,7 +191,9 @@ export function RunShow({
                             : "text-muted-foreground",
                         )}
                       >
-                        {STAGE_LABELS[stageOf(category)]}
+                        {isWaiting(category)
+                          ? "Waits for its awards"
+                          : STAGE_LABELS[stageOf(category)]}
                       </span>
                     </button>
                   </li>
@@ -258,10 +260,7 @@ function CurrentCategory({
       aria-labelledby="current-category"
       className="bg-card flex flex-col rounded-[24px] p-5 sm:p-7 lg:min-h-[32rem] lg:p-9"
     >
-      <p className="text-muted-foreground text-sm font-medium">
-        Award {categories.indexOf(category) + 1} of {categories.length}
-      </p>
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h2
           id="current-category"
           className="text-3xl leading-tight font-bold text-balance lg:text-4xl"
@@ -273,6 +272,9 @@ function CurrentCategory({
           rankingTop={category.rankingTop}
         />
       </div>
+      <p className="text-muted-foreground mt-2 font-medium">
+        Award {categories.indexOf(category) + 1} of {categories.length}
+      </p>
 
       {/* Where the category is: the step it's on in the action colour */}
       <ol
@@ -289,7 +291,7 @@ function CurrentCategory({
             className={cn(
               "rounded-[14px] px-3 py-2.5 text-center text-sm font-semibold",
               index === stepIndex
-                ? "bg-primary text-primary-foreground"
+                ? "bg-primary/15 text-primary ring-primary/50 ring-2 ring-inset"
                 : index < stepIndex
                   ? "bg-muted text-foreground"
                   : "bg-muted/60 text-muted-foreground",
@@ -378,19 +380,19 @@ function CurrentCategory({
   );
 }
 
+/** An aggregate that can't be revealed yet: some of the categories it adds up aren't */
+const isWaiting = (category: Category) =>
+  category.type === "AGGREGATE" &&
+  !category.revealed &&
+  category.sourceCategories.some(source => !source.revealed);
+
 /**
  * The first category still to be revealed, skipping aggregates that are waiting for the
  * categories they add up (unless nothing else is left)
  */
 const nextToReveal = (categories: Category[]) => {
   const unrevealed = categories.filter(c => !c.revealed);
-  return (
-    unrevealed.find(
-      c =>
-        c.type !== "AGGREGATE" ||
-        c.sourceCategories.every(source => source.revealed),
-    ) ?? unrevealed[0]
-  );
+  return unrevealed.find(c => !isWaiting(c)) ?? unrevealed[0];
 };
 
 /**

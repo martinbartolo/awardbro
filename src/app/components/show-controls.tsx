@@ -135,6 +135,10 @@ export function RunShowCard({
   );
 }
 
+/** A dangerous action at rest: quiet, red only on hover (the confirm dialog's button is the solid one) */
+const QUIET_DANGER =
+  "border-border hover:border-destructive hover:text-destructive rounded-full border-2";
+
 /** Resetting every vote and deleting the show, kept apart from the everyday controls */
 export function DangerZone({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -185,7 +189,7 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
           confirmLabel="Reset All Votes"
           onConfirm={() => resetAllVotes.mutate({ sessionId })}
         >
-          <Button variant="outline">
+          <Button variant="ghost" className={QUIET_DANGER}>
             <ArrowCounterClockwiseIcon />
             Reset All Votes
           </Button>
@@ -197,7 +201,7 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
           confirmLabel="Delete Show"
           onConfirm={() => deleteSession.mutate({ id: sessionId })}
         >
-          <Button variant="destructive">
+          <Button variant="ghost" className={QUIET_DANGER}>
             <TrashIcon />
             Delete Award Show
           </Button>
