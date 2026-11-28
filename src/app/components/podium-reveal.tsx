@@ -167,8 +167,12 @@ export function PodiumReveal({
     );
   }
 
-  // Room above the columns: a single winner's name stands on its column, a tie's headline above all
-  const reserve = singleWinner ? 24 : 14;
+  // Room above the columns: a single winner's name stands on its column (at most headline size
+  // with pictures, to leave the columns room), a tie's headline above all
+  const reserve = singleWinner ? (pictures ? 20 : 24) : 14;
+  // The shortest column: room for its label, ending clear of the bottom 5% of the screen, which
+  // some TVs crop. With pictures, the photo is in it too (and the name keeps to one line).
+  const floor = pictures ? 34 : 24;
 
   return (
     <>
@@ -192,6 +196,7 @@ export function PodiumReveal({
           style={
             {
               "--reserve": `calc(var(--u) * ${reserve})`,
+              "--floor": `calc(var(--u) * ${floor})`,
             } as React.CSSProperties
           }
         >
@@ -211,6 +216,25 @@ export function PodiumReveal({
             const nameAbove = column.winner && singleWinner;
             const label =
               column.score !== null && getScoreLabel(category, column.score);
+            // The host's photo at the top of the column: a winner's arrives with the crown
+            const photo = pictures && (!column.winner || crowned) && (
+              <div
+                className={cn(
+                  "mb-3 aspect-square",
+                  !column.winner
+                    ? "w-[min(78%,calc(var(--u)*13))]"
+                    : singleWinner
+                      ? "w-[min(80%,calc(var(--u)*20))]"
+                      : "w-[min(70%,calc(var(--u)*16))]",
+                )}
+              >
+                <NominationDescription
+                  description={column.description}
+                  isImage
+                  imageClassName="size-full [&_img]:size-full [&_img]:rounded-[calc(var(--u)*2.5)] [&_img]:object-cover"
+                />
+              </div>
+            );
 
             return (
               <li
@@ -233,7 +257,7 @@ export function PodiumReveal({
                   <p
                     className={cn(
                       "absolute inset-x-[-40%] text-center leading-[1.02] font-bold text-balance",
-                      nameSize(column.name),
+                      nameSize(column.name, pictures),
                       "ease-out-soft transition-[opacity,translate] duration-700 motion-reduce:transition-none",
                       crowned ? "opacity-100" : "translate-y-5 opacity-0",
                     )}
@@ -284,23 +308,8 @@ export function PodiumReveal({
                       labelShown ? "opacity-100 delay-300" : "opacity-0",
                     )}
                   >
-                    {/* In an image category, the host's photo on the winner's column */}
-                    {crowned && pictures && (
-                      <div
-                        className={cn(
-                          "mb-3 aspect-square",
-                          singleWinner
-                            ? "w-[min(80%,calc(var(--u)*22))]"
-                            : "w-[min(70%,calc(var(--u)*18))]",
-                        )}
-                      >
-                        <NominationDescription
-                          description={column.description}
-                          isImage
-                          imageClassName="size-full [&_img]:size-full [&_img]:rounded-[calc(var(--u)*2.5)] [&_img]:object-cover"
-                        />
-                      </div>
-                    )}
+                    {/* On top: first for a winner, last (reversed) for a runner-up */}
+                    {column.winner && photo}
                     {!nameAbove && (
                       <span
                         className={cn(
@@ -312,7 +321,10 @@ export function PodiumReveal({
                                 "mb-2 line-clamp-3 font-bold",
                                 tiedNameSize(column.name),
                               )
-                            : "text-stage-small line-clamp-2 font-semibold",
+                            : cn(
+                                "text-stage-small font-semibold",
+                                pictures ? "line-clamp-1" : "line-clamp-2",
+                              ),
                         )}
                       >
                         {column.name}
@@ -345,6 +357,7 @@ export function PodiumReveal({
                           </span>
                         </span>
                       ))}
+                    {!column.winner && photo}
                   </div>
                 </div>
               </li>
@@ -394,8 +407,8 @@ export function PodiumReveal({
 }
 
 /** The winner's name as big as it can be without running past two lines */
-const nameSize = (name: string) =>
-  name.length <= 16
+const nameSize = (name: string, pictures: boolean) =>
+  name.length <= 16 && !pictures
     ? "text-stage-display"
     : name.length <= 28
       ? "text-stage-headline"
@@ -410,11 +423,8 @@ const tiedNameSize = (name: string) =>
       : "text-stage-lead";
 
 /**
- * The shortest a column gets: room for a runner-up's score and a two-line name, ending well clear
- * of the bottom 5% of the screen, which some TVs crop
+ * A column's height: the shortest a column gets (`--floor`), plus its share of the room above
+ * that, under what stands on the columns (`--reserve`)
  */
-const FLOOR = "var(--u) * 24";
-
-/** A column's height: the floor, plus its share of the room above it under what stands on it */
 const barHeight = (share: number) =>
-  `calc(${FLOOR} + (100% - var(--reserve) - ${FLOOR}) * ${share})`;
+  `calc(var(--floor) + (100% - var(--reserve) - var(--floor)) * ${share})`;
