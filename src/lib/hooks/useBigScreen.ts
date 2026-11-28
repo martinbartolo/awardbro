@@ -11,10 +11,13 @@ export function useWakeLock() {
   useEffect(() => {
     if (!("wakeLock" in navigator)) return;
     let lock: WakeLockSentinel | null = null;
+    // One request at a time, so a quick hide and show can't take a second lock
+    let requesting = false;
     let stopped = false;
 
     const request = async () => {
-      if (document.visibilityState !== "visible" || lock) return;
+      if (document.visibilityState !== "visible" || lock || requesting) return;
+      requesting = true;
       try {
         const next = await navigator.wakeLock.request("screen");
         if (stopped) {
@@ -27,6 +30,8 @@ export function useWakeLock() {
         });
       } catch {
         // Refused (battery saver, or no user gesture yet): the screen may dim, nothing more
+      } finally {
+        requesting = false;
       }
     };
 

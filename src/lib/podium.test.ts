@@ -153,6 +153,15 @@ describe("podium", () => {
     expect(ids(rest)).toEqual(["n5", "n6", "n7"]);
   });
 
+  it("never puts a winner in the rest, even past seven of them", () => {
+    const { columns, rest } = podium(scored(4, 4, 4, 4, 4, 4, 4, 4, 1), {
+      winnerOnly: false,
+    });
+    expect(columns).toHaveLength(8);
+    expect(columns.every(c => c.winner)).toBe(true);
+    expect(ids(rest)).toEqual(["n8"]);
+  });
+
   it("keeps every tied winner on the podium past seven nominations", () => {
     const { columns } = podium(scored(5, 5, 5, 5, 5, 5, 1, 1), {
       winnerOnly: false,

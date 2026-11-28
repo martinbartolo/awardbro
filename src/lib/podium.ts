@@ -59,8 +59,9 @@ export function seededOrder(seed: string, n: number): number[] {
 /**
  * Each column's colour, 1 to 7 (`--column-<n>`), by nomination id. The palette is shuffled with
  * the category as the seed, and each nomination takes the next colour in the category's own
- * order, so a nomination keeps its colour whatever its score. Columns never share a colour: a
- * nomination whose colour is taken (past seven nominations) takes the next free one.
+ * order, so a nomination keeps its colour whatever its score. Columns don't share a colour: a
+ * nomination whose colour is taken (past seven nominations) takes the next free one. Only a tie
+ * of more than seven winners repeats one, and those all turn the winner colour.
  */
 export function columnColours(
   categoryId: string,
@@ -129,10 +130,11 @@ export function podium<T extends PodiumNomination>(
   const winners = ranked.filter(n => n.place === 1);
   const candidates = winnerOnly ? winners : ranked;
 
+  // Every winner stands on the podium, even past seven (they share the winner colour anyway)
   const columnCount =
     candidates.length <= COLUMN_COLOURS
       ? candidates.length
-      : Math.min(Math.max(TOP_COLUMNS, winners.length), COLUMN_COLOURS);
+      : Math.max(TOP_COLUMNS, winners.length);
   const standing = candidates.slice(0, columnCount);
   const rest = candidates.slice(columnCount);
 
