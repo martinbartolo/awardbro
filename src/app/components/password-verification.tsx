@@ -20,13 +20,18 @@ import { useTRPC } from "~/trpc/react";
 
 type PasswordVerificationProps = {
   code: string;
+  /** The show's name: the username its password is saved under */
+  name: string;
 };
 
 /**
  * Shown on the manage page when the visitor has no manage-access cookie for this show.
  * A correct password makes the server set the cookie; refreshing then renders the manage UI.
  */
-export function PasswordVerification({ code }: PasswordVerificationProps) {
+export function PasswordVerification({
+  code,
+  name,
+}: PasswordVerificationProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [isRefreshing, startRefresh] = useTransition();
@@ -76,11 +81,14 @@ export function PasswordVerification({ code }: PasswordVerificationProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <ShowUsername value={name} />
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Enter management password"
@@ -97,12 +105,34 @@ export function PasswordVerification({ code }: PasswordVerificationProps) {
   );
 }
 
+/**
+ * The username that goes with a show's password, for password managers: the show's name, the one
+ * thing both the create form and the password form know (the room code doesn't exist until the
+ * show is created). Without it, Safari and iCloud Passwords guess the username from the nearest
+ * text field, and then offer saved passwords in every text field. Hidden from everyone else:
+ * hosts never type it.
+ */
+export function ShowUsername({ value }: { value: string }) {
+  return (
+    <input
+      type="text"
+      name="username"
+      autoComplete="username"
+      value={value}
+      readOnly
+      tabIndex={-1}
+      aria-hidden
+      className="sr-only"
+    />
+  );
+}
+
 /** A host page (manage or run) for a visitor without access to the show: only the password form */
-export function PasswordPage({ code }: { code: string }) {
+export function PasswordPage({ code, name }: { code: string; name: string }) {
   return (
     <main className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <PasswordVerification code={code} />
+        <PasswordVerification code={code} name={name} />
       </div>
     </main>
   );

@@ -5,9 +5,10 @@ import { useMutation } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { CircleExclamationPoint } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
+import { ShowUsername } from "~/app/components/password-verification";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -37,6 +38,9 @@ export function CreateSessionForm() {
       password: "",
     },
   });
+
+  // Saved by password managers as the password's username, as on the manage page's password form
+  const name = useWatch({ control: form.control, name: "name" });
 
   const trpc = useTRPC();
   const createSession = useMutation(
@@ -84,6 +88,7 @@ export function CreateSessionForm() {
               )}
             />
 
+            <ShowUsername value={name} />
             <FormField
               control={form.control}
               name="password"
