@@ -60,7 +60,7 @@ export function NominationActions({
         variant="ghost"
         size="icon"
         tooltip="Delete nomination"
-        className="h-8 w-8"
+        className="hover:text-destructive h-8 w-8"
         aria-label="Delete nomination"
       >
         <XIcon />

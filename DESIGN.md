@@ -73,6 +73,7 @@ rounded:
   md: "14px"
   lg: "16px"
   card: "24px"
+  panel: "24px"
   tile: "20px"
   column: "40px"
   pill: "9999px"
@@ -102,6 +103,13 @@ components:
     rounded: "{rounded.pill}"
     height: "48px"
     padding: "0 24px"
+  button-ghost:
+    textColor: "{colors.night-muted}"
+    rounded: "{rounded.pill}"
+  button-ghost-hover:
+    backgroundColor: "{colors.night-hover}"
+    textColor: "{colors.night-ink}"
+    rounded: "{rounded.pill}"
   card:
     backgroundColor: "{colors.night-surface}"
     textColor: "{colors.night-ink}"
@@ -112,6 +120,11 @@ components:
     textColor: "{colors.night-ink}"
     rounded: "{rounded.md}"
     height: "44px"
+  running-order:
+    backgroundColor: "{colors.night-surface-low}"
+    textColor: "{colors.night-ink}"
+    rounded: "{rounded.card}"
+    padding: "16px"
   nomination-tile:
     backgroundColor: "{colors.night-surface}"
     textColor: "{colors.night-ink}"
@@ -136,12 +149,13 @@ Name: AwardBro
 Colors: primary: night-coral #ff7a5c; secondary: night-gold #ffc93c; tertiary: shape-mint #2ec4a6; neutral: night-stage #16153a; primary: paper-blue #3b5bdb; secondary: paper-coral #e8553a (+30 more in the sidecar)
 Fonts: Fredoka (display, headline, title, body, label)
 Spacing: xs 8px, sm 12px, md 16px, lg 24px, xl 40px, stage 96px
-Radius: sm 12px, md 14px, lg 16px, card 24px, tile 20px, column 40px, pill 9999px
+Radius: sm 12px, md 14px, lg 16px, card 24px, panel 24px, tile 20px, column 40px, pill 9999px (host views: `rounded-panel` 24px, `rounded-inner` 14px)
 North Star: "The Podium Night"
 Rules:
 
-- The Gold Is Earned Rule. The winner colour belongs to the winner alone: never a button, never a runner-up's column.
+- The Gold Is Earned Rule. The winner colour belongs to the winner alone: never a button, never a runner-up's column. Shapes outside a win use the mark tokens (`mark-1` to `mark-3`), the shape colours without it.
 - The Seeded Colour Rule. Column colours look random but aren't: they are shuffled with the award as the seed, so the big screen, the host's laptop and every reload show the same colours.
+- The One Pill Rule. A host screen has one solid action-colour shape: its main pill (the run view's next step, the manage page's Run the Show).
 - The Projector Rule. Colour is solid and saturated.
 - The Stage Unit Rule. Everything on the big screen is sized in stage units: type from the `text-stage-*` scale, spacing from Tailwind's scale (which counts in half-units there), anything else as a multiple of `u`.
 - The No Kicker Rule. No small uppercase label above a heading.
@@ -161,6 +175,7 @@ Don't:
 - Don't use hard offset shadows, gradients or glows.
 - Don't add themed decoration (envelopes, stamps, tickets, textures): it gets old by the third award.
 - Don't put a small uppercase label above a heading.
+- Don't show a destructive action solid red at rest: it turns red on hover, and only its confirm dialog's button is solid.
 
 Do:
 
@@ -169,5 +184,6 @@ Do:
 - Do respect `prefers-reduced-motion`: show the end state at once.
 - Do check every text pair against both themes; body text stays at 4.5:1 or more.
 - Do size everything on the big screen in stage units, and keep what must be read clear of the outer 5%.
+- Do give each host screen one solid action-colour pill; tint, don't fill, any other state that needs the action colour.
 
 Full: .impeccable/design-full.md (read a section when you need its detail)

@@ -63,6 +63,28 @@ export const STAGE_LABELS: Record<Stage, string> = {
   done: "Done",
 };
 
+/** A category with what it adds up, if it's an aggregate */
+type WithSources = StageFlags & {
+  type: string;
+  sourceCategories: { revealed: boolean }[];
+};
+
+/** An aggregate that can't be revealed yet: some of the categories it adds up aren't */
+export const isWaiting = (category: WithSources) =>
+  category.type === "AGGREGATE" &&
+  !category.revealed &&
+  category.sourceCategories.some(source => !source.revealed);
+
+/** Where a category is, in words for the host (the running order, the manage page) */
+export function stageLabel(category: WithSources) {
+  if (isWaiting(category)) return "Waits for its awards";
+  const stage = stageOf(category);
+  // An aggregate has no voting: closed is its results hidden again
+  if (category.type === "AGGREGATE" && stage === "closed")
+    return "Results hidden";
+  return STAGE_LABELS[stage];
+}
+
 /** A button in the run view: its label and the stage it moves the category to */
 export type Step = { label: string; stage: ServerStage; disabled?: boolean };
 
@@ -167,17 +189,36 @@ export function stepsFor({
  * flags (`STAGE_FLAGS`), and any other category leaves the big screen when this one goes on it.
  * For showing a step straight away, before the server confirms it.
  */
-export const applyStage = <C extends StageFlags & { id: string }>(
+export const applyStage = <
+  C extends StageFlags & {
+    id: string;
+    sourceCategories?: { id: string; revealed: boolean }[];
+  },
+>(
   categories: C[],
   id: string,
   stage: ServerStage,
 ): C[] => {
   const flags = STAGE_FLAGS[stage];
-  return categories.map(category =>
-    category.id === id
-      ? { ...category, ...flags }
-      : flags.isActive && category.isActive
-        ? { ...category, isActive: false }
-        : category,
-  );
+  return categories.map(category => {
+    const moved: C =
+      category.id === id
+        ? { ...category, ...flags }
+        : flags.isActive && category.isActive
+          ? { ...category, isActive: false }
+          : category;
+    // An aggregate's copy of this category, so it knows straight away whether it's still waiting
+    const { revealed } = flags;
+    if (
+      revealed === undefined ||
+      !moved.sourceCategories?.some(source => source.id === id)
+    )
+      return moved;
+    return {
+      ...moved,
+      sourceCategories: moved.sourceCategories.map(source =>
+        source.id === id ? { ...source, revealed } : source,
+      ),
+    };
+  });
 };

@@ -86,7 +86,7 @@ The present page (`live-presentation.tsx`) shows the category on the screen with
 
 The voter's phone (`live-voting-session.tsx`) shows the category on the big screen with the nominations as tiles, and a vote button pinned at the bottom that names the pick ("Vote for The Worm"): a normal category is a radio group, an image category the same with photos two to a row, and a ranking takes taps in order (each tile shows its place; a tap takes it out again) until "Submit my top 3". Once the vote is in, the page says "Your vote is in", and "Change my vote" goes back to the tiles. When voting closes, it shows what the voter's vote was. A new category replaces the page's state, so a vote never shows against the next one.
 
-It follows the phone's light or dark setting, or the theme the voter picks with the toggle in its header, remembered on the device (`src/lib/device-theme.ts`). A small inline script sets it before the first paint, so a light phone never flashes dark; it's fixed text, with nothing from a visitor in it.
+It follows the phone's light or dark setting, or the theme the voter picks with the toggle in its header, remembered on the device (`src/lib/device-theme.ts`). A small inline script sets it before the first paint, so a light phone never flashes dark; it's fixed text, with nothing from a visitor in it. The host views (the manage page, the run view and their password form) follow the host's device the same way, through their layout (`DeviceTheme`); the big screen keeps the theme the host sets for the show.
 
 ## Joining a show
 
@@ -109,10 +109,10 @@ The present page shows a QR code that opens the vote page, the site's address an
 
 After every write, the server tells the show's open pages what changed (`src/server/events.ts`). Pages use the event as a signal to fetch again: events carry no scores or votes, so the database stays the only source of truth.
 
-| Event   | Sent by                                                                                                                           |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Event   | Sent by                                                                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `show`  | Any host action: categories, nominations, running order, a category's stage or reveal options, the big screen's theme, resetting votes, deleting the show |
-| `votes` | A voter's vote or ranking, with its `categoryId`                                                                                  |
+| `votes` | A voter's vote or ranking, with its `categoryId`                                                                                                          |
 
 How they travel, with no service besides the database:
 

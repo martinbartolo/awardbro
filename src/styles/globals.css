@@ -52,6 +52,11 @@
   --shape-2: #2ec4a6;
   --shape-3: #ffc93c;
   --shape-4: #7c8cff;
+  /* Shapes as marks and markers (quiet screens, lists, type icons): never the
+     winner colour, which is gold at Night. */
+  --mark-1: #ff7a5c;
+  --mark-2: #7c8cff;
+  --mark-3: #2ec4a6;
 
   /* Runners-up columns at the reveal: each nomination takes one, shuffled per
      award. Never the winner colour, which the winner's column takes when crowned. */
@@ -103,6 +108,11 @@
   --shape-2: #2ec4a6;
   --shape-3: #ffc93c;
   --shape-4: #3b5bdb;
+  /* On Paper the winner is coral, so the first mark is a deep gold; deep enough,
+     like the teal, to read on the paper surfaces. */
+  --mark-1: #a86b00;
+  --mark-2: #3b5bdb;
+  --mark-3: #0f7d67;
 
   --column-1: #ffc93c;
   --column-2: #5fd6be;
@@ -126,6 +136,9 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  /* The host views' panels (rounded-panel) and the rows and wells inside them (rounded-inner) */
+  --radius-panel: 24px;
+  --radius-inner: 14px;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -157,6 +170,9 @@
   --color-shape-2: var(--shape-2);
   --color-shape-3: var(--shape-3);
   --color-shape-4: var(--shape-4);
+  --color-mark-1: var(--mark-1);
+  --color-mark-2: var(--mark-2);
+  --color-mark-3: var(--mark-3);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);

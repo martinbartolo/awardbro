@@ -6,7 +6,8 @@ import { useSyncExternalStore } from "react";
  * tooltips and toasts included, which render outside the page.
  *
  * Two kinds of page set it: the big screen, from the host's choice for the show
- * (`useDocumentTheme`), and the vote page, from the device (`device-theme.ts`). Each takes it off
+ * (`useDocumentTheme`), and the pages on a visitor's own device, the vote page and the host
+ * views, from the device (`device-theme.ts`). Each takes it off
  * when it closes, so the next page starts from the default.
  */
 
