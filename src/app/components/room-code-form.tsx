@@ -91,7 +91,6 @@ export function RoomCodeForm({
           maxLength={200}
           className="h-12 flex-1 font-mono text-lg tracking-wide uppercase placeholder:font-sans placeholder:tracking-normal placeholder:normal-case"
           autoCapitalize="characters"
-          autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
           aria-invalid={!!error}

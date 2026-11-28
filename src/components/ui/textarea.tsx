@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { autofillDefaults } from "~/components/ui/autofill";
 import { cn } from "~/lib/utils";
 
 const Textarea = React.forwardRef<
@@ -13,6 +14,7 @@ const Textarea = React.forwardRef<
         className,
       )}
       ref={ref}
+      {...autofillDefaults({ autoComplete: props.autoComplete })}
       {...props}
     />
   );
