@@ -14,12 +14,21 @@ const topThree = { type: "RANKING", rankingTop: 3 } as const;
 const topFive = { type: "RANKING", rankingTop: 5 } as const;
 const aggregate = { type: "AGGREGATE", rankingTop: null } as const;
 
-/** A nomination with one vote per rank given (null for a vote without a rank) */
-const voted = (name: string, ...ranks: (number | null)[]) => ({
-  name,
-  _count: { votes: ranks.length },
-  votes: ranks.map(rank => ({ rank })),
-});
+/**
+ * A nomination with one vote per rank given (null for a vote without a rank), with its ranked
+ * votes added up as the database does
+ */
+const voted = (name: string, ...ranks: (number | null)[]) => {
+  const ranked = ranks.filter(rank => rank !== null);
+  return {
+    name,
+    _count: { votes: ranks.length },
+    ranked: {
+      count: ranked.length,
+      rankSum: ranked.reduce((sum, rank) => sum + rank, 0),
+    },
+  };
+};
 const dune = (...ranks: (number | null)[]) => voted("Dune", ...ranks);
 
 describe("scoreNomination in normal and image categories", () => {
@@ -31,12 +40,12 @@ describe("scoreNomination in normal and image categories", () => {
     expect(scoreNomination(category, dune())).toBe(0);
   });
 
-  it("uses the vote count, without needing the votes", () => {
+  it("uses the vote count, without needing the ranked votes", () => {
     expect(
       scoreNomination(normal, {
         name: "Dune",
         _count: { votes: 4 },
-        votes: [],
+        ranked: { count: 0, rankSum: 0 },
       }),
     ).toBe(4);
   });
@@ -62,6 +71,27 @@ describe("scoreNomination in ranking categories", () => {
     // Saving a vote rejects these, so they only matter for old data
     expect(scoreNomination(topThree, dune(4))).toBe(0);
     expect(scoreNomination(topThree, dune(5))).toBe(-1);
+  });
+
+  it("gives the same points as adding up each vote's, for any ranks", () => {
+    // Seeded, so a failure can be run again with the same input
+    let seed = 58;
+    const random = () =>
+      ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    for (let round = 0; round < 200; round++) {
+      const rankingTop = 2 + Math.floor(random() * 9);
+      const ranks = Array.from({ length: Math.floor(random() * 30) }, () =>
+        random() < 0.2 ? null : 1 + Math.floor(random() * rankingTop),
+      );
+      const eachVote = ranks.reduce<number>(
+        (sum, rank) => (rank ? sum + rankingTop - rank + 1 : sum),
+        0,
+      );
+      expect(
+        scoreNomination({ type: "RANKING", rankingTop }, dune(...ranks)),
+        JSON.stringify({ rankingTop, ranks }),
+      ).toBe(eachVote);
+    }
   });
 
   it("counts 1 point per vote when rankingTop is missing", () => {

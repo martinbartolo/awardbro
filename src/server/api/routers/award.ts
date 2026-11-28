@@ -15,7 +15,10 @@ import {
   sessionFormSchema,
 } from "~/lib/schemas";
 import {
+  earnsRankingPoints,
   estimateVoters,
+  NO_RANKED_VOTES,
+  type RankedVotes,
   type RevealOptions,
   type ScoredCategory,
   type ScoredNomination,
@@ -43,13 +46,13 @@ import { type db } from "~/server/db";
 import { notifyShow, type ShowEvent } from "~/server/events";
 
 /**
- * What to load with each nomination to score it: its vote count, and the ranks of its ranked
- * votes. Votes in other categories have no rank, so they aren't loaded.
+ * What to load with each nomination to score it: its vote count. A ranking category's ranked
+ * votes are added up by the database separately (`withScores`), so no votes are loaded.
  */
-const scoringFields = {
-  _count: { select: { votes: true } },
-  votes: { where: { rank: { not: null } }, select: { rank: true } },
-} as const;
+const scoringFields = { _count: { select: { votes: true } } } as const;
+
+/** A nomination as loaded for scoring, before its ranked votes are added up */
+type LoadedNomination = Omit<ScoredNomination, "ranked"> & { id: string };
 
 /**
  * What a category reveals to someone who can't manage the show. An aggregate is made of its
@@ -96,7 +99,7 @@ type ScorableCategory = ScoredCategory &
   RevealOptions & {
     id: string;
     sourceCategories: (ScoredCategory & RevealOptions & { id: string })[];
-    nominations: ScoredNomination[];
+    nominations: LoadedNomination[];
   };
 
 /**
@@ -107,8 +110,11 @@ type ScorableCategory = ScoredCategory &
  * (`visibleScores` with `revealOptions`).
  *
  * An aggregate is scored from its sources' nominations. Sources among `categories` are used as
- * loaded; any others are loaded in one query for all aggregates. So scoring a whole show costs no
- * extra queries, and scoring one aggregate at most one.
+ * loaded; any others are loaded in one query for all aggregates. Ranking categories' ranked
+ * votes are added up in another, one row per nomination, at the same time. So scoring takes at
+ * most two queries beyond loading the categories, in one round trip, however many there are.
+ * They aren't in a transaction with it, so a vote saved in between can show in some scores and
+ * not others; the live event that vote sends makes the page fetch them all again.
  */
 const withScores = async <C extends ScorableCategory>(
   client: typeof db,
@@ -116,7 +122,7 @@ const withScores = async <C extends ScorableCategory>(
   canSeeAllScores: boolean,
 ) => {
   /** Each category's nominations, by category ID */
-  const nominationsOf = new Map<string, ScoredNomination[]>(
+  const nominationsOf = new Map<string, LoadedNomination[]>(
     categories.map(category => [category.id, category.nominations]),
   );
   const aggregates = categories.filter(c => c.type === "AGGREGATE");
@@ -128,24 +134,57 @@ const withScores = async <C extends ScorableCategory>(
   const names = [
     ...new Set(aggregates.flatMap(a => a.nominations.map(n => n.name))),
   ];
-  if (missingSourceIds.length && names.length) {
-    const fetched = await client.nomination.findMany({
-      where: { categoryId: { in: missingSourceIds }, name: { in: names } },
-      select: { categoryId: true, name: true, ...scoringFields },
-    });
-    for (const nomination of fetched) {
-      const list = nominationsOf.get(nomination.categoryId);
-      if (list) list.push(nomination);
-      else nominationsOf.set(nomination.categoryId, [nomination]);
-    }
+  // Every category whose votes earn ranking points, among these and their sources: known before
+  // any query, so their ranked votes are added up at the same time as the sources are loaded
+  const rankingCategoryIds = [
+    ...new Set(
+      [...categories, ...aggregates.flatMap(a => a.sourceCategories)]
+        .filter(earnsRankingPoints)
+        .map(c => c.id),
+    ),
+  ];
+  const [fetched, rankedRows] = await Promise.all([
+    missingSourceIds.length && names.length
+      ? client.nomination.findMany({
+          where: { categoryId: { in: missingSourceIds }, name: { in: names } },
+          select: { id: true, categoryId: true, name: true, ...scoringFields },
+        })
+      : [],
+    rankingCategoryIds.length
+      ? client.vote.groupBy({
+          by: ["nominationId"],
+          where: {
+            nomination: { categoryId: { in: rankingCategoryIds } },
+            rank: { not: null },
+          },
+          _count: { _all: true },
+          _sum: { rank: true },
+        })
+      : [],
+  ]);
+  for (const nomination of fetched) {
+    const list = nominationsOf.get(nomination.categoryId);
+    if (list) list.push(nomination);
+    else nominationsOf.set(nomination.categoryId, [nomination]);
   }
+  /** Each nomination's ranked votes, added up by the database (none: not in a ranking category) */
+  const rankedOf = new Map<string, RankedVotes>(
+    rankedRows.map(row => [
+      row.nominationId,
+      { count: row._count._all, rankSum: row._sum.rank ?? 0 },
+    ]),
+  );
+  const scored = (nomination: LoadedNomination): ScoredNomination => ({
+    ...nomination,
+    ranked: rankedOf.get(nomination.id) ?? NO_RANKED_VOTES,
+  });
 
   /** An aggregate's source nominations, with the source each is in, grouped by name */
   const sourcesByName = (category: C) => {
     const byName = new Map<string, SourceNomination[]>();
     for (const source of category.sourceCategories) {
       for (const nomination of nominationsOf.get(source.id) ?? []) {
-        const withSource = { ...nomination, category: source };
+        const withSource = { ...scored(nomination), category: source };
         const list = byName.get(nomination.name);
         if (list) list.push(withSource);
         else byName.set(nomination.name, [withSource]);
@@ -158,7 +197,11 @@ const withScores = async <C extends ScorableCategory>(
     const sources =
       category.type === "AGGREGATE" ? sourcesByName(category) : undefined;
     const scores = category.nominations.map(nomination =>
-      scoreNomination(category, nomination, sources?.get(nomination.name)),
+      scoreNomination(
+        category,
+        scored(nomination),
+        sources?.get(nomination.name),
+      ),
     );
     const reveals = revealOptions(category);
     const shown = visibleScores(canSeeAllScores ? "all" : reveals, scores);
@@ -166,10 +209,7 @@ const withScores = async <C extends ScorableCategory>(
     return {
       ...rest,
       nominations: nominations.map(
-        (
-          { votes: _votes, _count, ...nomination }: C["nominations"][number],
-          i,
-        ) => ({
+        ({ _count, ...nomination }: C["nominations"][number], i) => ({
           ...nomination,
           ...shown[i]!,
         }),
