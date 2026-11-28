@@ -137,7 +137,7 @@ An awards night run from a laptop, voted on from phones and revealed on whatever
 
 One system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.
 
-There are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show; phones and host views follow the device setting, with an override.
+There are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. A page puts its theme on `<html>` (`data-theme="light"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.
 
 **Key Characteristics:**
 
@@ -200,13 +200,40 @@ Deep navy night with warm sparks, or warm paper with a confident blue: either wa
 
 Counts and scores are numbers people compare: set them large and bold (48px on a column, 80px on the winner's, 72px for the run view's live count).
 
+### Big-screen scale
+
+The big screen sets its type in stage units (`u`, see Layout), so the same stage fills a laptop, a TV or a 4:3 projector. The pixel sizes above are these at the 1440 × 810 reference frame (u = 8.1px).
+
+- **Beat** (11.4u, 700): "And the winner is…".
+- **Display** (10.4u, 700, line-height 1): a single winner's name, "It's a tie!", "Voting has closed", "Nobody voted in this one."
+- **Headline** (8u, 700): a longer winner's name (17 to 28 characters), a short tied winner's name.
+- **Code** (18u, 700, tracking 0.06em): the room code beside the QR code.
+- **Count** (17u, 700, tabular): the live count.
+- **Title** (6.4u, 700, line-height 1.05): the category name, and the longest winners' names.
+- **Score** (5.9u, 700, tabular): a runner-up's count on its column. The single winner's count is 9.9u.
+- **Lead** (4.2u, 500): the join copy, "votes in", "The winner is next.", a tied winner's count.
+- **Body** (3.6u): the category's description, the site's address, pills.
+- **Small** (2.9u): runners-up's names, score labels ("votes", "points"), "Award 4 of 9", "And the rest".
+
+A winner's name is as big as fits in two lines: display up to 16 characters (headline with pictures), headline up to 28, then title. Tied winners' names sit inside their columns and step down sooner (headline up to 10 characters, title up to 22, then lead), never cut short.
+
 ### Named Rules
+
+**The Stage Unit Rule.** Everything on the big screen is sized in stage units: type from the `text-stage-*` scale, spacing from Tailwind's scale (which counts in half-units there), anything else as a multiple of `u`. Never a fixed pixel or rem size on the big screen, or it breaks on the next screen size.
 
 **The No Kicker Rule.** No small uppercase label above a heading. Context such as "Award 4 of 9" sits beside the progress dots; "And the winner is…" is a timed beat of its own, not a label.
 
 ## Layout
 
-The big screen is laid out at 16:9 with 96px margins: the category name top left, the progress dots under it, the room code top right. During voting the QR code and join copy sit left with the live count circle right. At the reveal five columns stand along the bottom in podium order (3rd, 2nd, 1st, 4th, 5th), the winner's wider (1.7 times) and taller, its name centred above it.
+The big screen is laid out on a 16:9 stage that scales with the screen. Its unit `u` is a hundredth of the largest 16:9 frame that fits (`min(1dvh, 0.5625dvw)`, the `big-screen` utility), so a 4:3 projector shows the same stage with room above and below. Inside it, Tailwind's spacing counts in half-units (`--spacing: u/2`), so the usual classes scale with it: the side margins are 12u (96px at 1440 × 810) and the top 8u.
+
+The category name sits top left (up to 150u wide), with its description under it and the progress dots with "Award 4 of 9" under that. While waiting and during voting, the QR code and join copy fill the left and the live count circle the right. Once voting closes, at a reveal, and while an aggregate is on, joining shrinks to the room code chip top right, and the closed screen puts the count beside "Voting has closed". Each scene (a category and its stage) arrives with a quick fade (0.35s), no movement.
+
+At the reveal the columns stand along the bottom in podium order (3rd, 2nd, 1st, 4th, 5th: the winner in the middle, 2nd and 3rd stepping down to its left, the rest to its right) and run off the bottom edge. The winner's is wider (1.7 times, up to 56u; each runner-up up to 34u) and taller, its name centred above it.
+
+### Named Rules
+
+**The Overscan Rule.** Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).
 
 Phones are a single column with the vote button pinned at the bottom, within thumb reach. The run view is a main column (the current award, its stage, the live count, one next-step button) beside a running-order panel.
 
@@ -267,11 +294,49 @@ A 64px-tall rounded tile (20px) with the name and a round check mark. Selected t
 
 ### Podium column
 
-A rounded-top column whose height follows the score (at least 130px tall so its name fits), with the count and name inside. Each column takes a colour from the column palette, shuffled per award. The winner's column rises in its own colour like the rest, then turns the winner colour as it's crowned: it grows wider and carries the name above it.
+A rounded-top column (5u corners) whose height follows the score, with the count and name at its top. Its height is a floor plus its share of the room above it: the floor is 24u (34u in picture categories) so the label clears overscan, and the share is its score over the best, at least 14%. When the show hides the counts, heights step down by place (17% a place) instead. A runner-up's count sits above its name; names clamp to two lines (one with pictures).
+
+Each column takes a colour from the column palette, seeded by the award (The Seeded Colour Rule), so a nomination keeps its colour whatever its score, and no two columns share one. The winner's column rises in its own colour like the rest; at the crown a winner-colour layer fades in over it (0.5s) and the column grows to 1.7 times the others' width.
+
+- **A single winner:** its name stands above the column at display size, shrinking with its length (see Typography); its count, 9.9u, inside.
+- **Tied winners:** every winner is crowned together, each column growing to 1.3. "It's a tie!" fills the space above at display size, and each name sits inside its column, larger than its count.
+- **Picture categories:** every nomination's photo sits inside its column, at the top (2.5u corners, square): up to 13u on a runner-up, 20u on a single winner, 16u on tied winners. The winner's photo arrives with the crown.
+- **More than seven nominations:** the top five (or every tied winner, up to seven) get columns, and the rest share an "And the rest" block on the right, a track-coloured column listing their names and counts.
+- **Nobody voted:** no columns. "Nobody voted in this one." centred at display size, with the nominations as flat pills under it.
+- **Winner only:** only the winners stand.
 
 ### The reveal
 
-Columns rise from the smallest, one at a time (1.2s each, a soft ease-out). The leader shakes for a moment, the screen cuts to "And the winner is…", then the winner's column turns gold and grows, and the name and confetti land. With reduced motion the final result shows at once, without confetti.
+The reveal plays only on a screen that saw the award before it was revealed; a reload, or a screen opened mid-reveal, shows the result at once. Its beats:
+
+1. A half-second pause, then the runners-up rise one at a time from the shortest, every 0.9s (each rise takes 1.2s, soft ease-out), its label fading in after it.
+2. The leader rises to just under the tallest runner-up (97% of it) and shakes for 1.6s (`podium-tense`, a 0.3u side-to-side shiver).
+3. "And the winner is…" fills the screen at beat size for 1.6s, on the stage colour.
+4. The beat clears completely (0.4s) before the crown, so the name never lands on top of it.
+5. The crown: the winner's column turns the winner colour and widens, its name (or "It's a tie!") rises in, and confetti bursts from the top of the winner's column.
+
+When the host changes what the results show while they're up, the columns move without replaying the reveal. With reduced motion the final frame shows at once, without confetti.
+
+### Confetti
+
+The shape set (circles, triangles and squiggles in the four shape colours, read from the theme) on a full-screen canvas: 220 pieces fanned upwards from the winner's column, falling under gravity with a flutter, sized and paced to the stage so every screen sees the same burst. Every piece flies on any capable machine; only if the first 500ms of frames run slow (under about 40 fps) are half of them dropped.
+
+### Live count
+
+A circle in the action colour (never gold: The Gold Is Earned Rule), the same size as the QR tile (41u), with the count at count size and "votes in" under it, lifted with the Lift shadow. It hops (`count-bump`, 1.06 times, spring ease, 0.5s) with each new vote.
+
+### Join panel and room code chip
+
+- **QR tile:** always white, in both themes, with the code in Night Stage navy, since phones read a QR code best dark on white. 41u square, 3.4u corners, Lift shadow. Beside it the join copy in lead type: "Scan to vote, or go to", the site's address, "and enter", and the room code at code size.
+- **Room code chip:** once the screen is busy with an award, the address (muted) and the room code (bold, tracking 0.08em) in a card-coloured chip top right, 2u corners, Soft shadow.
+
+### Progress dots
+
+One dot per award (up to twelve) beside "Award 4 of 9": past awards in the muted text colour, those to come in the line colour, and the current one a pill in the action colour, three times as wide. Past twelve, only the words show. A category that counts towards an aggregate adds "Counts towards …" after them.
+
+### Big-screen controls
+
+None in view. The fullscreen button (F) shows bottom right only while the pointer moves or it has focus, and the cursor hides with it after 2.5s. The screen asks to stay awake while the page is open.
 
 ## Do's and Don'ts
 
@@ -281,6 +346,7 @@ Columns rise from the smallest, one at a time (1.2s each, a soft ease-out). The 
 - **Do** write copy that says what happens next ("Watch the big screen for the results.").
 - **Do** respect `prefers-reduced-motion`: show the end state at once.
 - **Do** check every text pair against both themes; body text stays at 4.5:1 or more.
+- **Do** size everything on the big screen in stage units, and keep what must be read clear of the outer 5%.
 
 ### Don't:
 

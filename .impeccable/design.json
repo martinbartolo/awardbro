@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-28T15:38:21+00:00",
+  "generatedAt": "2026-11-28T16:44:32+00:00",
   "title": "Design System: AwardBro",
   "extensions": {
     "colorMeta": {
@@ -563,15 +563,15 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "The winner's name and the reveal beat on the big screen."
+        "purpose": "The winner's name and the reveal's headlines on the big screen (stage display, 10.4u; the beat is 11.4u)."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "The category name on the big screen."
+        "purpose": "A longer winner's name on the big screen (stage headline, 8u)."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "The category name in the run view and on phones."
+        "purpose": "The category name: on the big screen (stage title, 6.4u), in the run view and on phones."
       },
       "body": {
         "displayName": "Body",
@@ -598,12 +598,22 @@
       {
         "name": "ease-out-soft",
         "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Columns rising and cards arriving at the reveal (1.2s per column)."
+        "purpose": "Columns rising at the reveal (1.2s each, one every 0.9s), the crown's widening and the name landing (0.7s)."
       },
       {
         "name": "ease-spring",
         "value": "cubic-bezier(0.2, 1.6, 0.4, 1)",
-        "purpose": "Small bounces: the vote-in badge, the live count bump."
+        "purpose": "Small bounces: the vote-in badge, the live count's hop with each vote."
+      },
+      {
+        "name": "podium-tense",
+        "value": "@keyframes podium-tense { 50% { transform: translateX(calc(var(--u) * 0.3)) } } 0.18s linear infinite",
+        "purpose": "The leader's shiver just under second place, for 1.6s before the beat. Not with reduced motion."
+      },
+      {
+        "name": "count-bump",
+        "value": "@keyframes count-bump { 40% { transform: scale(1.06) } } 0.5s var(--ease-spring)",
+        "purpose": "The live count's hop with each new vote. Not with reduced motion."
       }
     ],
     "breakpoints": [
@@ -666,14 +676,35 @@
       "name": "Podium",
       "kind": "custom",
       "refersTo": "podium-column-winner",
-      "description": "Revealed results: rounded-top columns in podium order, each in its own colour, the winner wider in the winner colour.",
+      "description": "Revealed results: rounded-top columns in podium order (3rd, 2nd, 1st, 4th, 5th), each in its own seeded colour, heights a 24u floor plus their share of the room; the crowned winner 1.7 times wider in the winner colour, its name above.",
       "html": "<div class=\"ds-podium\"><div style=\"height:96px;background:var(--column-1,#ff7a5c)\"><b>7</b>Dad Shuffle</div><div style=\"height:150px;background:var(--column-2,#2ec4a6)\"><b>12</b>The Worm</div><div class=\"ds-win\" style=\"height:176px\"><b>14</b>Priya's Robot</div><div style=\"height:70px;background:var(--column-3,#7c8cff)\"><b>4</b>Moonwalk</div></div>",
       "css": ".ds-podium{display:flex;align-items:flex-end;gap:10px;width:420px;height:190px;font-family:Fredoka,ui-rounded,system-ui,sans-serif}.ds-podium>div{flex:1;padding-top:12px;border-radius:20px 20px 0 0;color:var(--column-foreground,#16153a);text-align:center;font-size:12px;font-weight:600}.ds-podium b{display:block;font-size:24px}.ds-podium .ds-win{flex:1.7;background:var(--winner,#ffc93c);color:var(--winner-foreground,#16153a)}.ds-podium .ds-win b{font-size:36px}"
+    },
+    {
+      "name": "Live Count",
+      "kind": "custom",
+      "description": "The big screen's vote count during voting: a circle in the action colour (never gold), hopping with each vote.",
+      "html": "<div class=\"ds-count\"><b>27</b><span>votes in</span></div>",
+      "css": ".ds-count{display:grid;place-content:center;width:164px;height:164px;border-radius:50%;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);text-align:center;font-family:Fredoka,ui-rounded,system-ui,sans-serif;box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4))}.ds-count b{font-size:68px;line-height:1;font-variant-numeric:tabular-nums}.ds-count span{font-size:17px;font-weight:500}.ds-count:hover{animation:ds-bump .5s cubic-bezier(.2,1.6,.4,1)}@keyframes ds-bump{40%{transform:scale(1.06)}}"
+    },
+    {
+      "name": "Room Code Chip",
+      "kind": "chip",
+      "description": "The site's address and the room code, small in the big screen's top right once an award is on.",
+      "html": "<p class=\"ds-code\"><span>awardbro.com</span><b>K7QF</b></p>",
+      "css": ".ds-code{display:inline-flex;align-items:baseline;gap:12px;margin:0;padding:8px 20px;border-radius:16px;background:var(--card,#2e2c66);box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));font:500 23px Fredoka,ui-rounded,system-ui,sans-serif}.ds-code span{color:var(--muted-foreground,#bab8e6)}.ds-code b{color:var(--card-foreground,#fff);font-size:29px;letter-spacing:.08em}"
+    },
+    {
+      "name": "Progress Dots",
+      "kind": "nav",
+      "description": "Which award of the show is on the big screen: a dot for each (up to twelve), the current one a pill in the action colour, and \"Award N of M\".",
+      "html": "<div class=\"ds-progress\"><ol><li class=\"done\"></li><li class=\"done\"></li><li class=\"done\"></li><li class=\"now\"></li><li></li><li></li></ol><span>Award 4 of 6</span></div>",
+      "css": ".ds-progress{display:flex;align-items:center;gap:20px;color:var(--muted-foreground,#bab8e6);font:500 23px Fredoka,ui-rounded,system-ui,sans-serif}.ds-progress ol{display:flex;gap:10px;margin:0;padding:0;list-style:none}.ds-progress li{width:12px;height:12px;border-radius:9999px;background:var(--border,#33316a)}.ds-progress li.done{background:var(--muted-foreground,#bab8e6)}.ds-progress li.now{width:36px;background:var(--primary,#ff7a5c)}"
     }
   ],
   "narrative": {
     "northStar": "The Podium Night",
-    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show; phones and host views follow the device setting, with an override.",
+    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. A page puts its theme on `<html>` (`data-theme=\"light\"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.",
     "keyCharacteristics": [
       "Rounded everything: Fredoka type, pill buttons, rounded-top podium columns.",
       "Solid, saturated colour that survives a washed-out projector; no glows or gradients.",
@@ -698,21 +729,37 @@
         "section": "colors"
       },
       {
+        "name": "The Stage Unit Rule",
+        "body": "Everything on the big screen is sized in stage units: type from the `text-stage-*` scale, spacing from Tailwind's scale (which counts in half-units there), anything else as a multiple of `u`. Never a fixed pixel or rem size on the big screen, or it breaks on the next screen size.",
+        "section": "typography"
+      },
+      {
         "name": "The No Kicker Rule",
         "body": "No small uppercase label above a heading. Context such as \"Award 4 of 9\" sits beside the progress dots; \"And the winner is…\" is a timed beat of its own, not a label.",
         "section": "typography"
       },
       {
+        "name": "The Overscan Rule",
+        "body": "Some TVs crop the outer 5% of the picture, so nothing that has to be read sits there: the margins clear it, and a column can run off the bottom edge only because its count and name sit at its top, above the floor (24u).",
+        "section": "layout"
+      },
+      {
         "name": "The No Hard Offset Rule",
         "body": "Never a solid offset shadow (the sticker or Memphis look). Shadows blur.",
         "section": "elevation"
+      },
+      {
+        "name": "The Duotone Moment Rule",
+        "body": "Bold for controls; Duotone (`weight=\"duotone\"`) only for the few expressive moments: the category-type badges, a voter's vote confirmation and empty states. Its second layer is the text colour at 20%, so it works in both themes without a token of its own. Never Duotone on a button.",
+        "section": "icons"
       }
     ],
     "dos": [
       "**Do** keep the action colour for actions and the winner colour for the winner alone.",
       "**Do** write copy that says what happens next (\"Watch the big screen for the results.\").",
       "**Do** respect `prefers-reduced-motion`: show the end state at once.",
-      "**Do** check every text pair against both themes; body text stays at 4.5:1 or more."
+      "**Do** check every text pair against both themes; body text stays at 4.5:1 or more.",
+      "**Do** size everything on the big screen in stage units, and keep what must be read clear of the outer 5%."
     ],
     "donts": [
       "**Don't** put AwardBro branding on the big screen or the vote page.",
