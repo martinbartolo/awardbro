@@ -109,10 +109,10 @@ The present page shows a QR code that opens the vote page, the site's address an
 
 After every write, the server tells the show's open pages what changed (`src/server/events.ts`). Pages use the event as a signal to fetch again: events carry no scores or votes, so the database stays the only source of truth.
 
-| Event   | Sent by                                                                                                                           |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Event   | Sent by                                                                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `show`  | Any host action: categories, nominations, running order, a category's stage or reveal options, the big screen's theme, resetting votes, deleting the show |
-| `votes` | A voter's vote or ranking, with its `categoryId`                                                                                  |
+| `votes` | A voter's vote or ranking, with its `categoryId`                                                                                                          |
 
 How they travel, with no service besides the database:
 
