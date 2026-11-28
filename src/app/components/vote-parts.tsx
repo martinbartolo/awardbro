@@ -1,19 +1,11 @@
 "use client";
 
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { CheckIcon } from "@phosphor-icons/react";
 import { type QueryKey } from "@tanstack/react-query";
-import { useReducedMotion } from "motion/react";
 
 import { Button } from "~/components/ui/button";
-import { launchConfetti, shapeColours } from "~/lib/confetti";
 import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/react";
 
@@ -35,42 +27,6 @@ export type MyVotesProps = {
   /** Its query, which a vote updates straight away, before the server answers (optimistic.ts) */
   myVotesKey: QueryKey;
 };
-
-/** A smaller burst than the winner's, for one vote on one phone */
-const VOTE_PIECES = 120;
-
-/**
- * A small burst of confetti when a vote goes in: the canvas to render, and the function that
- * fires it. Nothing with reduced motion.
- */
-export function useVoteConfetti() {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const stop = useRef<(() => void) | null>(null);
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => () => stop.current?.(), []);
-
-  const burst = useCallback(() => {
-    if (reduceMotion || !canvas.current) return;
-    stop.current?.();
-    stop.current = launchConfetti(canvas.current, {
-      colours: shapeColours(canvas.current),
-      // From the "Your vote is in" badge
-      origin: { x: 0.5, y: 0.38 },
-      pieces: VOTE_PIECES,
-      size: 2.2,
-    });
-  }, [reduceMotion]);
-
-  const element = (
-    <canvas
-      ref={canvas}
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-50 size-full"
-    />
-  );
-  return [element, burst] as const;
-}
 
 /** The page's one action, pinned at the bottom of the screen in thumb reach */
 export function PinnedAction({

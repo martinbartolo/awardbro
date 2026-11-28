@@ -21,7 +21,6 @@ import {
   Tick,
   tileClass,
   TileText,
-  useVoteConfetti,
   VoteOutcome,
   VoteStages,
   YourVote,
@@ -98,7 +97,6 @@ function PickOne({
 } & MyVotesProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [confetti, burst] = useVoteConfetti();
 
   const savedId = myVotes?.[0]?.nominationId ?? null;
   const saved = nominations.find(n => n.id === savedId);
@@ -134,7 +132,6 @@ function PickOne({
   const send = () => {
     if (!choice || !isNew || sending) return;
     setDraft(null);
-    burst();
     vote.mutate({ nominationId: choice.id });
   };
   const label = () => {
@@ -144,112 +141,108 @@ function PickOne({
   };
 
   return (
-    <>
-      {/* In one place while the form gives way to "Your vote is in" */}
-      {confetti}
-      <VoteStages
-        noun="vote"
-        summary={
-          saved && (
-            <p>
-              You voted for{" "}
-              <strong className="text-foreground">{saved.name}</strong>.
-            </p>
+    <VoteStages
+      noun="vote"
+      summary={
+        saved && (
+          <p>
+            You voted for{" "}
+            <strong className="text-foreground">{saved.name}</strong>.
+          </p>
+        )
+      }
+      loaded={!!myVotes}
+      closed={closed}
+      editing={!!draft}
+      onChange={() => setDraft({ id: null })}
+    >
+      {changing ? (
+        <p className="text-muted-foreground mb-5 text-lg leading-snug">
+          Your vote for {saved.name} stays until you pick another.
+        </p>
+      ) : (
+        // The host's description under the heading says enough on its own
+        !described && (
+          <p className="text-muted-foreground mb-5 text-lg leading-snug">
+            Pick one. You can change it until voting closes.
+          </p>
+        )
+      )}
+      <div
+        role="radiogroup"
+        aria-label="Nominations"
+        className={cn("grid gap-3", pictures && "grid-cols-2")}
+      >
+        {nominations.map(nomination => {
+          const isPicked = nomination.id === draft?.id;
+          const isYourVote = changing && nomination.id === savedId;
+          return (
+            <button
+              key={nomination.id}
+              type="button"
+              role="radio"
+              aria-checked={isPicked}
+              onClick={() => setDraft({ id: nomination.id })}
+              className={cn(
+                tileClass(isPicked),
+                pictures
+                  ? "flex flex-col gap-2 p-2 pb-3"
+                  : "flex min-h-16 items-center gap-4 px-[18px] py-3",
+              )}
+            >
+              {pictures ? (
+                <>
+                  <span className="relative block">
+                    <NominationDescription
+                      description={nomination.description ?? null}
+                      isImage
+                      imageClassName="relative aspect-square w-full [&_img]:size-full [&_img]:rounded-[14px] [&_img]:object-cover"
+                    />
+                    {/* On the photo's corner, so the name below gets the tile's width */}
+                    <span
+                      className={cn(
+                        "shadow-soft absolute top-2 right-2 rounded-full p-1",
+                        isPicked ? "bg-primary" : "bg-card",
+                      )}
+                    >
+                      <Tick checked={isPicked} />
+                    </span>
+                    {isYourVote && (
+                      <span className="absolute top-2.5 left-2.5">
+                        <YourVote onPicked={isPicked} />
+                      </span>
+                    )}
+                  </span>
+                  {/* Two lines at most, so the photos stay in step (left-aligned, so CSS
+                        clamping draws its "…" in full) */}
+                  <span className="line-clamp-2 px-1 text-lg leading-tight font-semibold break-words">
+                    {nomination.name}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <TileText nomination={nomination} picked={isPicked} />
+                  {isYourVote && <YourVote onPicked={isPicked} />}
+                  <Tick checked={isPicked} />
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <PinnedAction
+        disabled={!isNew || sending}
+        onClick={send}
+        below={
+          changing && (
+            <QuietButton onClick={() => setDraft(null)}>
+              Keep my vote
+            </QuietButton>
           )
         }
-        loaded={!!myVotes}
-        closed={closed}
-        editing={!!draft}
-        onChange={() => setDraft({ id: null })}
       >
-        {changing ? (
-          <p className="text-muted-foreground mb-5 text-lg leading-snug">
-            Your vote for {saved.name} stays until you pick another.
-          </p>
-        ) : (
-          // The host's description under the heading says enough on its own
-          !described && (
-            <p className="text-muted-foreground mb-5 text-lg leading-snug">
-              Pick one. You can change it until voting closes.
-            </p>
-          )
-        )}
-        <div
-          role="radiogroup"
-          aria-label="Nominations"
-          className={cn("grid gap-3", pictures && "grid-cols-2")}
-        >
-          {nominations.map(nomination => {
-            const isPicked = nomination.id === draft?.id;
-            const isYourVote = changing && nomination.id === savedId;
-            return (
-              <button
-                key={nomination.id}
-                type="button"
-                role="radio"
-                aria-checked={isPicked}
-                onClick={() => setDraft({ id: nomination.id })}
-                className={cn(
-                  tileClass(isPicked),
-                  pictures
-                    ? "flex flex-col gap-2 p-2 pb-3"
-                    : "flex min-h-16 items-center gap-4 px-[18px] py-3",
-                )}
-              >
-                {pictures ? (
-                  <>
-                    <span className="relative block">
-                      <NominationDescription
-                        description={nomination.description ?? null}
-                        isImage
-                        imageClassName="relative aspect-square w-full [&_img]:size-full [&_img]:rounded-[14px] [&_img]:object-cover"
-                      />
-                      {/* On the photo's corner, so the name below gets the tile's width */}
-                      <span
-                        className={cn(
-                          "shadow-soft absolute top-2 right-2 rounded-full p-1",
-                          isPicked ? "bg-primary" : "bg-card",
-                        )}
-                      >
-                        <Tick checked={isPicked} />
-                      </span>
-                      {isYourVote && (
-                        <span className="absolute top-2.5 left-2.5">
-                          <YourVote onPicked={isPicked} />
-                        </span>
-                      )}
-                    </span>
-                    {/* Two lines at most, so the photos stay in step (left-aligned, so CSS
-                        clamping draws its "…" in full) */}
-                    <span className="line-clamp-2 px-1 text-lg leading-tight font-semibold break-words">
-                      {nomination.name}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <TileText nomination={nomination} picked={isPicked} />
-                    {isYourVote && <YourVote onPicked={isPicked} />}
-                    <Tick checked={isPicked} />
-                  </>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <PinnedAction
-          disabled={!isNew || sending}
-          onClick={send}
-          below={
-            changing && (
-              <QuietButton onClick={() => setDraft(null)}>
-                Keep my vote
-              </QuietButton>
-            )
-          }
-        >
-          {label()}
-        </PinnedAction>
-      </VoteStages>
-    </>
+        {label()}
+      </PinnedAction>
+    </VoteStages>
   );
 }

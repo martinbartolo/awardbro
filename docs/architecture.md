@@ -84,7 +84,7 @@ The present page (`live-presentation.tsx`) shows the category on the screen with
 
 ## The vote page
 
-The voter's phone (`live-voting-session.tsx`) shows the category on the big screen with the nominations as tiles, and a vote button pinned at the bottom that names the pick ("Vote for The Worm"): a normal category is a radio group, an image category the same with photos two to a row, and a ranking takes taps in order (each tile shows its place; a tap takes it out again) until "Submit my top 3". Once the vote is in, the page says "Your vote is in" with a small burst of confetti (none with reduced motion), and "Change my vote" goes back to the tiles. When voting closes, it shows what the voter's vote was. A new category replaces the page's state, so a vote never shows against the next one.
+The voter's phone (`live-voting-session.tsx`) shows the category on the big screen with the nominations as tiles, and a vote button pinned at the bottom that names the pick ("Vote for The Worm"): a normal category is a radio group, an image category the same with photos two to a row, and a ranking takes taps in order (each tile shows its place; a tap takes it out again) until "Submit my top 3". Once the vote is in, the page says "Your vote is in", and "Change my vote" goes back to the tiles. When voting closes, it shows what the voter's vote was. A new category replaces the page's state, so a vote never shows against the next one.
 
 It follows the phone's light or dark setting, or the theme the voter picks with the toggle in its header, remembered on the device (`src/lib/device-theme.ts`). A small inline script sets it before the first paint, so a light phone never flashes dark; it's fixed text, with nothing from a visitor in it.
 

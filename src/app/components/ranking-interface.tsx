@@ -18,7 +18,6 @@ import {
   Tick,
   tileClass,
   TileText,
-  useVoteConfetti,
   VoteStages,
 } from "./vote-parts";
 
@@ -47,7 +46,6 @@ export function RankingInterface({
 } & MyVotesProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [confetti, burst] = useVoteConfetti();
 
   // The ranking that counts, best first, each with its place as it was sent (a nomination the
   // host has deleted since is gone from it, and the others keep their places)
@@ -108,7 +106,6 @@ export function RankingInterface({
   const send = () => {
     if (!complete || unchanged || sending) return;
     setOrder(null);
-    burst();
     submitRanking.mutate({
       categoryId,
       rankings: current.map((nominationId, i) => ({
@@ -126,97 +123,93 @@ export function RankingInterface({
   };
 
   return (
-    <>
-      {/* In one place while the form gives way to "Your ranking is in" */}
-      {confetti}
-      <VoteStages
-        noun="ranking"
-        summary={
-          placed.length > 0 && (
-            // The ranking as it counts: small tiles with their places, as on the ranking screen
-            <ol className="w-full space-y-2 text-left">
-              {placed.map(({ nomination, rank }) => (
-                <li
-                  key={nomination.id}
-                  className="bg-card text-card-foreground shadow-soft flex items-center gap-3 rounded-[16px] px-3 py-2.5"
-                >
-                  {/* One width for every place, so the names line up */}
-                  <span className="bg-primary text-primary-foreground grid h-8 w-12 shrink-0 place-items-center rounded-full text-sm font-bold">
-                    {getOrdinal(rank)}
-                  </span>
-                  <span className="min-w-0 font-semibold break-words">
-                    {nomination.name}
-                  </span>
-                </li>
-              ))}
-            </ol>
+    <VoteStages
+      noun="ranking"
+      summary={
+        placed.length > 0 && (
+          // The ranking as it counts: small tiles with their places, as on the ranking screen
+          <ol className="w-full space-y-2 text-left">
+            {placed.map(({ nomination, rank }) => (
+              <li
+                key={nomination.id}
+                className="bg-card text-card-foreground shadow-soft flex items-center gap-3 rounded-[16px] px-3 py-2.5"
+              >
+                {/* One width for every place, so the names line up */}
+                <span className="bg-primary text-primary-foreground grid h-8 w-12 shrink-0 place-items-center rounded-full text-sm font-bold">
+                  {getOrdinal(rank)}
+                </span>
+                <span className="min-w-0 font-semibold break-words">
+                  {nomination.name}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+      loaded={!!myVotes}
+      closed={closed}
+      editing={!!order}
+      onChange={() => setOrder([])}
+    >
+      <p className="text-muted-foreground mb-5 text-lg leading-snug">
+        Tap your top {rankingTop} in order. {getOrdinal(1)} place gets{" "}
+        {rankingTop} points.
+        {changing && " Your ranking stays until you send a new one."}
+        {current.length > 0 && (
+          <>
+            {" "}
+            <QuietButton
+              onClick={() => setOrder([])}
+              className="px-0 py-0 text-[length:inherit]"
+            >
+              Start again
+            </QuietButton>
+          </>
+        )}
+      </p>
+      <div className="grid gap-3">
+        {nominations.map(nomination => {
+          const place = current.indexOf(nomination.id) + 1;
+          const full = complete && !place;
+          return (
+            <button
+              key={nomination.id}
+              type="button"
+              aria-pressed={place > 0}
+              disabled={full}
+              onClick={() => toggle(nomination.id)}
+              className={cn(
+                tileClass(place > 0, full),
+                "flex min-h-16 items-center gap-4 px-[18px] py-3",
+              )}
+            >
+              <TileText nomination={nomination} picked={place > 0} />
+              {place ? (
+                // One width for every place, so the badges line up
+                <span className="bg-primary-foreground text-primary grid h-9 w-13 shrink-0 place-items-center rounded-full text-base font-bold">
+                  {getOrdinal(place)}
+                </span>
+              ) : (
+                // Not placed yet: the same ring as a single pick's tiles
+                <Tick checked={false} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <PinnedAction
+        disabled={!complete || unchanged || sending}
+        onClick={send}
+        below={
+          changing && (
+            <QuietButton onClick={() => setOrder(null)}>
+              Keep my ranking
+            </QuietButton>
           )
         }
-        loaded={!!myVotes}
-        closed={closed}
-        editing={!!order}
-        onChange={() => setOrder([])}
       >
-        <p className="text-muted-foreground mb-5 text-lg leading-snug">
-          Tap your top {rankingTop} in order. {getOrdinal(1)} place gets{" "}
-          {rankingTop} points.
-          {changing && " Your ranking stays until you send a new one."}
-          {current.length > 0 && (
-            <>
-              {" "}
-              <QuietButton
-                onClick={() => setOrder([])}
-                className="px-0 py-0 text-[length:inherit]"
-              >
-                Start again
-              </QuietButton>
-            </>
-          )}
-        </p>
-        <div className="grid gap-3">
-          {nominations.map(nomination => {
-            const place = current.indexOf(nomination.id) + 1;
-            const full = complete && !place;
-            return (
-              <button
-                key={nomination.id}
-                type="button"
-                aria-pressed={place > 0}
-                disabled={full}
-                onClick={() => toggle(nomination.id)}
-                className={cn(
-                  tileClass(place > 0, full),
-                  "flex min-h-16 items-center gap-4 px-[18px] py-3",
-                )}
-              >
-                <TileText nomination={nomination} picked={place > 0} />
-                {place ? (
-                  // One width for every place, so the badges line up
-                  <span className="bg-primary-foreground text-primary grid h-9 w-13 shrink-0 place-items-center rounded-full text-base font-bold">
-                    {getOrdinal(place)}
-                  </span>
-                ) : (
-                  // Not placed yet: the same ring as a single pick's tiles
-                  <Tick checked={false} />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <PinnedAction
-          disabled={!complete || unchanged || sending}
-          onClick={send}
-          below={
-            changing && (
-              <QuietButton onClick={() => setOrder(null)}>
-                Keep my ranking
-              </QuietButton>
-            )
-          }
-        >
-          {label()}
-        </PinnedAction>
-      </VoteStages>
-    </>
+        {label()}
+      </PinnedAction>
+    </VoteStages>
   );
 }
