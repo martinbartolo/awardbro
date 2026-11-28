@@ -226,12 +226,15 @@ export function PodiumReveal({
             const label =
               column.score !== null && getScoreLabel(category, column.score);
 
-            // The host's photo at the top of the column: a winner's arrives with the crown
-            const photo = pictures && (!winner || crowned) && (
+            // The host's photo at the top of the column. A winner's shows with the crown, with the
+            // rest of its label, but loads from the start so it doesn't arrive late.
+            const photo = pictures && (
               <div className={cn("mb-3 aspect-square", PHOTO_WIDTH[role])}>
                 <NominationDescription
                   description={column.description}
                   isImage
+                  // A picture that won't load leaves an icon in its place, the photo's size
+                  thumbnail
                   imageClassName="size-full [&_img]:size-full [&_img]:rounded-[calc(var(--u)*2.5)] [&_img]:object-cover"
                 />
               </div>

@@ -42,6 +42,8 @@ export function FullscreenButton() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.key.toLowerCase() === "f" &&
+        // Held down, it would flip in and out of fullscreen
+        !event.repeat &&
         !event.ctrlKey &&
         !event.metaKey &&
         !event.altKey

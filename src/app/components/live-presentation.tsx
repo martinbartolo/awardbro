@@ -49,17 +49,23 @@ export function LivePresentation({
 }: LivePresentationProps) {
   const trpc = useTRPC();
   useShowEvents(code, { liveCounts: true });
-  const { data: session, isError } = useQuery(
+  const {
+    data: session,
+    error,
+    isError,
+  } = useQuery(
     trpc.award.getSession.queryOptions(
       { code, bigScreen: true },
       { initialData: initialSession, retry: 3 },
     ),
   );
 
+  // A deleted show (NOT_FOUND) says so on the stage instead
+  const gone = error?.data?.code === "NOT_FOUND";
   useEffect(() => {
-    if (isError)
+    if (isError && !gone)
       toast.error("Can't get the latest from the show, trying again...");
-  }, [isError]);
+  }, [isError, gone]);
 
   const theme = session.screenTheme === "PAPER" ? "light" : "dark";
   useDocumentTheme(theme);
@@ -68,16 +74,22 @@ export function LivePresentation({
   const category = session.categories[0];
   const scene = sceneOf(category);
 
-  // A reveal plays when this screen saw the category before it: on a reload it shows at once
+  // Each category's reveal plays once on this screen, as it happens (an aggregate's too, which goes
+  // straight to its reveal). On a reload, or when the host shows a finished category's results
+  // again, they show at once. Hiding the results and revealing them again, without the category
+  // leaving the screen, plays it again.
   const reduceMotion = useReducedMotion();
-  const [watched, setWatched] = useState(
-    scene === "revealed" ? null : category?.id,
+  const [revealsShown, setRevealsShown] = useState(
+    () => new Set(scene === "revealed" && category ? [category.id] : []),
   );
-  if (category && scene !== "revealed" && watched !== category.id) {
-    setWatched(category.id);
+  const [playing, setPlaying] = useState<string | null>(null);
+  if (scene === "revealed" && category && !revealsShown.has(category.id)) {
+    setRevealsShown(new Set(revealsShown).add(category.id));
+    setPlaying(category.id);
   }
+  if (playing !== null && category?.id !== playing) setPlaying(null);
   const playReveal =
-    scene === "revealed" && watched === category?.id && !reduceMotion;
+    scene === "revealed" && playing === category?.id && !reduceMotion;
 
   // Joining is the main thing while waiting and voting; otherwise it moves to a corner
   const joinInCorner = scene !== "waiting" && scene !== "voting";
@@ -118,68 +130,74 @@ export function LivePresentation({
           </div>
         </header>
 
-        <AnimatePresence mode="wait">
-          <motion.section
-            // A new scene for each category and stage: a quick fade, no movement
-            key={`${category?.id}-${scene}`}
-            aria-live="polite"
-            className={cn(
-              "min-h-0 flex-1",
-              scene === "revealed" ? "pt-10" : "pb-16",
-            )}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.35 }}
-          >
-            {scene === "waiting" && (
-              <div className="flex h-full items-center">
-                <JoinPanel code={code} />
-              </div>
-            )}
-
-            {scene === "voting" && category && (
-              <div className="flex h-full items-center justify-between gap-12">
-                <JoinPanel code={code} />
-                <LiveVoting
-                  categoryId={category.id}
-                  initialVoteCount={category.estimatedVoters ?? 0}
-                />
-              </div>
-            )}
-
-            {scene === "closed" && category && (
-              <div className="flex h-full items-center gap-16">
-                <LiveVoting
-                  categoryId={category.id}
-                  initialVoteCount={category.estimatedVoters ?? 0}
-                />
-                <div>
-                  <p className="text-stage-display leading-none font-bold">
-                    Voting has closed
-                  </p>
-                  <p className="text-muted-foreground text-stage-lead mt-5 font-medium">
-                    The winner is next.
-                  </p>
+        {gone ? (
+          <p className="text-muted-foreground text-stage-lead flex min-h-0 flex-1 items-center pb-16 font-medium">
+            This show has been deleted.
+          </p>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.section
+              // A new scene for each category and stage: a quick fade, no movement
+              key={`${category?.id}-${scene}`}
+              aria-live="polite"
+              className={cn(
+                "min-h-0 flex-1",
+                scene === "revealed" ? "pt-10" : "pb-16",
+              )}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.35 }}
+            >
+              {scene === "waiting" && (
+                <div className="flex h-full items-center">
+                  <JoinPanel code={code} />
                 </div>
-              </div>
-            )}
+              )}
 
-            {scene === "aggregate" && category && (
-              <AggregateInfo sourceCategories={category.sourceCategories} />
-            )}
+              {scene === "voting" && category && (
+                <div className="flex h-full items-center justify-between gap-12">
+                  <JoinPanel code={code} />
+                  <LiveVoting
+                    categoryId={category.id}
+                    initialVoteCount={category.estimatedVoters ?? 0}
+                  />
+                </div>
+              )}
 
-            {scene === "revealed" &&
-              category &&
-              (category.nominations.length === 0 ? (
-                <p className="text-muted-foreground text-stage-lead flex h-full items-center font-medium">
-                  No nominations in this one.
-                </p>
-              ) : (
-                <PodiumReveal category={category} animate={playReveal} />
-              ))}
-          </motion.section>
-        </AnimatePresence>
+              {scene === "closed" && category && (
+                <div className="flex h-full items-center gap-16">
+                  <LiveVoting
+                    categoryId={category.id}
+                    initialVoteCount={category.estimatedVoters ?? 0}
+                  />
+                  <div>
+                    <p className="text-stage-display leading-none font-bold">
+                      Voting has closed
+                    </p>
+                    <p className="text-muted-foreground text-stage-lead mt-5 font-medium">
+                      The winner is next.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {scene === "aggregate" && category && (
+                <AggregateInfo sourceCategories={category.sourceCategories} />
+              )}
+
+              {scene === "revealed" &&
+                category &&
+                (category.nominations.length === 0 ? (
+                  <p className="text-muted-foreground text-stage-lead flex h-full items-center font-medium">
+                    No nominations in this one.
+                  </p>
+                ) : (
+                  <PodiumReveal category={category} animate={playReveal} />
+                ))}
+            </motion.section>
+          </AnimatePresence>
+        )}
       </main>
       {/* Outside the stage, whose spacing scales with the screen: a control keeps its own size */}
       <FullscreenButton />
