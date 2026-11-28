@@ -209,11 +209,15 @@ export async function waitForCategory(
 /** Text as a regular expression that matches it literally */
 const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** A nomination to choose on the vote page, by its name (its description or "(Ranked 1st)" may follow) */
-const nominationButton = (voter: Page, name: string) =>
-  voter.getByRole("button", {
-    name: new RegExp(`^${literal(name)}(?=$|\\s|\\()`),
+/** A nomination tile on the vote page, by its name (its description or its place may follow) */
+const nominationTile = (voter: Page, role: "radio" | "button", name: string) =>
+  voter.getByRole(role, {
+    name: new RegExp(`^${literal(name)}(?=$|\\s)`),
   });
+
+/** The voter's vote as the page shows it once it's in: "You voted for …" */
+export const voteIsIn = (voter: Page) =>
+  voter.getByRole("status").filter({ hasText: "Your vote is in" });
 
 /**
  * A voter votes (or changes their vote) in a normal or image category, and waits until the
@@ -227,8 +231,11 @@ export async function vote(
     ...options
   }: { timeout?: number; waitForServer?: boolean } = {},
 ) {
-  await nominationButton(voter, nomination).click();
-  // The page shows the vote as cast before the server answers, so wait for the call itself:
+  // A vote already in: change it
+  const change = voter.getByRole("button", { name: "Change my vote" });
+  if (await change.isVisible()) await change.click();
+  await nominationTile(voter, "radio", nomination).click();
+  // The page shows the vote as in before the server answers, so wait for the call itself:
   // a host action straight after it could otherwise reach the server first (tRPC batches
   // calls, so it's found by name in the address)
   const saved = waitForServer
@@ -236,9 +243,9 @@ export async function vote(
         response => response.url().includes("award.vote") && response.ok(),
       )
     : undefined;
-  await voter.getByRole("button", { name: /^(Cast|Update) Vote$/ }).click();
-  await expect(voter.getByText("(Submitted)").locator("..")).toContainText(
-    nomination,
+  await voter.getByRole("button", { name: `Vote for ${nomination}` }).click();
+  await expect(voteIsIn(voter)).toContainText(
+    `You voted for ${nomination}.`,
     options,
   );
   await saved;
@@ -246,23 +253,26 @@ export async function vote(
 
 /** A voter ranks nominations, best first, replacing any ranking they had */
 export async function rank(voter: Page, nominations: string[]) {
-  const remove = voter.getByRole("button", { name: /^Remove / });
-  while ((await remove.count()) > 0) await remove.first().click();
-  for (const nomination of nominations) {
-    await nominationButton(voter, nomination).click();
+  const change = voter.getByRole("button", { name: "Change my ranking" });
+  if (await change.isVisible()) {
+    await change.click();
+    await voter.getByRole("button", { name: "Start again" }).click();
   }
-  // The page shows nothing new once a changed ranking is saved, so wait for the call itself
+  for (const nomination of nominations) {
+    await nominationTile(voter, "button", nomination).click();
+  }
+  // The page shows the ranking as in before the server answers, so wait for the call itself
   // (tRPC batches calls, so it's found by name in the address)
   const saved = voter.waitForResponse(
     response => response.url().includes("award.submitRanking") && response.ok(),
   );
   await voter
-    .getByRole("button", { name: /^(Submit|Update) Rankings$/ })
+    .getByRole("button", { name: `Submit my top ${nominations.length}` })
     .click();
   await saved;
   await expect(
-    voter.getByRole("button", { name: "Update Rankings" }),
-  ).toBeEnabled();
+    voter.getByRole("status").filter({ hasText: "Your ranking is in" }),
+  ).toBeVisible();
 }
 
 /**

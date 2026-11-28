@@ -206,6 +206,13 @@
   }
 }
 
+/* The shape set bobs over a quiet screen on the phone. */
+@keyframes shape-bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 /* The live count gives a little hop with each vote. */
 @keyframes count-bump {
   40% {

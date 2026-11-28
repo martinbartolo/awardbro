@@ -35,11 +35,17 @@ export function launchConfetti(
   {
     colours,
     origin,
+    pieces = PIECES,
+    size = 1,
   }: {
     /** The shape set's colours, read from the theme */
     colours: string[];
     /** Where the burst starts, as a share of the canvas's width and height */
     origin: { x: number; y: number };
+    /** How many pieces at full strength: the winner's burst by default */
+    pieces?: number;
+    /** Bigger pieces: a phone's burst needs them larger than its screen alone would make them */
+    size?: number;
   },
 ): () => void {
   const context = canvas.getContext("2d");
@@ -55,7 +61,7 @@ export function launchConfetti(
 
   const random = (min: number, max: number) =>
     min + Math.random() * (max - min);
-  let alive: Piece[] = Array.from({ length: PIECES }, (_, i) => {
+  let alive: Piece[] = Array.from({ length: pieces }, (_, i) => {
     // Mostly upwards, fanned out to both sides
     const direction = random(-Math.PI * 0.85, -Math.PI * 0.15);
     const speed = random(14, 34) * unit;
@@ -68,7 +74,7 @@ export function launchConfetti(
       vy: Math.sin(direction) * speed,
       angle: random(0, Math.PI * 2),
       spin: random(-0.2, 0.2),
-      size: random(14, 24) * unit,
+      size: random(14, 24) * unit * size,
       flutter: random(0, Math.PI * 2),
     };
   });

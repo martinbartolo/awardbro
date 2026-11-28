@@ -2,19 +2,18 @@
 
 import { useEffect, useState } from "react";
 
-import { CheckCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Badge } from "~/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { votingHasClosed } from "~/lib/stages";
+import { cn } from "~/lib/utils";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { type MyVotes } from "./ranking-interface";
+import { ShapeMarks } from "./shape-marks";
+import { ThemeToggle } from "./theme-toggle";
 import { VotingInterface } from "./voting-interface";
 
 type Show = RouterOutputs["award"]["getActiveCategory"];
@@ -29,20 +28,10 @@ type LiveVotingSessionProps = {
   code: string;
 };
 
-const containerVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 },
-  },
-  exit: {
-    opacity: 0,
-    y: -20,
-    transition: { duration: 0.3 },
-  },
-};
-
+/**
+ * The voter's phone: the category on the big screen, and their vote in it. It follows the show
+ * live, and the phone's light or dark setting (or the voter's pick).
+ */
 export function LiveVotingSession({
   initialShow,
   initialMyVotes,
@@ -50,189 +39,176 @@ export function LiveVotingSession({
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
   useShowEvents(code, { liveCounts: false, crowd: true });
-  const {
-    data: show,
-    error: sessionError,
-    isError: isSessionError,
-  } = useQuery(
+  const { data: show, error } = useQuery(
     trpc.award.getActiveCategory.queryOptions(
       { code },
-      {
-        initialData: initialShow,
-        retry: 3,
-      },
+      { initialData: initialShow, retry: 3 },
     ),
   );
+  // A deleted show (NOT_FOUND) says so on the page instead
+  const gone = error?.data?.code === "NOT_FOUND";
+  useEffect(() => {
+    if (error && !gone) {
+      toast.error("Can't get the latest from the show, trying again...");
+    }
+  }, [error, gone]);
 
-  const activeCategory = show.category;
+  const category = show.category;
   // The host closes voting before the reveal, and revealing closes it too (the server refuses
   // votes then)
-  const isClosed = !!activeCategory && votingHasClosed(activeCategory);
+  const closed = !!category && votingHasClosed(category);
+  const aggregate = category?.type === "AGGREGATE";
 
-  // The server-rendered votes only describe the first category shown. Drop
-  // them once the host moves on, so a category reopened later (and maybe
-  // reset meanwhile) never starts from them.
+  // The server-rendered votes only describe the first category shown. Drop them once the host
+  // moves on, so a category reopened later (and maybe reset meanwhile) never starts from them.
   const [initialVotes, setInitialVotes] = useState(initialMyVotes);
-  if (initialVotes && initialVotes.categoryId !== activeCategory?.id) {
+  if (initialVotes && initialVotes.categoryId !== category?.id) {
     setInitialVotes(undefined);
   }
 
-  // The voter's own vote (or ranking) in the active category. Its key includes
-  // the category, so the "already voted" banner never shows another
-  // category's answer while the next one loads. Only the active category's
-  // votes are cached (gcTime: 0): a category the host reopens may have been
-  // reset in the meantime. Always reloaded on mount (staleTime: 0): back and
-  // forward navigation can restore server-rendered votes that are out of date.
+  // The voter's own vote (or ranking) in the category. Its key includes the category, so a vote
+  // never shows against the next category while it loads. Only the active category's votes are
+  // cached (gcTime: 0): a category the host reopens may have been reset in the meantime. Always
+  // reloaded on mount (staleTime: 0): back and forward navigation can restore server-rendered
+  // votes that are out of date.
   const myVotesOptions = trpc.award.getMyVotes.queryOptions(
-    { categoryId: activeCategory?.id ?? "" },
+    { categoryId: category?.id ?? "" },
     {
       retry: 3,
       gcTime: 0,
       staleTime: 0,
       // Checked here too: the render that drops them still runs with them
       initialData:
-        initialVotes?.categoryId === activeCategory?.id
+        initialVotes?.categoryId === category?.id
           ? initialVotes?.votes
           : undefined,
-      enabled: !!activeCategory && activeCategory.type !== "AGGREGATE",
+      enabled: !!category && !aggregate,
     },
   );
-  const {
-    data: myVotes,
-    error: voteError,
-    isError: isVoteError,
-  } = useQuery(myVotesOptions);
-  const hasVoted = !!myVotes?.length;
+  const { data: myVotes, isError: myVotesFailed } = useQuery(myVotesOptions);
   useEffect(() => {
-    if (isSessionError) {
-      toast.error("Failed to fetch session updates");
-    }
-  }, [isSessionError]);
+    if (myVotesFailed) toast.error("Can't check your vote, trying again...");
+  }, [myVotesFailed]);
 
-  useEffect(() => {
-    if (isVoteError) {
-      toast.error("Failed to check voting status");
-    }
-  }, [isVoteError]);
-
-  if (isSessionError) {
-    return (
-      <motion.div
-        className="container mx-auto px-4 py-8"
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        variants={containerVariants}
-      >
-        <Alert variant="destructive">
-          <WarningCircleIcon className="size-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {sessionError.message || "Failed to load voting session"}
-          </AlertDescription>
-        </Alert>
-      </motion.div>
-    );
-  }
+  const reduceMotion = useReducedMotion();
+  const status = gone
+    ? null
+    : !category
+      ? { label: "Waiting", live: false }
+      : aggregate
+        ? { label: "Results next", live: false }
+        : closed
+          ? { label: "Closed", live: false }
+          : { label: "Voting is open", live: true };
 
   return (
-    <AnimatePresence mode="wait">
-      {!activeCategory ? (
-        <motion.div
-          key="waiting"
-          className="container mx-auto px-4 text-center"
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          variants={containerVariants}
-        >
-          <h1 className="mb-12 text-6xl font-bold">{show.name}</h1>
-          <p className="text-2xl">Waiting for the next award.</p>
-          <p className="text-muted-foreground mt-4">
-            The host will present the next category soon.
-          </p>
-        </motion.div>
-      ) : (
-        <motion.div
-          key={activeCategory.id}
-          className="container mx-auto px-4 py-8"
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          variants={containerVariants}
-        >
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold">{show.name}</h1>
-            <p className="text-muted-foreground mt-2">
-              {isClosed
-                ? "Voting has closed"
-                : activeCategory.type === "RANKING"
-                  ? `Rank your top ${activeCategory.rankingTop} choices`
-                  : "Cast your vote"}
-            </p>
-            {hasVoted && !isClosed && (
-              <p className="text-success mt-2 inline-flex items-center gap-1.5">
-                <CheckCircleIcon weight="duotone" className="size-5 shrink-0" />
-                You have already voted in this category
-              </p>
-            )}
-            {voteError && (
-              <Alert variant="destructive" className="mt-4">
-                <WarningCircleIcon className="size-4" />
-                <AlertTitle>Warning</AlertTitle>
-                <AlertDescription>
-                  {voteError.message ||
-                    "There was an error checking your vote status"}
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="mx-auto max-w-2xl">
-              <CardHeader>
-                <CardTitle>{activeCategory.name}</CardTitle>
-                {activeCategory.description && (
-                  <p className="text-muted-foreground text-sm">
-                    {activeCategory.description}
-                  </p>
+    <main className="bg-background text-foreground flex min-h-dvh flex-col">
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 pt-4">
+        <header className="text-muted-foreground flex items-center gap-3 text-sm font-semibold">
+          <span>Room {code}</span>
+          {status && (
+            <span className="ml-auto flex items-center gap-2">
+              <span
+                aria-hidden
+                className={cn(
+                  "size-2.5 rounded-full",
+                  status.live
+                    ? "bg-success ring-success/25 ring-4"
+                    : "bg-border",
                 )}
-                {activeCategory.aggregateOf.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1">
-                    <span className="text-muted-foreground text-xs">
-                      Counts towards:
-                    </span>
-                    {activeCategory.aggregateOf.map(aggregate => (
-                      <Badge
-                        key={aggregate.id}
-                        variant="secondary"
-                        className="text-xs"
-                      >
-                        {aggregate.name}
-                      </Badge>
-                    ))}
+              />
+              {status.label}
+            </span>
+          )}
+          <span className={cn(!status && "ml-auto")}>
+            <ThemeToggle />
+          </span>
+        </header>
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.section
+            // A new category slides in; its stages change in place
+            key={gone ? "gone" : (category?.id ?? "waiting")}
+            className="flex flex-1 flex-col"
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.3 }}
+          >
+            {gone ? (
+              <Centred title="This show has been deleted.">
+                Ask the host for the new room code.
+              </Centred>
+            ) : !category ? (
+              <Centred title={show.name}>
+                <span className="text-foreground mb-2 block text-xl font-semibold">
+                  Waiting for the next award.
+                </span>
+                Keep this page open: it shows the next award as soon as the host
+                starts it.
+              </Centred>
+            ) : (
+              <>
+                <div className="mt-4 mb-2">
+                  <h1 className="text-[1.9rem] leading-[1.12] font-bold text-balance">
+                    {category.name}
+                  </h1>
+                  {category.description && (
+                    <p className="text-muted-foreground mt-1.5 text-lg leading-snug">
+                      {category.description}
+                    </p>
+                  )}
+                  {category.aggregateOf.length > 0 && (
+                    <p className="text-muted-foreground mt-1.5 text-sm">
+                      Counts towards{" "}
+                      {category.aggregateOf.map(a => a.name).join(", ")}
+                    </p>
+                  )}
+                </div>
+                {aggregate ? (
+                  <Centred title="Nothing to vote for here">
+                    This award adds up earlier ones. Watch the big screen for
+                    the results.
+                  </Centred>
+                ) : (
+                  <div className="mt-2 flex flex-1 flex-col">
+                    <VotingInterface
+                      // A fresh form for each category
+                      key={category.id}
+                      nominations={category.nominations}
+                      categoryId={category.id}
+                      categoryType={category.type}
+                      rankingTop={category.rankingTop}
+                      myVotes={myVotes}
+                      myVotesKey={myVotesOptions.queryKey}
+                      closed={closed}
+                    />
                   </div>
                 )}
-              </CardHeader>
-              <CardContent>
-                <VotingInterface
-                  nominations={activeCategory.nominations}
-                  categoryId={activeCategory.id}
-                  categoryType={activeCategory.type}
-                  rankingTop={activeCategory.rankingTop}
-                  myVotes={myVotes}
-                  myVotesKey={myVotesOptions.queryKey}
-                  closed={isClosed}
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+              </>
+            )}
+          </motion.section>
+        </AnimatePresence>
+      </div>
+    </main>
+  );
+}
+
+/** A message in the middle of the screen, for when there's nothing to vote in */
+function Centred({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center">
+      <ShapeMarks className="mb-6" />
+      <h2 className="text-3xl leading-tight font-bold text-balance">{title}</h2>
+      <p className="text-muted-foreground mt-3 max-w-xs text-lg leading-snug">
+        {children}
+      </p>
+    </div>
   );
 }
