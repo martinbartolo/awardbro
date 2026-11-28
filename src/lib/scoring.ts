@@ -1,20 +1,24 @@
 import { type CategoryType } from "~/generated/prisma/enums";
 
 export type ScoredCategory = { type: CategoryType; rankingTop: number | null };
+/** A nomination's votes that have a rank: how many, and their ranks added up */
+export type RankedVotes = { count: number; rankSum: number };
+export const NO_RANKED_VOTES: RankedVotes = { count: 0, rankSum: 0 };
+
 /**
- * A nomination as loaded for scoring: how many votes it has, and the ranks of its ranked votes.
- * Votes without a rank may be left out of `votes`, since they earn no ranking points.
+ * A nomination as loaded for scoring: how many votes it has, and, in a ranking category, its
+ * ranked votes added up (by the database, so the votes themselves aren't loaded)
  */
 export type ScoredNomination = {
   name: string;
   _count: { votes: number };
-  votes: { rank: number | null }[];
+  ranked: RankedVotes;
 };
 /** A nomination in one of an aggregate category's source categories */
 export type SourceNomination = ScoredNomination & { category: ScoredCategory };
 
 /** Whether a category's votes earn ranking points (a ranking category without a top N counts votes) */
-const earnsRankingPoints = (
+export const earnsRankingPoints = (
   category: ScoredCategory,
 ): category is ScoredCategory & { rankingTop: number } =>
   category.type === "RANKING" && !!category.rankingTop;
@@ -25,15 +29,14 @@ const calculatePoints = (rank: number, rankingTop: number) =>
 
 /**
  * A nomination's score from its own votes. In a ranking category each vote earns points by its
- * rank, and votes without a rank earn nothing. In every other category each vote is 1 point.
+ * rank (`calculatePoints`), and votes without a rank earn nothing. Adding up `rankingTop − rank
+ * + 1` over the ranked votes is `count × (rankingTop + 1) − the sum of their ranks`, so the
+ * count and the sum are all it needs. In every other category each vote is 1 point.
  */
 const scoreVotes = (category: ScoredCategory, nomination: ScoredNomination) =>
   earnsRankingPoints(category)
-    ? nomination.votes.reduce(
-        (sum, { rank }) =>
-          rank ? sum + calculatePoints(rank, category.rankingTop) : sum,
-        0,
-      )
+    ? nomination.ranked.count * (category.rankingTop + 1) -
+      nomination.ranked.rankSum
     : nomination._count.votes;
 
 /**
