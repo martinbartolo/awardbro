@@ -1,6 +1,5 @@
 import { type Metadata } from "next";
 
-import { FullscreenButton } from "~/app/components/fullscreen-button";
 import { LivePresentation } from "~/app/components/live-presentation";
 import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
@@ -63,10 +62,5 @@ export default async function PresentPage({
   const { code } = await showPage("present", (await params).code);
   const session = await api.award.getSession({ code, bigScreen: true });
 
-  return (
-    <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
-      <FullscreenButton />
-      <LivePresentation initialSession={session} code={code} />
-    </main>
-  );
+  return <LivePresentation initialSession={session} code={code} />;
 }

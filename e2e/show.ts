@@ -278,7 +278,7 @@ export async function expectResults(
   const list = screen.getByRole("list", { name: `${category} results` });
   await expect(list.getByRole("listitem")).toHaveText(
     results.map(([name, score], index) => {
-      const winner = index === 0 ? "🏆 Winner\\s*" : "";
+      const winner = index === 0 ? "Winner\\s*" : "";
       const shown = score ? `\\s*${score.replace(" ", "\\s*")}` : "";
       return new RegExp(`^${winner}${literal(name)}${shown}$`);
     }),

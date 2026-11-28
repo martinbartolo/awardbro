@@ -2,52 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { WarningCircleIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
 
 type LiveVotingProps = {
   categoryId: string;
   initialVoteCount: number;
-  /** The host has closed voting: the count is final, ahead of the reveal */
-  closed: boolean;
-};
-
-const containerVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.5,
-      type: "spring" as const,
-      stiffness: 200,
-      damping: 20,
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.8,
-    transition: { duration: 0.3 },
-  },
+  className?: string;
 };
 
 const MAX_RETRIES = 3;
 
+/** The big screen's live count of votes in the category on it */
 export function LiveVoting({
   categoryId,
   initialVoteCount,
-  closed,
+  className,
 }: LiveVotingProps) {
-  const [prevVotes, setPrevVotes] = useState(initialVoteCount);
   const lastToastTimeRef = useRef(0);
 
   const trpc = useTRPC();
-  const { data, error, isError, failureCount } = useQuery(
+  const { data, isError, failureCount } = useQuery(
     trpc.award.getCategory.queryOptions(
       { id: categoryId },
       {
@@ -58,9 +36,6 @@ export function LiveVoting({
     ),
   );
 
-  // Derive error limit exceeded from failureCount (no setState needed)
-  const hasExceededErrorLimit = isError && failureCount >= MAX_RETRIES;
-
   // Estimated on the server: ranking categories score points, not votes. Once the category is
   // revealed, only hosts get it, so keep the last count until this view gives way to the results.
   const [lastKnownVotes, setLastKnownVotes] = useState(initialVoteCount);
@@ -70,142 +45,39 @@ export function LiveVoting({
   }
   const totalVotes = latestVotes ?? lastKnownVotes;
 
-  // Calculate the vote difference for animation
-  const voteDiff = totalVotes - prevVotes;
-  const showVoteDiff = voteDiff > 0;
-
-  // Update prevVotes after animation has time to display
-  useEffect(() => {
-    if (totalVotes === prevVotes) return;
-
-    const timer = setTimeout(() => {
-      setPrevVotes(totalVotes);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [totalVotes, prevVotes]);
-
-  // Handle error toasts with debouncing
+  // The page keeps the last count it had while it can't fetch, and says so once
   useEffect(() => {
     if (!isError) return;
-
     const now = Date.now();
-    // Debounce toast notifications (at least 2 seconds apart)
     if (now - lastToastTimeRef.current < 2000) return;
-
     lastToastTimeRef.current = now;
-
-    if (failureCount < MAX_RETRIES) {
-      toast.error("Failed to fetch vote updates, retrying...");
-    } else {
-      toast.error("Failed to fetch vote updates. Please refresh the page.");
-    }
+    toast.error(
+      failureCount < MAX_RETRIES
+        ? "Can't get the latest votes, trying again..."
+        : "Can't get the latest votes. Refresh the page.",
+    );
   }, [isError, failureCount]);
 
-  if (hasExceededErrorLimit) {
-    return (
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-      >
-        <Alert variant="destructive">
-          <WarningCircleIcon className="size-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {error.message}
-            <button
-              onClick={() => window.location.reload()}
-              className="underline hover:no-underline"
-            >
-              Refresh page
-            </button>
-          </AlertDescription>
-        </Alert>
-      </motion.div>
-    );
-  }
-
   return (
-    <motion.div
-      className="text-center"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-    >
-      <motion.div className="relative mb-4" initial={false}>
-        <motion.div
-          key={totalVotes}
-          initial={{ scale: 1.5, y: -20, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 20,
-            duration: 0.5,
-          }}
-          className="text-5xl font-bold text-white"
-          // Announced as it changes, and found by the end-to-end tests
-          role="status"
-          aria-label="Total votes"
-        >
-          {totalVotes.toLocaleString()}
-        </motion.div>
-
-        <motion.div
-          className="text-muted-foreground mt-2 text-xl"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          Total Votes
-        </motion.div>
-
-        <AnimatePresence>
-          {showVoteDiff && (
-            <motion.div
-              key={`diff-${totalVotes}`}
-              initial={{ opacity: 1, scale: 1, y: 0 }}
-              animate={{ opacity: 0, scale: 2, y: -30 }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: 0.7,
-                type: "spring",
-                stiffness: 100,
-                damping: 10,
-              }}
-              className="absolute top-0 left-1/2 -translate-x-1/2 transform font-bold text-green-400"
-            >
-              +{voteDiff.toLocaleString()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {closed ? (
-        <p className="text-2xl font-semibold">Voting has closed</p>
-      ) : (
-        <motion.div
-          className="flex justify-center space-x-2"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="h-3 w-3 rounded-full bg-white"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{
-                duration: 0.6,
-                repeat: Infinity,
-                delay: i * 0.2,
-                ease: "easeInOut",
-              }}
-            />
-          ))}
-        </motion.div>
+    <div
+      // A hop with each new vote: remounted by its count
+      key={totalVotes}
+      className={cn(
+        "bg-primary text-primary-foreground shadow-lift grid size-82 shrink-0 place-content-center rounded-full text-center",
+        totalVotes > initialVoteCount &&
+          "motion-safe:animate-[count-bump_0.5s_var(--ease-spring)]",
+        className,
       )}
-    </motion.div>
+    >
+      <p
+        className="text-stage-count leading-none font-bold tabular-nums"
+        // Announced as it changes, and found by the end-to-end tests
+        role="status"
+        aria-label="Total votes"
+      >
+        {totalVotes.toLocaleString()}
+      </p>
+      <p className="text-stage-lead font-medium">votes in</p>
+    </div>
   );
 }
