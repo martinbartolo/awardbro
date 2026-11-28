@@ -566,6 +566,52 @@ export const awardRouter = createTRPCRouter({
       return show;
     }),
 
+  /**
+   * What the vote page needs: the show's name and the category on the big screen, with its
+   * nominations, and no scores.
+   */
+  getActiveCategory: publicProcedure
+    .input(z.object({ code: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const show = await ctx.db.session.findUnique({
+        where: { code: input.code },
+        select: {
+          name: true,
+          categories: {
+            // At most one is on the big screen
+            where: { isActive: true },
+            orderBy: runningOrder,
+            take: 1,
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              type: true,
+              rankingTop: true,
+              isActive: true,
+              votingClosed: true,
+              revealed: true,
+              aggregateOf: {
+                orderBy: runningOrder,
+                select: { id: true, name: true },
+              },
+              nominations: {
+                orderBy: { createdAt: "asc" },
+                select: { id: true, name: true, description: true },
+              },
+            },
+          },
+        },
+      });
+      if (!show) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Session not found",
+        });
+      }
+      return { name: show.name, category: show.categories[0] ?? null };
+    }),
+
   getSession: publicProcedure
     .input(
       z.object({

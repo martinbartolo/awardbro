@@ -104,6 +104,7 @@ export function connectShowEvents({
 
   const refetchShow = () => {
     fetchAgain(trpc.award.getSession.queryFilter());
+    fetchAgain(trpc.award.getActiveCategory.queryFilter());
     fetchAgain(trpc.award.getCategory.queryFilter());
     fetchAgain(trpc.award.getMyVotes.queryFilter());
   };

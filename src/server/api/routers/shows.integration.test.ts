@@ -17,6 +17,7 @@ import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 /** Every query, called on a show the way its pages do */
 const queries = {
   getSession: (api, s) => api.getSession({ code: s.show.code }),
+  getActiveCategory: (api, s) => api.getActiveCategory({ code: s.show.code }),
   getCategory: (api, s) => api.getCategory({ id: s.ranking.id }),
   getMyVotes: (api, s) => api.getMyVotes({ categoryId: s.ranking.id }),
   getPublicSessions: api => api.getPublicSessions(),

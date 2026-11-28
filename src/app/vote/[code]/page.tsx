@@ -60,13 +60,10 @@ export default async function VotePage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await showPage("vote", (await params).code);
-  const session = await api.award.getSession({
-    code,
-    activeOnly: true,
-  });
+  const show = await api.award.getActiveCategory({ code });
   // The voter's own votes in the active category, so a voter who has voted
   // sees it straight away instead of an empty form
-  const activeCategory = session.categories[0];
+  const activeCategory = show.category;
   const initialMyVotes =
     activeCategory && activeCategory.type !== "AGGREGATE"
       ? {
@@ -78,7 +75,7 @@ export default async function VotePage({
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
       <LiveVotingSession
-        initialSession={session}
+        initialShow={show}
         initialMyVotes={initialMyVotes}
         code={code}
       />

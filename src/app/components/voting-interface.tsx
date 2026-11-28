@@ -32,7 +32,6 @@ export function VotingInterface({
     id: string;
     name: string;
     description?: string | null;
-    _count?: { votes: number };
   }[];
   categoryId: string;
   categoryType: CategoryType;

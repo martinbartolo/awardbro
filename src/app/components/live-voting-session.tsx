@@ -17,10 +17,10 @@ import { type RouterOutputs, useTRPC } from "~/trpc/react";
 import { type MyVotes } from "./ranking-interface";
 import { VotingInterface } from "./voting-interface";
 
-type Session = RouterOutputs["award"]["getSession"];
+type Show = RouterOutputs["award"]["getActiveCategory"];
 
 type LiveVotingSessionProps = {
-  initialSession: Session;
+  initialShow: Show;
   /** The voter's votes in the category that was active when the page was rendered */
   initialMyVotes?: {
     categoryId: string;
@@ -44,27 +44,27 @@ const containerVariants = {
 };
 
 export function LiveVotingSession({
-  initialSession,
+  initialShow,
   initialMyVotes,
   code,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
   useShowEvents(code, { liveCounts: false, crowd: true });
   const {
-    data: session,
+    data: show,
     error: sessionError,
     isError: isSessionError,
   } = useQuery(
-    trpc.award.getSession.queryOptions(
-      { code, activeOnly: true },
+    trpc.award.getActiveCategory.queryOptions(
+      { code },
       {
-        initialData: initialSession,
+        initialData: initialShow,
         retry: 3,
       },
     ),
   );
 
-  const activeCategory = session.categories[0];
+  const activeCategory = show.category;
   // The host closes voting before the reveal, and revealing closes it too (the server refuses
   // votes then)
   const isClosed = !!activeCategory && votingHasClosed(activeCategory);
@@ -146,7 +146,7 @@ export function LiveVotingSession({
           exit="exit"
           variants={containerVariants}
         >
-          <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
+          <h1 className="mb-12 text-6xl font-bold">{show.name}</h1>
           <p className="text-2xl">Waiting for the next award.</p>
           <p className="text-muted-foreground mt-4">
             The host will present the next category soon.
@@ -162,7 +162,7 @@ export function LiveVotingSession({
           variants={containerVariants}
         >
           <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold">{session.name}</h1>
+            <h1 className="text-4xl font-bold">{show.name}</h1>
             <p className="text-muted-foreground mt-2">
               {isClosed
                 ? "Voting has closed"
