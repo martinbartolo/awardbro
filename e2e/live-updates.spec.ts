@@ -101,3 +101,20 @@ test("the big screen catches up with what it missed while it couldn't listen", a
   await waitForCategory(screen, "Best Film", { timeout: 15_000 });
   await expect(totalVotes(screen)).toHaveText("1");
 });
+
+test("the big screen follows the theme the host picks for it", async ({
+  visit,
+}) => {
+  const { host, screen } = await openShow(visit);
+  // Night by default: the page's own colours, with nothing on <html>
+  const page = screen.locator("html");
+  await expect(page).not.toHaveAttribute("data-theme");
+
+  await host.goBack();
+  await host.getByRole("radio", { name: "Paper" }).click();
+  await expect(host.getByRole("radio", { name: "Paper" })).toBeChecked();
+  await expect(page).toHaveAttribute("data-theme", "light", LIVE);
+
+  await host.getByRole("radio", { name: "Night" }).click();
+  await expect(page).not.toHaveAttribute("data-theme", LIVE);
+});

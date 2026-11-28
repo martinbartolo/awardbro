@@ -56,7 +56,11 @@ export function ManageShow({
           <p className="text-muted-foreground mt-1">Manage your award show</p>
         </header>
 
-        <RunShowCard code={code} />
+        <RunShowCard
+          code={code}
+          sessionId={session.id}
+          screenTheme={session.screenTheme}
+        />
 
         <div className="space-y-8">
           {/* Categories in running order, then adding one at the end */}
