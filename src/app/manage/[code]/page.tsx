@@ -4,7 +4,7 @@ import { ManageShow } from "~/app/components/manage-show";
 import { PasswordPage } from "~/app/components/password-verification";
 import { ShowCodeProvider } from "~/lib/hooks/useShowChange";
 import { hasManageAccess } from "~/server/auth/manage";
-import { showPageCode } from "~/server/shows";
+import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default async function ManagePage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const code = await showPageCode("manage", (await params).code);
+  const { code } = await showPage("manage", (await params).code);
 
   const session = await api.award.getSession({
     code,
