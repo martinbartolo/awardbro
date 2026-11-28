@@ -11,9 +11,8 @@ import { votingHasClosed } from "~/lib/stages";
 import { cn } from "~/lib/utils";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
-import { type MyVotes } from "./ranking-interface";
-import { ShapeMarks } from "./shape-marks";
 import { ThemeToggle } from "./theme-toggle";
+import { type MyVotes, VoteOutcome } from "./vote-parts";
 import { VotingInterface } from "./voting-interface";
 
 type Show = RouterOutputs["award"]["getActiveCategory"];
@@ -98,7 +97,7 @@ export function LiveVotingSession({
       : aggregate
         ? { label: "Results next", live: false }
         : closed
-          ? { label: "Closed", live: false }
+          ? { label: "Voting closed", live: false }
           : { label: "Voting is open", live: true };
 
   return (
@@ -136,17 +135,17 @@ export function LiveVotingSession({
             transition={{ duration: reduceMotion ? 0 : 0.3 }}
           >
             {gone ? (
-              <Centred title="This show has been deleted.">
+              <VoteOutcome title="This show has been deleted." anchored={false}>
                 Ask the host for the new room code.
-              </Centred>
+              </VoteOutcome>
             ) : !category ? (
-              <Centred title={show.name}>
+              <VoteOutcome title={show.name} anchored={false}>
                 <span className="text-foreground mb-2 block text-xl font-semibold">
                   Waiting for the next award.
                 </span>
                 Keep this page open: it shows the next award as soon as the host
                 starts it.
-              </Centred>
+              </VoteOutcome>
             ) : (
               <>
                 <div className="mt-4 mb-2">
@@ -167,10 +166,10 @@ export function LiveVotingSession({
                   )}
                 </div>
                 {aggregate ? (
-                  <Centred title="Nothing to vote for here" anchored>
+                  <VoteOutcome title="Nothing to vote for here">
                     This award adds up earlier ones. Watch the big screen for
                     the results.
-                  </Centred>
+                  </VoteOutcome>
                 ) : (
                   <div className="mt-2 flex flex-1 flex-col">
                     <VotingInterface
@@ -193,32 +192,5 @@ export function LiveVotingSession({
         </AnimatePresence>
       </div>
     </main>
-  );
-}
-
-/** A message in the middle of the screen, for when there's nothing to vote in */
-function Centred({
-  title,
-  children,
-  anchored = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  /** Under a category's name: a little below it, rather than in the middle of the screen */
-  anchored?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-1 flex-col items-center pb-16 text-center",
-        anchored ? "pt-[8vh]" : "justify-center",
-      )}
-    >
-      <ShapeMarks className="mb-6" />
-      <h2 className="text-3xl leading-tight font-bold text-balance">{title}</h2>
-      <p className="text-muted-foreground mt-3 max-w-xs text-lg leading-snug">
-        {children}
-      </p>
-    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { launchConfetti } from "~/lib/confetti";
+import { launchConfetti, shapeColours } from "~/lib/confetti";
 import { showsPictures } from "~/lib/images";
 import { columnColours, podium, riseOrder } from "~/lib/podium";
 import { getScoreLabel, type LabelledCategory } from "~/lib/scoring";
@@ -125,13 +125,9 @@ export function PodiumReveal({
   const winnerBar = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!played || !phase.crowned || !canvas.current) return;
-    const style = getComputedStyle(canvas.current);
-    const colours = [1, 2, 3, 4].map(i =>
-      style.getPropertyValue(`--shape-${i}`).trim(),
-    );
     const bar = winnerBar.current?.getBoundingClientRect();
     return launchConfetti(canvas.current, {
-      colours,
+      colours: shapeColours(canvas.current),
       origin: {
         x: bar ? (bar.left + bar.width / 2) / window.innerWidth : 0.5,
         y: bar ? bar.top / window.innerHeight : 0.5,

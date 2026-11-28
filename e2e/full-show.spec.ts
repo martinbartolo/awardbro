@@ -6,6 +6,7 @@ import {
   expect,
   expectResults,
   nextCategory,
+  outcome,
   PICTURES,
   rank,
   runShow,
@@ -97,13 +98,15 @@ test("a show from setup to the last reveal", async ({ visit }) => {
     await Promise.all([
       vote(first, "Dune"),
       vote(second, "Dune"),
-      vote(third, "Barbie").then(() => vote(third, "Oppenheimer")),
+      vote(third, "Barbie").then(() =>
+        vote(third, "Oppenheimer", { change: true }),
+      ),
     ]);
 
     // Closing voting before the reveal: phones and the big screen say so, with no results yet
     await runStep(host, "Best Film", "Close voting", "Voting closed");
     for (const voter of voters) {
-      await expect(voter.getByText("Voting has closed")).toBeVisible();
+      await expect(outcome(voter, "Voting has closed")).toBeVisible();
     }
     await expect(screen.getByText("Voting has closed")).toBeVisible();
 
@@ -148,7 +151,7 @@ test("a show from setup to the last reveal", async ({ visit }) => {
       rank(first, ["Barbie", "Dune"]),
       rank(second, ["Barbie", "Oppenheimer"]),
       rank(third, ["Dune", "Barbie"]).then(() =>
-        rank(third, ["Dune", "Oppenheimer"]),
+        rank(third, ["Dune", "Oppenheimer"], { change: true }),
       ),
     ]);
 

@@ -1,15 +1,13 @@
+import { setDocumentTheme, type Theme } from "~/lib/theme";
+
 /**
  * The theme of pages on the visitor's own device (the vote page): the device's light or dark
  * setting, unless they've picked one, which is remembered on the device. The big screen doesn't
  * use this: the host sets its theme per show.
- *
- * Light is `data-theme="light"` on `<html>`; dark, the default, has none.
  */
 
 const STORAGE_KEY = "awardbro-theme";
 const LIGHT_QUERY = "(prefers-color-scheme: light)";
-
-export type Theme = "light" | "dark";
 
 /**
  * Sets the theme before the page first paints, so a light phone never flashes dark. An inline
@@ -29,15 +27,11 @@ function savedTheme(): Theme | null {
 }
 
 /** The theme to show: the one picked on this device, else the device's setting */
-export const deviceTheme = (): Theme =>
+const deviceTheme = (): Theme =>
   savedTheme() ?? (matchMedia(LIGHT_QUERY).matches ? "light" : "dark");
 
 /** Puts the device's theme on `<html>` */
-export function applyDeviceTheme() {
-  const root = document.documentElement;
-  if (deviceTheme() === "light") root.dataset.theme = "light";
-  else delete root.dataset.theme;
-}
+export const applyDeviceTheme = () => setDocumentTheme(deviceTheme());
 
 /** Remembers the visitor's pick on this device, and shows it */
 export function saveDeviceTheme(theme: Theme) {
@@ -46,9 +40,7 @@ export function saveDeviceTheme(theme: Theme) {
   } catch {
     // Not remembered, but still shown until the page closes
   }
-  const root = document.documentElement;
-  if (theme === "light") root.dataset.theme = "light";
-  else delete root.dataset.theme;
+  setDocumentTheme(theme);
 }
 
 /**

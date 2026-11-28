@@ -2,8 +2,8 @@
 
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
-import { useActiveTheme } from "~/lib/hooks/useBigScreen";
 import { useIsMobile } from "~/lib/hooks/useIsMobile";
+import { useActiveTheme } from "~/lib/theme";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const isMobile = useIsMobile();

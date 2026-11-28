@@ -7,11 +7,10 @@ import { MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
 import {
   applyDeviceTheme,
-  deviceTheme,
   saveDeviceTheme,
   watchDeviceTheme,
 } from "~/lib/device-theme";
-import { useActiveTheme } from "~/lib/hooks/useBigScreen";
+import { clearDocumentTheme, useActiveTheme } from "~/lib/theme";
 
 /**
  * Switches a page on the visitor's own device between light and dark, remembered on the device.
@@ -27,7 +26,7 @@ export function ThemeToggle() {
     const stop = watchDeviceTheme(applyDeviceTheme);
     return () => {
       stop();
-      delete document.documentElement.dataset.theme;
+      clearDocumentTheme();
     };
   }, []);
 
@@ -38,9 +37,8 @@ export function ThemeToggle() {
       size="icon"
       className="text-muted-foreground hover:text-foreground size-9 rounded-full"
       aria-label={`Switch to ${next} theme`}
-      onClick={() =>
-        saveDeviceTheme(deviceTheme() === "light" ? "dark" : "light")
-      }
+      tooltip={`Switch to ${next} theme`}
+      onClick={() => saveDeviceTheme(next)}
     >
       {next === "light" ? <SunIcon /> : <MoonIcon />}
     </Button>

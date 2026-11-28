@@ -9,13 +9,32 @@ import {
 } from "react";
 
 import { CheckIcon } from "@phosphor-icons/react";
+import { type QueryKey } from "@tanstack/react-query";
 import { useReducedMotion } from "motion/react";
 
 import { Button } from "~/components/ui/button";
-import { launchConfetti } from "~/lib/confetti";
+import { launchConfetti, shapeColours } from "~/lib/confetti";
 import { cn } from "~/lib/utils";
+import { type RouterOutputs } from "~/trpc/react";
 
+import { NominationDescription } from "./nomination-description";
 import { ShapeMarks } from "./shape-marks";
+
+/** A nomination as the vote page shows it */
+export type Nomination = {
+  id: string;
+  name: string;
+  description?: string | null;
+};
+
+export type MyVotes = RouterOutputs["award"]["getMyVotes"];
+
+/** The voter's saved vote or ranking, owned by `LiveVotingSession` */
+export type MyVotesProps = {
+  myVotes: MyVotes | undefined;
+  /** Its query, which a vote updates straight away, before the server answers (optimistic.ts) */
+  myVotesKey: QueryKey;
+};
 
 /** A smaller burst than the winner's, for one vote on one phone */
 const VOTE_PIECES = 120;
@@ -33,12 +52,9 @@ export function useVoteConfetti() {
 
   const burst = useCallback(() => {
     if (reduceMotion || !canvas.current) return;
-    const style = getComputedStyle(canvas.current);
     stop.current?.();
     stop.current = launchConfetti(canvas.current, {
-      colours: [1, 2, 3, 4].map(i =>
-        style.getPropertyValue(`--shape-${i}`).trim(),
-      ),
+      colours: shapeColours(canvas.current),
       // From the "Your vote is in" badge
       origin: { x: 0.5, y: 0.38 },
       pieces: VOTE_PIECES,
@@ -69,17 +85,15 @@ export function PinnedAction({
   /** A quieter way out under it, such as keeping the vote already made */
   below?: ReactNode;
 }) {
-  // While tiles run on under the bar, it lifts off them with a soft shadow; at the end of the
-  // list it sits flat. (A marker just above the bar is on screen once the list has ended.)
+  // While tiles run on under the bar, it lifts off them; at the end of the list it sits flat.
+  // The list has ended when a marker after the bar, the last thing on the page, is on screen.
   const end = useRef<HTMLDivElement>(null);
   const [covering, setCovering] = useState(false);
   useEffect(() => {
     const marker = end.current;
     if (!marker) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setCovering(!entry?.isIntersecting),
-      // The bar's own height, so "on screen" means above it
-      { rootMargin: "0px 0px -120px 0px" },
+    const observer = new IntersectionObserver(([entry]) =>
+      setCovering(!entry?.isIntersecting),
     );
     observer.observe(marker);
     return () => observer.disconnect();
@@ -87,11 +101,10 @@ export function PinnedAction({
 
   return (
     <>
-      <div ref={end} aria-hidden className="h-px" />
       <div
         className={cn(
           "bg-background sticky bottom-0 -mx-5 mt-auto border-t-2 border-transparent px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] transition-[box-shadow,border-color] duration-300",
-          // A shadow alone is lost on the Night ground: an edge in the line colour shows in both
+          // A shadow alone is lost on the Night ground: an edge in the secondary colour shows in both
           covering &&
             "border-secondary shadow-[0_-14px_28px_-10px_var(--shadow-color)]",
         )}
@@ -106,6 +119,7 @@ export function PinnedAction({
         </Button>
         {below && <div className="mt-2 flex justify-center">{below}</div>}
       </div>
+      <div ref={end} aria-hidden className="h-px" />
     </>
   );
 }
@@ -114,15 +128,20 @@ export function PinnedAction({
 export function QuietButton({
   children,
   onClick,
+  className,
 }: {
   children: ReactNode;
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="text-primary focus-visible:ring-ring rounded-md px-2 py-2 text-lg font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
+      className={cn(
+        "text-primary focus-visible:ring-ring rounded-md px-2 py-2 text-lg font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none",
+        className,
+      )}
     >
       {children}
     </button>
@@ -130,28 +149,34 @@ export function QuietButton({
 }
 
 /**
- * The end of a vote: "Your vote is in", or once voting has closed, what the voter's vote was.
- * Anchored a little below the category's name, so it reads as that category's answer.
+ * A screen's message in place of the tiles: "Your vote is in" (a check badge), or a quiet one
+ * such as "Voting has closed" (the shape set). Under a category's name it sits a little below
+ * it, so it reads as that category's answer; on its own it's in the middle of the screen.
  */
 export function VoteOutcome({
   title,
   children,
   action,
-  done = true,
+  mark = "shapes",
+  anchored = true,
 }: {
   title: string;
   children: ReactNode;
   action?: ReactNode;
-  /** A vote went in (a check badge); otherwise there's nothing to celebrate */
-  done?: boolean;
+  /** A vote went in ("check"); otherwise there's nothing to celebrate ("shapes") */
+  mark?: "check" | "shapes";
+  anchored?: boolean;
 }) {
   return (
     <div
-      className="flex flex-1 flex-col items-center pt-[8vh] pb-10 text-center"
+      className={cn(
+        "flex flex-1 flex-col items-center text-center",
+        anchored ? "pt-[8vh] pb-10" : "justify-center pb-16",
+      )}
       // Announced when it appears, as the answer to the voter's tap
       role="status"
     >
-      {done ? (
+      {mark === "check" ? (
         <div className="bg-primary text-primary-foreground shadow-lift motion-safe:animate-in motion-safe:zoom-in-50 mb-7 grid size-32 place-items-center rounded-full duration-500 ease-[var(--ease-spring)]">
           <CheckIcon weight="bold" className="size-16" />
         </div>
@@ -159,12 +184,74 @@ export function VoteOutcome({
         <ShapeMarks className="mb-6" />
       )}
       <h2 className="text-3xl leading-tight font-bold text-balance">{title}</h2>
-      <div className="text-muted-foreground mt-3 max-w-xs text-lg leading-snug">
+      <div className="text-muted-foreground mt-3 flex max-w-xs flex-col items-center text-lg leading-snug">
         {children}
       </div>
       {action && <div className="mt-6">{action}</div>}
     </div>
   );
+}
+
+/**
+ * Where a vote (or ranking) stands, around the form that makes it: once voting has closed,
+ * what it was; once it's in, "Your vote is in" with a way to change it; otherwise the form.
+ */
+export function VoteStages({
+  noun,
+  summary,
+  loaded,
+  closed,
+  editing,
+  onChange,
+  children,
+}: {
+  noun: "vote" | "ranking";
+  /** The vote that counts, said in full; null when there's none */
+  summary: ReactNode;
+  /** Whether the voter's vote has loaded, so "none" is known rather than not yet checked */
+  loaded: boolean;
+  closed: boolean;
+  /** The voter is making or changing it: the form shows */
+  editing: boolean;
+  onChange: () => void;
+  /** The form */
+  children: ReactNode;
+}) {
+  const watch = <p className="mt-4">Watch the big screen for the results.</p>;
+  if (closed) {
+    return (
+      <VoteOutcome title="Voting has closed">
+        {summary ? (
+          <>
+            {summary}
+            {watch}
+          </>
+        ) : loaded ? (
+          <>
+            {noun === "vote"
+              ? "You didn't vote in this one."
+              : "You didn't rank this one."}
+            {watch}
+          </>
+        ) : (
+          `Checking your ${noun}...`
+        )}
+      </VoteOutcome>
+    );
+  }
+  if (summary && !editing) {
+    return (
+      <VoteOutcome
+        title={`Your ${noun} is in`}
+        mark="check"
+        action={<QuietButton onClick={onChange}>Change my {noun}</QuietButton>}
+      >
+        {summary}
+        {watch}
+      </VoteOutcome>
+    );
+  }
+  return children;
 }
 
 /** The tick on a nomination tile: an empty ring, filled when it's the voter's pick */
@@ -201,12 +288,39 @@ export function YourVote({ onPicked }: { onPicked: boolean }) {
   );
 }
 
+/** A nomination's name on its tile, with the description that tells apart one of the same name */
+export function TileText({
+  nomination,
+  picked,
+}: {
+  nomination: Nomination;
+  picked: boolean;
+}) {
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block text-xl leading-tight font-semibold break-words">
+        {nomination.name}
+      </span>
+      {nomination.description && (
+        <NominationDescription
+          description={nomination.description}
+          className={cn(
+            "mt-1 text-base leading-snug break-words",
+            picked ? "text-primary-foreground/85" : "text-muted-foreground",
+          )}
+          imageClassName="relative mt-2 h-24 w-full [&_img]:rounded-[12px]"
+        />
+      )}
+    </span>
+  );
+}
+
 /** The look of a nomination tile: rounded, soft, the action colour when picked */
 export const tileClass = (picked: boolean, disabled?: boolean) =>
   cn(
-    "focus-visible:ring-ring w-full rounded-[20px] text-left transition-[background-color,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98]",
+    "shadow-soft focus-visible:ring-ring w-full rounded-[20px] text-left transition-[background-color,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98]",
     picked
-      ? "bg-primary text-primary-foreground shadow-soft"
-      : "bg-card text-card-foreground shadow-soft",
+      ? "bg-primary text-primary-foreground"
+      : "bg-card text-card-foreground",
     disabled && "cursor-not-allowed opacity-50",
   );
