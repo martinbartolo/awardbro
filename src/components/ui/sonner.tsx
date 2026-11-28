@@ -2,16 +2,18 @@
 
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
+import { useActiveTheme } from "~/lib/hooks/useBigScreen";
 import { useIsMobile } from "~/lib/hooks/useIsMobile";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const isMobile = useIsMobile();
+  const theme = useActiveTheme();
 
   return (
     <Sonner
       position={isMobile ? "top-center" : "top-right"}
       offset={16}
-      theme="dark"
+      theme={theme}
       className="toaster group"
       richColors={true}
       toastOptions={{

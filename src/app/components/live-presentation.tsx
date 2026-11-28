@@ -1,326 +1,224 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-import { WarningCircleIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Badge } from "~/components/ui/badge";
+import { useDocumentTheme, useWakeLock } from "~/lib/hooks/useBigScreen";
 import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { votingHasClosed } from "~/lib/stages";
+import { cn } from "~/lib/utils";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { AggregateInfo } from "./aggregate-info";
-import { JoinInfo } from "./join-info";
+import { FullscreenButton } from "./fullscreen-button";
+import { JoinPanel, RoomCodeChip } from "./join-info";
 import { LiveVoting } from "./live-voting";
-import { WinnerAnimation } from "./winner-animation";
+import { PodiumReveal } from "./podium-reveal";
 
 type Session = RouterOutputs["award"]["getSession"];
+type Category = Session["categories"][number];
 
 type LivePresentationProps = {
   initialSession: Session;
   code: string;
 };
 
-const containerVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 },
-  },
-  exit: {
-    opacity: 0,
-    y: -20,
-    transition: { duration: 0.3 },
-  },
+/** What the big screen shows for the category on it (or none) */
+type Scene = "waiting" | "voting" | "closed" | "aggregate" | "revealed";
+
+const sceneOf = (category: Category | undefined): Scene => {
+  if (!category) return "waiting";
+  if (category.reveals.revealed) return "revealed";
+  if (category.type === "AGGREGATE") return "aggregate";
+  return votingHasClosed(category) ? "closed" : "voting";
 };
 
-const categoryVariants = {
-  hidden: { opacity: 0, x: 0 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.5 },
-  },
-  exit: {
-    opacity: 0,
-    x: 0,
-    transition: { duration: 0.3 },
-  },
-};
+/** Up to this many awards, the progress shows a dot for each */
+const MAX_DOTS = 12;
 
+/**
+ * The big screen: the category on it, how to join, the live count, and the reveal. It follows
+ * the show live, and the host's theme for it (Night or Paper).
+ */
 export function LivePresentation({
   initialSession,
   code,
 }: LivePresentationProps) {
   const trpc = useTRPC();
   useShowEvents(code, { liveCounts: true });
-  const {
-    data: session,
-    error: sessionError,
-    isError: isSessionError,
-  } = useQuery(
+  const { data: session, isError } = useQuery(
     trpc.award.getSession.queryOptions(
       { code, bigScreen: true },
-      {
-        initialData: initialSession,
-        retry: 3,
-      },
+      { initialData: initialSession, retry: 3 },
     ),
   );
 
   useEffect(() => {
-    if (isSessionError) {
-      toast.error("Failed to fetch presentation updates");
-    }
-  }, [isSessionError]);
+    if (isError)
+      toast.error("Can't get the latest from the show, trying again...");
+  }, [isError]);
 
-  // Voters can join while waiting and during voting. Once voting has closed, during a reveal, or
-  // during an aggregate (which takes no votes), the join details move to a corner.
-  const isVoting = session.categories.some(
-    category => !votingHasClosed(category) && category.type !== "AGGREGATE",
+  const theme = session.screenTheme === "PAPER" ? "light" : "dark";
+  useDocumentTheme(theme);
+  useWakeLock();
+
+  const category = session.categories[0];
+  const scene = sceneOf(category);
+
+  // A reveal plays when this screen saw the category before it: on a reload it shows at once
+  const reduceMotion = useReducedMotion();
+  const [watched, setWatched] = useState(
+    scene === "revealed" ? null : category?.id,
   );
-
-  if (isSessionError) {
-    return (
-      <motion.div
-        className="container mx-auto px-4 py-8"
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        variants={containerVariants}
-      >
-        <Alert variant="destructive">
-          <WarningCircleIcon className="size-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {sessionError.message || "Failed to load presentation"}
-            <button
-              onClick={() => window.location.reload()}
-              className="underline hover:no-underline"
-            >
-              Refresh page
-            </button>
-          </AlertDescription>
-        </Alert>
-      </motion.div>
-    );
+  if (category && scene !== "revealed" && watched !== category.id) {
+    setWatched(category.id);
   }
+  const playReveal =
+    scene === "revealed" && watched === category?.id && !reduceMotion;
+
+  // Joining is the main thing while waiting and voting; otherwise it moves to a corner
+  const joinInCorner = scene !== "waiting" && scene !== "voting";
 
   return (
-    <>
-      <AnimatePresence mode="wait">
-        {session.categories.length === 0 ? (
-          <motion.div
-            key="waiting"
-            className="container mx-auto px-4 text-center"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={containerVariants}
-          >
-            <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
-            <p className="text-2xl">Waiting for the next award.</p>
-            <p className="text-muted-foreground mt-4">
-              The host will activate categories when ready.
-            </p>
-            <div className="mt-16">
-              <JoinInfo code={code} variant="full" />
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="active"
-            className="container mx-auto px-4 pt-16"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={containerVariants}
-          >
-            <h1 className="text-foreground mb-12 text-center text-6xl font-bold">
-              {session.name}
-            </h1>
-
-            <div className="space-y-8">
-              <AnimatePresence mode="wait">
-                {session.categories.map(category => (
-                  <motion.div
-                    key={category.id}
-                    className={`bg-background rounded-lg p-8 transition-all duration-500 ${
-                      !category.reveals.revealed && "opacity-50"
-                    }`}
-                    variants={categoryVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                  >
-                    <h2 className="text-foreground mb-6 text-center text-4xl font-semibold">
-                      {category.name}
-                    </h2>
-                    {category.description && (
-                      <p className="text-muted-foreground mb-8 text-center text-xl">
-                        {category.description}
-                      </p>
-                    )}
-                    {category.aggregateOf.length > 0 && (
-                      <div className="mb-8 flex flex-wrap items-center justify-center gap-1">
-                        <span className="text-muted-foreground text-sm">
-                          Counts towards:
-                        </span>
-                        {category.aggregateOf.map(aggregate => (
-                          <Badge key={aggregate.id} variant="secondary">
-                            {aggregate.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {category.reveals.revealed ? (
-                      <motion.div
-                        className={`grid grid-cols-1 gap-8 ${
-                          category.reveals.winnerOnly
-                            ? "min-h-[200px] place-items-center"
-                            : ""
-                        }`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        {(() => {
-                          // Best first; nominations without a place (no votes, or hidden) last
-                          const sortedNominations = [
-                            ...category.nominations,
-                          ].sort(
-                            (a, b) =>
-                              (a.place ?? Number.MAX_SAFE_INTEGER) -
-                              (b.place ?? Number.MAX_SAFE_INTEGER),
-                          );
-
-                          if (!sortedNominations.length) {
-                            return (
-                              <div className="text-muted-foreground w-full rounded-xl border border-dashed p-10 text-center text-xl">
-                                No nominations yet.
-                              </div>
-                            );
-                          }
-
-                          // Only crown a winner when at least one vote/point has been cast,
-                          // or there's only one nominee and its score is shown (even 0)
-                          const winners = sortedNominations.filter(
-                            n =>
-                              n.place === 1 ||
-                              (sortedNominations.length === 1 &&
-                                n.score !== null),
-                          );
-                          const hasWinner = winners.length > 0;
-                          const isTied = winners.length > 1;
-                          const isCompleteTie =
-                            sortedNominations.length > 1 &&
-                            winners.length === sortedNominations.length;
-
-                          // Filter to winners only if winnerOnly is enabled
-                          const displayNominations = category.reveals.winnerOnly
-                            ? winners
-                            : sortedNominations;
-
-                          return (
-                            <>
-                              {!hasWinner && (
-                                <div className="w-full rounded-xl border border-dashed p-10 text-center">
-                                  <div className="text-foreground text-2xl font-semibold">
-                                    No votes yet
-                                  </div>
-                                  <div className="text-muted-foreground mt-2 text-lg">
-                                    Cast at least one vote to reveal a winner.
-                                  </div>
-                                </div>
-                              )}
-
-                              {isCompleteTie && (
-                                <div className="w-full rounded-xl border border-dashed p-6 text-center">
-                                  <div className="text-foreground text-lg font-semibold">
-                                    It&apos;s a tie!
-                                  </div>
-                                  <div className="text-muted-foreground mt-1 text-sm">
-                                    All nominees share the top score.
-                                  </div>
-                                </div>
-                              )}
-
-                              {displayNominations.length > 0 && (
-                                <ol
-                                  // Safari drops the list role of a list without bullets
-                                  role="list"
-                                  aria-label={`${category.name} results`}
-                                  className={`grid w-full grid-cols-1 gap-8 ${
-                                    category.reveals.winnerOnly
-                                      ? "place-items-center"
-                                      : ""
-                                  }`}
-                                >
-                                  {displayNominations.map(
-                                    (nomination, index) => {
-                                      const isWinner =
-                                        winners.includes(nomination);
-
-                                      return (
-                                        <li
-                                          key={nomination.id}
-                                          className={`${
-                                            isWinner
-                                              ? "col-span-1 w-full md:px-12"
-                                              : "col-span-1 md:mx-auto md:w-full md:max-w-2xl"
-                                          }`}
-                                        >
-                                          <WinnerAnimation
-                                            nomination={nomination}
-                                            index={index}
-                                            isWinner={isWinner}
-                                            isTied={isTied}
-                                            category={category}
-                                          />
-                                        </li>
-                                      );
-                                    },
-                                  )}
-                                </ol>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </motion.div>
-                    ) : category.type === "AGGREGATE" ? (
-                      <AggregateInfo
-                        sourceCategories={category.sourceCategories}
-                      />
-                    ) : (
-                      <LiveVoting
-                        categoryId={category.id}
-                        initialVoteCount={category.estimatedVoters ?? 0}
-                        closed={category.votingClosed}
-                      />
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-            {/* Outside the category, which is dimmed while voting is open */}
-            {isVoting && (
-              <div className="mt-4 mb-16">
-                <JoinInfo code={code} variant="full" />
-              </div>
-            )}
-          </motion.div>
+    <main
+      data-theme={theme === "light" ? "light" : undefined}
+      className="big-screen bg-background text-foreground relative flex h-dvh flex-col overflow-hidden px-24 pt-16"
+    >
+      <header className="shrink-0">
+        <h1 className="text-stage-title max-w-[calc(var(--u)*150)] leading-[1.05] font-bold tracking-[-0.01em] text-balance">
+          {category?.name ?? session.name}
+        </h1>
+        {category?.description && (
+          <p className="text-muted-foreground text-stage-body mt-2 line-clamp-2 max-w-[calc(var(--u)*130)]">
+            {category.description}
+          </p>
         )}
+        <div className="mt-5 flex min-h-[calc(var(--u)*6)] items-center gap-5">
+          {category ? (
+            <Progress
+              progress={session.progress}
+              countsTowards={category.aggregateOf.map(a => a.name)}
+            />
+          ) : (
+            <p className="text-muted-foreground text-stage-lead font-medium">
+              Waiting for the next award.
+            </p>
+          )}
+          {joinInCorner && (
+            <div className="ml-auto">
+              <RoomCodeChip code={code} />
+            </div>
+          )}
+        </div>
+      </header>
+
+      <AnimatePresence mode="wait">
+        <motion.section
+          // A new scene for each category and stage: a quick fade, no movement
+          key={`${category?.id}-${scene}`}
+          aria-live="polite"
+          className={cn(
+            "min-h-0 flex-1",
+            scene === "revealed" ? "pt-10" : "pb-16",
+          )}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.35 }}
+        >
+          {scene === "waiting" && (
+            <div className="flex h-full items-center">
+              <JoinPanel code={code} />
+            </div>
+          )}
+
+          {scene === "voting" && category && (
+            <div className="flex h-full items-center justify-between gap-12">
+              <JoinPanel code={code} />
+              <LiveVoting
+                categoryId={category.id}
+                initialVoteCount={category.estimatedVoters ?? 0}
+              />
+            </div>
+          )}
+
+          {scene === "closed" && category && (
+            <div className="flex h-full items-center gap-16">
+              <LiveVoting
+                categoryId={category.id}
+                initialVoteCount={category.estimatedVoters ?? 0}
+              />
+              <div>
+                <p className="text-stage-display leading-none font-bold">
+                  Voting has closed
+                </p>
+                <p className="text-muted-foreground text-stage-lead mt-5 font-medium">
+                  The winner is next.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {scene === "aggregate" && category && (
+            <AggregateInfo sourceCategories={category.sourceCategories} />
+          )}
+
+          {scene === "revealed" &&
+            category &&
+            (category.nominations.length === 0 ? (
+              <p className="text-muted-foreground text-stage-lead flex h-full items-center font-medium">
+                No nominations in this one.
+              </p>
+            ) : (
+              <PodiumReveal category={category} animate={playReveal} />
+            ))}
+        </motion.section>
       </AnimatePresence>
-      {/* Outside the animated view, whose transform would move a fixed element with it */}
-      {session.categories.length > 0 && !isVoting && (
-        <JoinInfo code={code} variant="corner" />
+
+      <FullscreenButton />
+    </main>
+  );
+}
+
+/** Which award of the show is on the screen: a dot for each, and "Award 4 of 9" */
+function Progress({
+  progress,
+  countsTowards,
+}: {
+  progress: Session["progress"];
+  /** The aggregate categories this one adds up into */
+  countsTowards: string[];
+}) {
+  return (
+    <div className="text-muted-foreground text-stage-small flex min-w-0 items-center gap-5 font-medium">
+      {progress && progress.of <= MAX_DOTS && (
+        <ol aria-hidden className="flex shrink-0 items-center gap-2.5">
+          {Array.from({ length: progress.of }, (_, i) => (
+            <li
+              key={i}
+              className={cn(
+                "h-3 rounded-full",
+                i + 1 === progress.award
+                  ? "bg-primary w-9"
+                  : i + 1 < progress.award
+                    ? "bg-muted-foreground w-3"
+                    : "bg-border w-3",
+              )}
+            />
+          ))}
+        </ol>
       )}
-    </>
+      {progress && (
+        <p className="shrink-0">
+          Award {progress.award} of {progress.of}
+        </p>
+      )}
+      {countsTowards.length > 0 && (
+        <p className="truncate">Counts towards {countsTowards.join(", ")}</p>
+      )}
+    </div>
   );
 }

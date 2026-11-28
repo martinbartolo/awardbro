@@ -11,7 +11,9 @@
  * place, kept for results so a winner never looks like a button.
  * Dark is the default: most shows run in the evening in a dim room.
  * Light is the same system on warm paper, switched on with data-theme="light"
- * on any element (the big screen per show, phones and host views by preference).
+ * (the big screen per show, phones and host views by preference). Pages put it
+ * on <html> (useDocumentTheme), so dialogs, tooltips and toasts, which render
+ * outside the page, follow it too.
  */
 :root {
   color-scheme: dark;
@@ -169,9 +171,46 @@
   --shadow-soft: 0 6px 20px var(--shadow-color);
   --shadow-lift: 0 18px 44px var(--shadow-color);
 
+  /* The big screen's type, in --u (see .big-screen). */
+  --text-stage-beat: calc(var(--u) * 11.4);
+  --text-stage-display: calc(var(--u) * 10.4);
+  --text-stage-code: calc(var(--u) * 18);
+  --text-stage-headline: calc(var(--u) * 8);
+  --text-stage-count: calc(var(--u) * 17);
+  --text-stage-title: calc(var(--u) * 6.4);
+  --text-stage-score: calc(var(--u) * 5.9);
+  --text-stage-lead: calc(var(--u) * 4.2);
+  --text-stage-body: calc(var(--u) * 3.6);
+  --text-stage-small: calc(var(--u) * 2.9);
+
   /* Motion: springy arrivals, quick exits. */
   --ease-spring: cubic-bezier(0.2, 1.6, 0.4, 1);
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * The big screen scales with the screen it's on. --u is a hundredth of the
+ * largest 16:9 frame that fits, so a 4:3 projector shows the same stage with
+ * room above and below. Spacing follows it too: inside, p-24 is 96px on a
+ * 1440 × 810 screen, and in proportion on any other.
+ */
+@utility big-screen {
+  --u: min(1dvh, 0.5625dvw);
+  --spacing: calc(var(--u) * 0.5);
+}
+
+/* The leader holds its breath before the reveal. */
+@keyframes podium-tense {
+  50% {
+    transform: translateX(calc(var(--u) * 0.3));
+  }
+}
+
+/* The live count gives a little hop with each vote. */
+@keyframes count-bump {
+  40% {
+    transform: scale(1.06);
+  }
 }
 
 @layer base {
