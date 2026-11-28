@@ -1,20 +1,24 @@
 import { type CategoryType } from "~/generated/prisma/enums";
 
 export type ScoredCategory = { type: CategoryType; rankingTop: number | null };
+/** A nomination's votes that have a rank: how many, and their ranks added up */
+export type RankedVotes = { count: number; rankSum: number };
+export const NO_RANKED_VOTES: RankedVotes = { count: 0, rankSum: 0 };
+
 /**
- * A nomination as loaded for scoring: how many votes it has, and the ranks of its ranked votes.
- * Votes without a rank may be left out of `votes`, since they earn no ranking points.
+ * A nomination as loaded for scoring: how many votes it has, and, in a ranking category, its
+ * ranked votes added up (by the database, so the votes themselves aren't loaded)
  */
 export type ScoredNomination = {
   name: string;
   _count: { votes: number };
-  votes: { rank: number | null }[];
+  ranked: RankedVotes;
 };
 /** A nomination in one of an aggregate category's source categories */
 export type SourceNomination = ScoredNomination & { category: ScoredCategory };
 
 /** Whether a category's votes earn ranking points (a ranking category without a top N counts votes) */
-const earnsRankingPoints = (
+export const earnsRankingPoints = (
   category: ScoredCategory,
 ): category is ScoredCategory & { rankingTop: number } =>
   category.type === "RANKING" && !!category.rankingTop;
@@ -25,15 +29,14 @@ const calculatePoints = (rank: number, rankingTop: number) =>
 
 /**
  * A nomination's score from its own votes. In a ranking category each vote earns points by its
- * rank, and votes without a rank earn nothing. In every other category each vote is 1 point.
+ * rank (`calculatePoints`), and votes without a rank earn nothing. Adding up `rankingTop − rank
+ * + 1` over the ranked votes is `count × (rankingTop + 1) − the sum of their ranks`, so the
+ * count and the sum are all it needs. In every other category each vote is 1 point.
  */
 const scoreVotes = (category: ScoredCategory, nomination: ScoredNomination) =>
   earnsRankingPoints(category)
-    ? nomination.votes.reduce(
-        (sum, { rank }) =>
-          rank ? sum + calculatePoints(rank, category.rankingTop) : sum,
-        0,
-      )
+    ? nomination.ranked.count * (category.rankingTop + 1) -
+      nomination.ranked.rankSum
     : nomination._count.votes;
 
 /**
@@ -59,9 +62,9 @@ export function scoreNomination(
  */
 export function estimateVoters(
   category: ScoredCategory,
-  nominations: { _count: { votes: number } }[],
+  scores: number[],
 ): number {
-  const total = nominations.reduce((sum, n) => sum + n._count.votes, 0);
+  const total = scores.reduce((sum, score) => sum + score, 0);
   const { rankingTop } = category;
   if (category.type !== "RANKING" || !rankingTop) return total;
 
@@ -98,30 +101,43 @@ export type RevealOptions = {
   hideVoteCounts: boolean;
 };
 
+/** A nomination's score as someone sees it */
+export type VisibleScore = {
+  /** Its votes, or points in ranking and aggregate categories. Null when it's hidden. */
+  score: number | null;
+  /**
+   * 1 for the highest score, 2 for the next one, and so on; ties share a place. Null for a
+   * nomination without votes (or points), and when it's hidden.
+   */
+  place: number | null;
+};
+
+/** Each score's place: 1 for the highest, 2 for the next different one, …, and none for 0 */
+const placesOf = (scores: number[]) => {
+  const distinct = [...new Set(scores.filter(score => score > 0))].sort(
+    (a, b) => b - a,
+  );
+  return scores.map(score => (score > 0 ? distinct.indexOf(score) + 1 : null));
+};
+
 /**
- * The scores someone who can't manage the show may see, in `_count.votes`:
- * - before the reveal, none (all 0);
- * - with `winnerOnly`, only the winners' (the others are 0);
- * - with `hideVoteCounts`, only their order: the highest is the number of different scores, the
- *   next one less, down to 1, and 0 stays 0. Ties stay ties, so the winners can still be found.
+ * The nominations' scores as someone sees them. Hosts (`"all"`) see every score. Everyone else
+ * sees what the category reveals:
+ * - before the reveal, nothing;
+ * - with `winnerOnly`, only the winners;
+ * - with `hideVoteCounts`, only the places, without the scores.
  */
-export const publicScores = <N extends { _count: { votes: number } }>(
-  category: RevealOptions,
-  nominations: N[],
-): N[] => {
-  let scores = nominations.map(n => (category.revealed ? n._count.votes : 0));
-  if (category.winnerOnly) {
-    const top = Math.max(0, ...scores);
-    scores = scores.map(score => (score === top ? score : 0));
-  }
-  if (category.hideVoteCounts) {
-    const distinct = [...new Set(scores.filter(score => score > 0))].sort(
-      (a, b) => a - b,
-    );
-    scores = scores.map(score => (score > 0 ? distinct.indexOf(score) + 1 : 0));
-  }
-  return nominations.map((nomination, i) => ({
-    ...nomination,
-    _count: { ...nomination._count, votes: scores[i]! },
-  }));
+export const visibleScores = (
+  shown: RevealOptions | "all",
+  scores: number[],
+): VisibleScore[] => {
+  const places = placesOf(scores);
+  return scores.map((score, i) => {
+    const place = places[i] ?? null;
+    if (shown === "all") return { score, place };
+    if (!shown.revealed || (shown.winnerOnly && place !== 1)) {
+      return { score: null, place: null };
+    }
+    return { score: shown.hideVoteCounts ? null : score, place };
+  });
 };

@@ -1,29 +1,10 @@
 import { type Metadata } from "next";
 
-import { AddCategory } from "~/app/components/add-category-form";
-import { AddNomination } from "~/app/components/add-nomination-form";
-import {
-  DeleteCategoryButton,
-  ResetCategoryVotesButton,
-} from "~/app/components/category-actions";
-import {
-  CategoryEditor,
-  EditCategoryButton,
-} from "~/app/components/category-editor";
-import {
-  CategoryStageBadge,
-  CategoryTypeBadge,
-} from "~/app/components/category-fields";
-import { MoveCategoryButtons } from "~/app/components/move-category-buttons";
-import { NominationItem } from "~/app/components/nomination-item";
+import { ManageShow } from "~/app/components/manage-show";
 import { PasswordPage } from "~/app/components/password-verification";
-import { DangerZone, RunShowCard } from "~/app/components/show-controls";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { showsPictures } from "~/lib/images";
-import { getScoreLabel } from "~/lib/scoring";
-import { listFormat } from "~/lib/utils";
+import { ShowCodeProvider } from "~/lib/hooks/useShowChange";
 import { hasManageAccess } from "~/server/auth/manage";
-import { showPageCode } from "~/server/shows";
+import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -45,7 +26,7 @@ export default async function ManagePage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const code = await showPageCode("manage", (await params).code);
+  const { code } = await showPage("manage", (await params).code);
 
   const session = await api.award.getSession({
     code,
@@ -55,150 +36,9 @@ export default async function ManagePage({
     return <PasswordPage code={code} />;
   }
 
-  // The categories an aggregate can add up
-  const sourceOptions = session.categories
-    .filter(c => c.type !== "AGGREGATE")
-    .map(({ id, name }) => ({ id, name }));
-
   return (
-    <main className="bg-background text-foreground min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <header className="mb-6 px-1">
-          <h1 className="text-foreground text-3xl font-bold sm:text-4xl">
-            {session.name}
-          </h1>
-          <p className="text-muted-foreground mt-1">Manage your award show</p>
-        </header>
-
-        <RunShowCard code={code} />
-
-        <div className="space-y-8">
-          {/* Categories in running order, then adding one at the end */}
-          <>
-            <section aria-labelledby="categories" className="space-y-4">
-              <h2
-                id="categories"
-                className="text-foreground text-2xl font-semibold"
-              >
-                Categories
-              </h2>
-              {session.categories.length === 0 && (
-                <p className="text-muted-foreground text-sm">
-                  Each category is one award. Add the first one.
-                </p>
-              )}
-              {session.categories.map((category, index) => (
-                <Card
-                  key={category.id}
-                  role="region"
-                  aria-label={category.name}
-                  className="border-border"
-                >
-                  <CardHeader className="border-border border-b p-4 sm:p-6">
-                    <CategoryEditor
-                      category={{
-                        id: category.id,
-                        name: category.name,
-                        description: category.description,
-                        type: category.type,
-                        rankingTop: category.rankingTop,
-                        sourceCategoryIds: category.sourceCategories.map(
-                          s => s.id,
-                        ),
-                        // Hosts get every score, and any vote gives a nomination one
-                        hasVotes: category.nominations.some(
-                          n => n._count.votes > 0,
-                        ),
-                      }}
-                      sourceOptions={sourceOptions}
-                    >
-                      {/* Setting it up on the left, running it on the right (or below, on a phone) */}
-                      <CardTitle className="flex items-center gap-2">
-                        <MoveCategoryButtons
-                          categoryId={category.id}
-                          categoryName={category.name}
-                          index={index}
-                          count={session.categories.length}
-                        />
-                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                          <span className="text-xl">{category.name}</span>
-                          <CategoryTypeBadge
-                            type={category.type}
-                            rankingTop={category.rankingTop}
-                          />
-                          {/* Where it is in the show, once it has started */}
-                          <CategoryStageBadge category={category} />
-                        </div>
-                        <div className="flex shrink-0 gap-1">
-                          {/* An aggregate takes no votes of its own */}
-                          {category.type !== "AGGREGATE" && (
-                            <ResetCategoryVotesButton
-                              categoryId={category.id}
-                            />
-                          )}
-                          <EditCategoryButton />
-                          <DeleteCategoryButton categoryId={category.id} />
-                        </div>
-                      </CardTitle>
-                      {category.description && (
-                        <p className="text-muted-foreground text-sm">
-                          {category.description}
-                        </p>
-                      )}
-                      {category.type === "AGGREGATE" && (
-                        <p className="text-muted-foreground text-sm">
-                          Adds up{" "}
-                          {listFormat.format(
-                            category.sourceCategories.map(s => s.name),
-                          )}
-                          .
-                        </p>
-                      )}
-                    </CategoryEditor>
-                  </CardHeader>
-                  <CardContent className="p-0 pb-2">
-                    {category.nominations.length > 0 ? (
-                      <ul className="divide-border divide-y">
-                        {category.nominations.map(nomination => (
-                          <NominationItem
-                            key={nomination.id}
-                            nomination={nomination}
-                            categoryType={category.type}
-                            isImage={showsPictures(category)}
-                            score={`${nomination._count.votes} ${getScoreLabel(category, nomination._count.votes)}`}
-                          />
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground px-4 py-3 text-sm">
-                        {category.type === "AGGREGATE"
-                          ? "Its nominations appear here as they're added to the categories it adds up."
-                          : "No nominations yet."}
-                      </p>
-                    )}
-                    {/* An aggregate's nominations are copies of its sources' */}
-                    {category.type !== "AGGREGATE" && (
-                      <div className="px-3 pt-1">
-                        <AddNomination
-                          categoryId={category.id}
-                          categoryType={category.type}
-                          isEmpty={category.nominations.length === 0}
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-              <AddCategory
-                sessionId={session.id}
-                sourceOptions={sourceOptions}
-              />
-            </section>
-          </>
-
-          <DangerZone sessionId={session.id} />
-        </div>
-      </div>
-    </main>
+    <ShowCodeProvider value={code}>
+      <ManageShow code={code} initialSession={session} />
+    </ShowCodeProvider>
   );
 }

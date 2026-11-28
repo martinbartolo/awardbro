@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   estimateVoters,
   getScoreLabel,
-  publicScores,
   type RevealOptions,
   scoreNomination,
+  visibleScores,
 } from "./scoring";
 
 const normal = { type: "NORMAL", rankingTop: null } as const;
@@ -14,12 +14,21 @@ const topThree = { type: "RANKING", rankingTop: 3 } as const;
 const topFive = { type: "RANKING", rankingTop: 5 } as const;
 const aggregate = { type: "AGGREGATE", rankingTop: null } as const;
 
-/** A nomination with one vote per rank given (null for a vote without a rank) */
-const voted = (name: string, ...ranks: (number | null)[]) => ({
-  name,
-  _count: { votes: ranks.length },
-  votes: ranks.map(rank => ({ rank })),
-});
+/**
+ * A nomination with one vote per rank given (null for a vote without a rank), with its ranked
+ * votes added up as the database does
+ */
+const voted = (name: string, ...ranks: (number | null)[]) => {
+  const ranked = ranks.filter(rank => rank !== null);
+  return {
+    name,
+    _count: { votes: ranks.length },
+    ranked: {
+      count: ranked.length,
+      rankSum: ranked.reduce((sum, rank) => sum + rank, 0),
+    },
+  };
+};
 const dune = (...ranks: (number | null)[]) => voted("Dune", ...ranks);
 
 describe("scoreNomination in normal and image categories", () => {
@@ -31,12 +40,12 @@ describe("scoreNomination in normal and image categories", () => {
     expect(scoreNomination(category, dune())).toBe(0);
   });
 
-  it("uses the vote count, without needing the votes", () => {
+  it("uses the vote count, without needing the ranked votes", () => {
     expect(
       scoreNomination(normal, {
         name: "Dune",
         _count: { votes: 4 },
-        votes: [],
+        ranked: { count: 0, rankSum: 0 },
       }),
     ).toBe(4);
   });
@@ -62,6 +71,27 @@ describe("scoreNomination in ranking categories", () => {
     // Saving a vote rejects these, so they only matter for old data
     expect(scoreNomination(topThree, dune(4))).toBe(0);
     expect(scoreNomination(topThree, dune(5))).toBe(-1);
+  });
+
+  it("gives the same points as adding up each vote's, for any ranks", () => {
+    // Seeded, so a failure can be run again with the same input
+    let seed = 58;
+    const random = () =>
+      ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    for (let round = 0; round < 200; round++) {
+      const rankingTop = 2 + Math.floor(random() * 9);
+      const ranks = Array.from({ length: Math.floor(random() * 30) }, () =>
+        random() < 0.2 ? null : 1 + Math.floor(random() * rankingTop),
+      );
+      const eachVote = ranks.reduce<number>(
+        (sum, rank) => (rank ? sum + rankingTop - rank + 1 : sum),
+        0,
+      );
+      expect(
+        scoreNomination({ type: "RANKING", rankingTop }, dune(...ranks)),
+        JSON.stringify({ rankingTop, ranks }),
+      ).toBe(eachVote);
+    }
   });
 
   it("counts 1 point per vote when rankingTop is missing", () => {
@@ -102,12 +132,9 @@ describe("scoreNomination in aggregate categories", () => {
 });
 
 describe("estimateVoters", () => {
-  const scores = (...votes: number[]) =>
-    votes.map(v => ({ _count: { votes: v } }));
-
   it("adds up the votes in other categories", () => {
-    expect(estimateVoters(normal, scores(3, 0, 2))).toBe(5);
-    expect(estimateVoters(aggregate, scores(4, 1))).toBe(5);
+    expect(estimateVoters(normal, [3, 0, 2])).toBe(5);
+    expect(estimateVoters(aggregate, [4, 1])).toBe(5);
   });
 
   it.each([
@@ -119,13 +146,13 @@ describe("estimateVoters", () => {
     "divides the points by the %i + … + 1 = %i a ballot hands out",
     (rankingTop, perBallot) => {
       const category = { type: "RANKING", rankingTop } as const;
-      expect(estimateVoters(category, scores(perBallot * 4))).toBe(4);
+      expect(estimateVoters(category, [perBallot * 4])).toBe(4);
     },
   );
 
   it("rounds to the nearest whole voter", () => {
     // 2 full top-3 ballots (12 points) plus 1 point
-    expect(estimateVoters(topThree, scores(10, 3))).toBe(2);
+    expect(estimateVoters(topThree, [10, 3])).toBe(2);
   });
 
   it("counts nothing for a category without nominations", () => {
@@ -171,56 +198,78 @@ describe("getScoreLabel", () => {
   });
 });
 
-describe("publicScores", () => {
-  const scored = (...scores: number[]) =>
-    scores.map((votes, i) => ({ id: `n${i}`, _count: { votes } }));
-  const shown = (options: Partial<RevealOptions>, ...scores: number[]) =>
-    publicScores(
-      {
-        revealed: true,
-        winnerOnly: false,
-        hideVoteCounts: false,
-        ...options,
-      },
-      scored(...scores),
-    ).map(n => n._count.votes);
+describe("visibleScores", () => {
+  const reveal = (options: Partial<RevealOptions> = {}): RevealOptions => ({
+    revealed: true,
+    winnerOnly: false,
+    hideVoteCounts: false,
+    ...options,
+  });
+  const shown = (
+    options: Partial<RevealOptions> | "all",
+    ...scores: number[]
+  ) =>
+    visibleScores(options === "all" ? "all" : reveal(options), scores).map(
+      ({ score, place }) => [score, place],
+    );
+
+  it("places the highest score first, with ties sharing a place and no place for 0", () => {
+    expect(shown({}, 12, 3, 12, 0, 7)).toEqual([
+      [12, 1],
+      [3, 3],
+      [12, 1],
+      [0, null],
+      [7, 2],
+    ]);
+  });
+
+  it("shows hosts every score, even before the reveal or with the options", () => {
+    expect(shown("all", 5, 3, 0)).toEqual([
+      [5, 1],
+      [3, 2],
+      [0, null],
+    ]);
+  });
 
   it("shows nothing before the reveal", () => {
-    expect(shown({ revealed: false }, 5, 3, 0)).toEqual([0, 0, 0]);
+    expect(shown({ revealed: false }, 5, 3, 0)).toEqual([
+      [null, null],
+      [null, null],
+      [null, null],
+    ]);
   });
 
-  it("shows every score after the reveal", () => {
-    expect(shown({}, 5, 3, 0)).toEqual([5, 3, 0]);
+  it("shows only the winners with winnerOnly, ties included", () => {
+    expect(shown({ winnerOnly: true }, 5, 3, 5, 0)).toEqual([
+      [5, 1],
+      [null, null],
+      [5, 1],
+      [null, null],
+    ]);
   });
 
-  it("shows only the winners' scores with winnerOnly, ties included", () => {
-    expect(shown({ winnerOnly: true }, 5, 3, 5, 0)).toEqual([5, 0, 5, 0]);
-  });
-
-  it("shows only the order with hideVoteCounts, keeping ties and no votes", () => {
-    expect(shown({ hideVoteCounts: true }, 12, 3, 12, 0, 7)).toEqual([
-      3, 1, 3, 0, 2,
+  it("shows only the places with hideVoteCounts", () => {
+    expect(shown({ hideVoteCounts: true }, 12, 3, 0)).toEqual([
+      [null, 1],
+      [null, 2],
+      [null, null],
     ]);
   });
 
   it("combines winnerOnly and hideVoteCounts", () => {
     expect(
-      shown({ winnerOnly: true, hideVoteCounts: true }, 12, 3, 12, 7),
-    ).toEqual([1, 0, 1, 0]);
-  });
-
-  it("shows no winner when nobody voted", () => {
-    expect(shown({ winnerOnly: true, hideVoteCounts: true }, 0, 0)).toEqual([
-      0, 0,
+      shown({ winnerOnly: true, hideVoteCounts: true }, 12, 3, 12),
+    ).toEqual([
+      [null, 1],
+      [null, null],
+      [null, 1],
     ]);
   });
 
-  it("keeps the other fields", () => {
-    expect(
-      publicScores(
-        { revealed: false, winnerOnly: false, hideVoteCounts: false },
-        [{ id: "a", name: "Dune", _count: { votes: 4 } }],
-      ),
-    ).toEqual([{ id: "a", name: "Dune", _count: { votes: 0 } }]);
+  it("has no winner when nobody voted", () => {
+    expect(shown({ winnerOnly: true }, 0, 0)).toEqual([
+      [null, null],
+      [null, null],
+    ]);
   });
 });

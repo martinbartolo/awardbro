@@ -16,49 +16,9 @@ import {
   type Show,
   showState,
   votedShow,
+  writeRoutes,
 } from "~/test/integration/show";
-import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
-
-/** Every route that changes a show, called on the show's normal category or the show itself */
-const writeRoutes = {
-  addCategory: (api, s) =>
-    api.addCategory({
-      sessionId: s.show.id,
-      name: "Best Score",
-      type: "NORMAL",
-      sourceCategories: [],
-    }),
-  addNomination: (api, s) =>
-    api.addNomination({ categoryId: s.normal.id, name: "Poor Things" }),
-  // The aggregate is always last, so moving it up changes the show
-  moveCategory: (api, s) =>
-    api.moveCategory({ id: s.aggregate.id, direction: "up" }),
-  updateCategory: (api, s) =>
-    api.updateCategory({
-      id: s.normal.id,
-      name: "Best Picture",
-      description: "",
-    }),
-  updateNomination: (api, s) =>
-    api.updateNomination({
-      id: s.film("normal", "Dune").id,
-      name: "Dune: Part Two",
-    }),
-  setCategoryStage: (api, s) =>
-    api.setCategoryStage({ id: s.normal.id, stage: "open" }),
-  setRevealOptions: (api, s) =>
-    api.setRevealOptions({ id: s.normal.id, winnerOnly: true }),
-  resetCategoryVotes: (api, s) =>
-    api.resetCategoryVotes({ categoryId: s.normal.id }),
-  resetAllVotes: (api, s) => api.resetAllVotes({ sessionId: s.show.id }),
-  deleteNomination: (api, s) =>
-    api.deleteNomination({ id: s.film("normal", "Dune").id }),
-  deleteCategory: (api, s) => api.deleteCategory({ id: s.normal.id }),
-  deleteSession: (api, s) => api.deleteSession({ id: s.show.id }),
-} satisfies Record<
-  string,
-  (api: Visitor["api"], show: Show) => Promise<unknown>
->;
+import { expectError, visitor } from "~/test/integration/visitor";
 
 /** Visitors who must not manage someone else's show */
 const outsiders = {
@@ -76,6 +36,28 @@ it("covers every route that changes a show", () => {
   expect(procedureNames("mutation")).toEqual(
     awardPaths([...open, ...Object.keys(writeRoutes)]),
   );
+});
+
+describe("getSession's canManage", () => {
+  it("is true for the host and false for anyone else", async () => {
+    const host = visitor();
+    const { show } = await createShow(host, { password: "secret1" });
+
+    expect((await host.api.getSession({ code: show.code })).canManage).toBe(
+      true,
+    );
+    expect(
+      (await visitor().api.getSession({ code: show.code })).canManage,
+    ).toBe(false);
+  });
+
+  it("is true for anyone on a show without a password", async () => {
+    const { show } = await createShow(visitor());
+
+    expect(
+      (await visitor().api.getSession({ code: show.code })).canManage,
+    ).toBe(true);
+  });
 });
 
 describe("a show with a password", () => {

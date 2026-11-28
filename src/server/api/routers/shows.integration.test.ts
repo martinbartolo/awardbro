@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findShowCode } from "~/server/shows";
+import { findShowByUrl } from "~/server/shows";
 import { testDb } from "~/test/integration/db";
 import {
   awardPaths,
@@ -17,6 +17,7 @@ import { expectError, type Visitor, visitor } from "~/test/integration/visitor";
 /** Every query, called on a show the way its pages do */
 const queries = {
   getSession: (api, s) => api.getSession({ code: s.show.code }),
+  getActiveCategory: (api, s) => api.getActiveCategory({ code: s.show.code }),
   getCategory: (api, s) => api.getCategory({ id: s.ranking.id }),
   getMyVotes: (api, s) => api.getMyVotes({ categoryId: s.ranking.id }),
   getPublicSessions: api => api.getPublicSessions(),
@@ -102,16 +103,21 @@ describe("a room code", () => {
         select: { code: true },
       });
 
-    it("finds the show by its code, also typed in lowercase", async () => {
+    it("finds the show, and its name, by its code, also typed in lowercase", async () => {
       const { code } = await create();
-      expect(await findShowCode(testDb, code)).toBe(code);
-      expect(await findShowCode(testDb, code.toLowerCase())).toBe(code);
-      expect(await findShowCode(testDb, "ZZZZZ")).toBeNull();
+      expect(await findShowByUrl(testDb, code)).toEqual({
+        code,
+        name: "Awards",
+      });
+      expect((await findShowByUrl(testDb, code.toLowerCase()))?.code).toBe(
+        code,
+      );
+      expect(await findShowByUrl(testDb, "ZZZZZ")).toBeNull();
     });
 
     it("finds an older show by the slug in its old links", async () => {
       const { code } = await oldShow("movie-awards");
-      expect(await findShowCode(testDb, "movie-awards")).toBe(code);
+      expect((await findShowByUrl(testDb, "movie-awards"))?.code).toBe(code);
     });
 
     it("keeps an old link on its own show when its slug reads like another show's code", async () => {
@@ -124,10 +130,10 @@ describe("a room code", () => {
       });
       const lookalike = await oldShow(code.toLowerCase());
 
-      expect(await findShowCode(testDb, code.toLowerCase())).toBe(
+      expect((await findShowByUrl(testDb, code.toLowerCase()))?.code).toBe(
         lookalike.code,
       );
-      expect(await findShowCode(testDb, code)).toBe(code);
+      expect((await findShowByUrl(testDb, code))?.code).toBe(code);
     });
   });
 });
@@ -263,9 +269,7 @@ describe("a nomination with the same name as another in its category", () => {
 
     expect(await copies(show.normal.id, "Dune")).toBe(2);
     expect(
-      aggregate.nominations
-        .filter(n => n.name === "Dune")
-        .map(n => n._count.votes),
+      aggregate.nominations.filter(n => n.name === "Dune").map(n => n.score),
     ).toEqual([2]);
   });
 });

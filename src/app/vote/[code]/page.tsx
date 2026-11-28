@@ -1,7 +1,7 @@
 import { type Metadata } from "next";
 
 import { LiveVotingSession } from "~/app/components/live-voting-session";
-import { showPageCode } from "~/server/shows";
+import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 import ogImage from "./opengraph-image.png";
@@ -11,13 +11,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ code: string }>;
 }): Promise<Metadata> {
-  const code = await showPageCode("vote", (await params).code);
-  const session = await api.award.getSession({ code });
+  const { code, name } = await showPage("vote", (await params).code);
 
   return {
     metadataBase: new URL("https://awardbro.com"),
-    title: `Vote Now: ${session.name}`,
-    description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
+    title: `Vote Now: ${name}`,
+    description: `Cast your vote for ${name}! Join the live voting session and help choose the winners.`,
     robots: {
       index: false,
       follow: false,
@@ -28,8 +27,8 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: `Vote Now: ${session.name}`,
-      description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
+      title: `Vote Now: ${name}`,
+      description: `Cast your vote for ${name}! Join the live voting session and help choose the winners.`,
       type: "website",
       url: `/vote/${code}`,
       images: [
@@ -42,8 +41,8 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `Vote Now: ${session.name}`,
-      description: `Cast your vote for ${session.name}! Join the live voting session and help choose the winners.`,
+      title: `Vote Now: ${name}`,
+      description: `Cast your vote for ${name}! Join the live voting session and help choose the winners.`,
       images: [
         {
           url: ogImage.src,
@@ -60,14 +59,11 @@ export default async function VotePage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const code = await showPageCode("vote", (await params).code);
-  const session = await api.award.getSession({
-    code,
-    activeOnly: true,
-  });
+  const { code } = await showPage("vote", (await params).code);
+  const show = await api.award.getActiveCategory({ code });
   // The voter's own votes in the active category, so a voter who has voted
   // sees it straight away instead of an empty form
-  const activeCategory = session.categories[0];
+  const activeCategory = show.category;
   const initialMyVotes =
     activeCategory && activeCategory.type !== "AGGREGATE"
       ? {
@@ -79,7 +75,7 @@ export default async function VotePage({
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center">
       <LiveVotingSession
-        initialSession={session}
+        initialShow={show}
         initialMyVotes={initialMyVotes}
         code={code}
       />

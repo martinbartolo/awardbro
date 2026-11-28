@@ -2,8 +2,9 @@ import { type Metadata } from "next";
 
 import { PasswordPage } from "~/app/components/password-verification";
 import { RunShow } from "~/app/components/run-show";
+import { ShowCodeProvider } from "~/lib/hooks/useShowChange";
 import { hasManageAccess } from "~/server/auth/manage";
-import { showPageCode } from "~/server/shows";
+import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export default async function RunShowPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const code = await showPageCode("run", (await params).code);
+  const { code } = await showPage("run", (await params).code);
 
   if (!(await hasManageAccess(code))) {
     return <PasswordPage code={code} />;
@@ -29,7 +30,9 @@ export default async function RunShowPage({
   const session = await api.award.getSession({ code });
   return (
     <main className="bg-background text-foreground min-h-screen">
-      <RunShow code={code} initialSession={session} />
+      <ShowCodeProvider value={code}>
+        <RunShow code={code} initialSession={session} />
+      </ShowCodeProvider>
     </main>
   );
 }

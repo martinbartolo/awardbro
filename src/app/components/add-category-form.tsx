@@ -3,23 +3,22 @@
 import { useId, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { type Control, useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
 
 import {
   CATEGORY_TYPES,
   CategoryFields,
   type CategoryFieldValues,
 } from "~/app/components/category-fields";
-import {
-  InlineEditForm,
-  useCloseAfterRefresh,
-} from "~/app/components/inline-edit-form";
+import { InlineEditForm } from "~/app/components/inline-edit-form";
 import { Button } from "~/components/ui/button";
 import { FormField } from "~/components/ui/form";
 import { type CategoryType } from "~/generated/prisma/enums";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowCode } from "~/lib/hooks/useShowChange";
 import { categoryFormSchema, type CategoryFormValues } from "~/lib/schemas";
 import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
@@ -93,14 +92,26 @@ function AddCategoryForm({
     },
   });
   const type = useWatch({ control: form.control, name: "type" });
-  // The form closes once the refreshed page shows the new category
-  const { close, isRefreshing } = useCloseAfterRefresh(onDone);
-
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const code = useShowCode();
   const onManageError = useManageErrorHandler();
+  // Not shown before the server answers: an aggregate's nominations are copied on the server. The
+  // form closes once the show has the new category, so it never looks like it's gone.
   const addCategory = useMutation(
     trpc.award.addCategory.mutationOptions({
-      onSuccess: close,
+      onSuccess: async () => {
+        try {
+          await queryClient.refetchQueries(
+            trpc.award.getSession.queryFilter({ code }),
+            { throwOnError: true },
+          );
+        } catch {
+          // Saved, but not loaded: adding it again would make a second one
+          toast.error("Category added. Reload the page if it doesn't appear.");
+        }
+        onDone();
+      },
       onError: onManageError(),
     }),
   );
@@ -119,7 +130,7 @@ function AddCategoryForm({
       form={form}
       onSubmit={onSubmit}
       onCancel={onDone}
-      isSaving={addCategory.isPending || isRefreshing}
+      isSaving={addCategory.isPending}
       submitLabel="Add category"
       savingLabel="Adding..."
     >

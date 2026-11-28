@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { InlineEditForm } from "~/app/components/inline-edit-form";
@@ -15,11 +14,12 @@ import {
 } from "~/app/components/nomination-fields";
 import { Button } from "~/components/ui/button";
 import { type CategoryType } from "~/generated/prisma/enums";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import {
   nominationFieldsSchema,
   type NominationFieldValues,
 } from "~/lib/schemas";
+import { ADDING, updateCategory } from "~/lib/show-changes";
 import { useTRPC } from "~/trpc/react";
 
 type AddNominationProps = {
@@ -70,19 +70,40 @@ function AddNominationForm({
   takeFocus,
   onDone,
 }: AddNominationProps & { takeFocus: boolean; onDone: () => void }) {
-  const router = useRouter();
-  // Saving lasts until the refreshed page shows the new nomination, so a quick host can't stack
-  // up refreshes
-  const [isRefreshing, startRefresh] = useTransition();
   const form = useForm<NominationFieldValues>({
     resolver: zodResolver(nominationFieldsSchema),
     defaultValues: { name: "", description: "" },
   });
 
   const trpc = useTRPC();
-  const onManageError = useManageErrorHandler();
+  const showChange = useShowChange();
+  // The nomination shows straight away, marked as being added until the server has saved it (and
+  // copied it to the category's aggregates). If the server refuses it, it goes, and the form keeps
+  // what was typed.
   const addNomination = useMutation(
     trpc.award.addNomination.mutationOptions({
+      ...showChange(
+        (
+          categories,
+          added: { categoryId: string; name: string; description?: string },
+        ) =>
+          updateCategory(categories, added.categoryId, c => ({
+            ...c,
+            nominations: [
+              ...c.nominations,
+              {
+                id: `${ADDING}${Date.now()}`,
+                categoryId: c.id,
+                name: added.name,
+                description: added.description ?? null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                score: 0,
+                place: null,
+              },
+            ],
+          })),
+      ),
       onSuccess: (_, added) => {
         // Unless the host has started typing the next one meanwhile (what was sent is trimmed)
         const { name, description } = form.getValues();
@@ -93,9 +114,7 @@ function AddNominationForm({
           form.reset();
         }
         form.setFocus("name");
-        startRefresh(() => router.refresh());
       },
-      onError: onManageError(),
     }),
   );
 
@@ -112,7 +131,7 @@ function AddNominationForm({
         form={form}
         onSubmit={onSubmit}
         onCancel={onDone}
-        isSaving={addNomination.isPending || isRefreshing}
+        isSaving={addNomination.isPending}
         submitLabel="Add nomination"
         savingLabel="Adding..."
         cancelLabel="Close"

@@ -5,20 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Ranking = { nominationId: string; rank: number | null };
-
-/**
- * Whether two rankings place the same nominations at the same ranks, in any order
- */
-export function isSameRanking(a: Ranking[], b: Ranking[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every(x =>
-      b.some(y => y.nominationId === x.nominationId && y.rank === x.rank),
-    )
-  );
-}
-
 /**
  * Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
  */

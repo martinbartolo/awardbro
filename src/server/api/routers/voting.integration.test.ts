@@ -429,6 +429,46 @@ describe("scores", () => {
     });
   });
 
+  it("add up each ranked vote's points, as the votes in the database give them", async () => {
+    await open(host, show.ranking.id);
+    const rankings = [
+      ["Dune", "Barbie"],
+      ["Barbie", "Dune"],
+      ["Barbie", "Oppenheimer"],
+      ["Oppenheimer", "Dune"],
+      ["Dune", "Oppenheimer"],
+    ];
+    for (const films of rankings) {
+      await visitor().api.submitRanking({
+        categoryId: show.ranking.id,
+        rankings: films.map((film, i) => ({
+          nominationId: show.film("ranking", film).id,
+          rank: i + 1,
+        })),
+      });
+    }
+    // Every vote's points, from the votes themselves (top 2: 1st = 2 points, 2nd = 1)
+    const votes = await testDb.vote.findMany({
+      where: { nomination: { categoryId: show.ranking.id } },
+      include: { nomination: { select: { name: true } } },
+    });
+    const eachVote: Record<string, number> = {
+      Dune: 0,
+      Barbie: 0,
+      Oppenheimer: 0,
+    };
+    for (const vote of votes)
+      eachVote[vote.nomination.name]! += 2 - vote.rank! + 1;
+
+    const { categories } = await host.api.getSession({ code: show.show.code });
+    const scoresOf = (id: string) =>
+      scoresByName(categories.find(c => c.id === id)!.nominations);
+    expect(eachVote).toEqual({ Dune: 6, Barbie: 5, Oppenheimer: 4 });
+    expect(scoresOf(show.ranking.id)).toEqual(eachVote);
+    // The aggregate adds them to the normal category's (no votes there)
+    expect(scoresOf(show.aggregate.id)).toEqual(eachVote);
+  });
+
   it("are the same for an aggregate loaded on its own", async () => {
     await open(host, show.normal.id);
     await voteFor("Dune");
@@ -437,11 +477,13 @@ describe("scores", () => {
     const expected = { Dune: 2, Barbie: 2, Oppenheimer: 0 };
 
     const category = await visitor().api.getCategory({ id: show.aggregate.id });
-    // On the big screen (an aggregate takes no votes, so it's never open)
-    await setStage(host, show.aggregate.id, "closed");
+    // On the big screen, which shows only revealed scores (and needs every source revealed)
+    for (const id of [show.normal.id, show.ranking.id, show.aggregate.id]) {
+      await reveal(host, id);
+    }
     const { categories } = await visitor().api.getSession({
       code: show.show.code,
-      activeOnly: true,
+      bigScreen: true,
     });
 
     expect(scoresByName(category.nominations)).toEqual(expected);
@@ -478,18 +520,73 @@ describe("scores", () => {
     await setStage(host, show.aggregate.id, "closed");
 
     // The show with its categories, and its password to check access (in parallel);
-    // aggregates are scored from sources loaded with the show
+    // aggregates are scored from sources loaded with the show, and the ranking category's
+    // ranked votes are added up in one more query
     expect(
       await countOperations(api => api.getSession({ code: show.show.code })),
-    ).toBe(2);
+    ).toBe(3);
     // Only the active aggregate is loaded, so its sources' nominations take one more
     expect(
       await countOperations(api =>
-        api.getSession({ code: show.show.code, activeOnly: true }),
+        api.getSession({ code: show.show.code, bigScreen: true }),
       ),
-    ).toBe(3);
+    ).toBe(4);
     expect(
       await countOperations(api => api.getCategory({ id: show.aggregate.id })),
-    ).toBe(2);
+    ).toBe(3);
+    // A category without rankings needs no more than itself
+    expect(
+      await countOperations(api => api.getCategory({ id: show.normal.id })),
+    ).toBe(1);
+    // The vote page's: one query, without scoring the aggregate
+    expect(
+      await countOperations(api =>
+        api.getActiveCategory({ code: show.show.code }),
+      ),
+    ).toBe(1);
+  });
+});
+
+describe("the vote page's show", () => {
+  const seen = () => voter.api.getActiveCategory({ code: show.show.code });
+
+  it("has the show's name and no category while none is on the big screen", async () => {
+    expect(await seen()).toEqual({ name: "Movie Awards", category: null });
+  });
+
+  it("has the category on the big screen and its nominations, without scores even once revealed", async () => {
+    await open(host, show.normal.id);
+    await voteFor("Dune");
+    await reveal(host, show.normal.id);
+
+    const { category } = await seen();
+    expect(category).toMatchObject({
+      id: show.normal.id,
+      name: "Best Film",
+      type: "NORMAL",
+      isActive: true,
+      votingClosed: true,
+      revealed: true,
+      aggregateOf: [{ id: show.aggregate.id, name: "Overall" }],
+    });
+    // Only these fields: no score, place or votes
+    expect(
+      [...(category?.nominations ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    ).toEqual(
+      ["Barbie", "Dune", "Oppenheimer"].map(name => ({
+        id: show.film("normal", name).id,
+        name,
+        description: null,
+      })),
+    );
+  });
+
+  it("is not found for a code no show has", async () => {
+    await expectError(
+      voter.api.getActiveCategory({ code: "ZZZZ" }),
+      "NOT_FOUND",
+    );
   });
 });

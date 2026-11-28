@@ -9,7 +9,9 @@ import { toast } from "sonner";
 import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import { showPaths } from "~/lib/join";
+import { withoutVotes } from "~/lib/show-changes";
 import { useTRPC } from "~/trpc/react";
 
 /** What the host needs to get the show going: the room code voters enter, and the big screen */
@@ -63,13 +65,17 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
     }),
   );
 
+  // Every score goes to 0 straight away
+  const showChange = useShowChange();
   const resetAllVotes = useMutation(
     trpc.award.resetAllVotes.mutationOptions({
+      ...showChange(
+        categories => categories.map(withoutVotes),
+        "Failed to reset votes",
+      ),
       onSuccess: () => {
-        router.refresh();
         toast.success("All votes have been reset");
       },
-      onError: onManageError("Failed to reset votes"),
     }),
   );
 

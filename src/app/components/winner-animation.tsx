@@ -11,15 +11,11 @@ import { getScoreLabel, type LabelledCategory } from "~/lib/scoring";
 import { NominationDescription } from "./nomination-description";
 
 type Nomination = {
-  _count: {
-    votes: number;
-  };
+  /** Null when the show hides it */
+  score: number | null;
   description: string | null;
   name: string;
   id: string;
-  categoryId: string;
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 export function WinnerAnimation({
@@ -28,7 +24,6 @@ export function WinnerAnimation({
   isWinner,
   isTied,
   category,
-  hideVoteCounts = false,
 }: {
   nomination: Nomination;
   index: number;
@@ -36,9 +31,8 @@ export function WinnerAnimation({
   isTied: boolean;
   /** Decides whether the score is labelled votes or points */
   category: LabelledCategory;
-  hideVoteCounts?: boolean;
 }) {
-  const scoreLabel = getScoreLabel(category, nomination._count.votes);
+  const { score } = nomination;
   useEffect(() => {
     let burstInterval: NodeJS.Timeout | undefined;
     let animationFrame: number | undefined;
@@ -258,7 +252,7 @@ export function WinnerAnimation({
             )}
           </div>
           <AnimatePresence mode="wait">
-            {!hideVoteCounts && (
+            {score !== null && (
               <motion.div
                 key="vote-counts"
                 initial={{ scale: 0, opacity: 0 }}
@@ -283,10 +277,10 @@ export function WinnerAnimation({
                     ease: "easeInOut",
                   }}
                 >
-                  {nomination._count.votes}
+                  {score}
                 </motion.span>
                 <span className="text-background font-semibold">
-                  {scoreLabel}
+                  {getScoreLabel(category, score)}
                 </span>
               </motion.div>
             )}

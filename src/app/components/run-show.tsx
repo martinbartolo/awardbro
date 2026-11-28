@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -10,9 +10,12 @@ import { CategoryTypeBadge } from "~/app/components/category-fields";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
-import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
+import { useHostShow } from "~/lib/hooks/useHostShow";
+import { useShowChange } from "~/lib/hooks/useShowChange";
 import { showPaths } from "~/lib/join";
+import { updateCategory } from "~/lib/show-changes";
 import {
+  applyStage,
   type ServerStage,
   STAGE_LABELS,
   stageOf,
@@ -38,14 +41,8 @@ export function RunShow({
   initialSession: Session;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  // Every 5 seconds, like the big screen, for changes made on another device
-  const { data: session } = useQuery(
-    trpc.award.getSession.queryOptions(
-      { code },
-      { initialData: initialSession, refetchInterval: 5000 },
-    ),
-  );
+  // Changes made on another device, and each vote for the live count (useLiveVoters)
+  const session = useHostShow(code, initialSession, { liveCounts: true });
   const { categories } = session;
 
   // The category the host picked from the running order, if any
@@ -56,23 +53,22 @@ export function RunShow({
     categories.find(c => c.isActive) ??
     nextToReveal(categories);
 
-  const onManageError = useManageErrorHandler();
-  const refresh = () =>
-    queryClient.invalidateQueries(trpc.award.getSession.queryFilter({ code }));
+  const showChange = useShowChange();
   const setStage = useMutation(
-    trpc.award.setCategoryStage.mutationOptions({
-      onSuccess: async () => {
-        await refresh();
-        setSelectedId(null);
-      },
-      onError: onManageError(),
-    }),
+    trpc.award.setCategoryStage.mutationOptions(
+      showChange(
+        (categories, { id, stage }: { id: string; stage: ServerStage }) =>
+          applyStage(categories, id, stage),
+      ),
+    ),
   );
   const setOptions = useMutation(
-    trpc.award.setRevealOptions.mutationOptions({
-      onSuccess: refresh,
-      onError: onManageError(),
-    }),
+    trpc.award.setRevealOptions.mutationOptions(
+      showChange(
+        (categories, { id, ...options }: { id: string } & RevealOptions) =>
+          updateCategory(categories, id, c => ({ ...c, ...options })),
+      ),
+    ),
   );
 
   return (
@@ -113,14 +109,21 @@ export function RunShow({
           category={current}
           categories={categories}
           isBusy={setStage.isPending || setOptions.isPending}
-          onStage={stage =>
-            setStage.mutate({
-              id: current.id,
-              stage,
-              // So a step from an out-of-date page is refused, not undone
-              from: stageOf(current),
-            })
-          }
+          onStage={stage => {
+            // On to whatever is on the big screen next (or the next to reveal), or back to the
+            // category the host picked if the step fails
+            const picked = selectedId;
+            setSelectedId(null);
+            setStage.mutate(
+              {
+                id: current.id,
+                stage,
+                // So a step from an out-of-date page is refused, not undone
+                from: stageOf(current),
+              },
+              { onError: () => setSelectedId(picked) },
+            );
+          }}
           onOptions={options =>
             setOptions.mutate({ id: current.id, ...options })
           }
@@ -305,15 +308,15 @@ const nextToReveal = (categories: Category[]) => {
 };
 
 /**
- * How many people have voted in the category: every 2 seconds while voting is open (the show
- * itself is only reloaded every 5), and final once it has closed
+ * How many people have voted in the category: fetched again on each vote while voting is open
+ * (the run view's live events), and final once it has closed
  */
 function useLiveVoters(category: Category, isOpen: boolean) {
   const trpc = useTRPC();
   const { data } = useQuery(
     trpc.award.getCategory.queryOptions(
       { id: category.id },
-      { enabled: isOpen, refetchInterval: 2000 },
+      { enabled: isOpen },
     ),
   );
   return data?.estimatedVoters ?? category.estimatedVoters ?? 0;

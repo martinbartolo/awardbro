@@ -161,3 +161,23 @@ export function stepsFor({
     showOptions: true,
   };
 }
+
+/**
+ * The categories as they'll be once one moves to a stage, as the server does it: the stage's
+ * flags (`STAGE_FLAGS`), and any other category leaves the big screen when this one goes on it.
+ * For showing a step straight away, before the server confirms it.
+ */
+export const applyStage = <C extends StageFlags & { id: string }>(
+  categories: C[],
+  id: string,
+  stage: ServerStage,
+): C[] => {
+  const flags = STAGE_FLAGS[stage];
+  return categories.map(category =>
+    category.id === id
+      ? { ...category, ...flags }
+      : flags.isActive && category.isActive
+        ? { ...category, isActive: false }
+        : category,
+  );
+};

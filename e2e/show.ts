@@ -134,6 +134,8 @@ export async function addNomination(
   }
   await card.getByRole("button", { name: "Add nomination" }).click();
   await expect(card.getByText(name, { exact: true })).toBeVisible();
+  // It shows straight away, as "Adding...", until the server has saved it
+  await expect(card.getByText("Adding...")).toHaveCount(0);
 }
 
 /** The host opens the run view from the manage page */
@@ -145,7 +147,7 @@ export async function runShow(host: Page) {
 }
 
 /** The category the run view is on: its stage and the buttons for its next step */
-const currentCategory = (host: Page, category: string) =>
+export const currentCategory = (host: Page, category: string) =>
   host.getByRole("region", { name: category, exact: true });
 
 /**
@@ -157,10 +159,11 @@ export async function runStep(
   category: string,
   button: string,
   stage: string,
+  options?: { timeout?: number },
 ) {
   const current = currentCategory(host, category);
   await current.getByRole("button", { name: button, exact: true }).click();
-  await expect(current.getByText(stage, { exact: true })).toBeVisible();
+  await expect(current.getByText(stage, { exact: true })).toBeVisible(options);
 }
 
 /** The host moves on from a revealed category to the next one */
@@ -194,9 +197,13 @@ export async function setRevealOptions(
   }
 }
 
-/** A voter waits for the host to present a category */
-export async function waitForCategory(voter: Page, category: string) {
-  await expect(voter.getByText(category, { exact: true })).toBeVisible();
+/** A voter (or the big screen) waits for the host to present a category */
+export async function waitForCategory(
+  page: Page,
+  category: string,
+  options?: { timeout?: number },
+) {
+  await expect(page.getByText(category, { exact: true })).toBeVisible(options);
 }
 
 /** Text as a regular expression that matches it literally */
@@ -208,14 +215,33 @@ const nominationButton = (voter: Page, name: string) =>
     name: new RegExp(`^${literal(name)}(?=$|\\s|\\()`),
   });
 
-/** A voter votes (or changes their vote) in a normal or image category */
-export async function vote(voter: Page, nomination: string) {
+/**
+ * A voter votes (or changes their vote) in a normal or image category, and waits until the
+ * server has saved it. With `waitForServer: false`, only until the page shows it.
+ */
+export async function vote(
+  voter: Page,
+  nomination: string,
+  {
+    waitForServer = true,
+    ...options
+  }: { timeout?: number; waitForServer?: boolean } = {},
+) {
   await nominationButton(voter, nomination).click();
+  // The page shows the vote as cast before the server answers, so wait for the call itself:
+  // a host action straight after it could otherwise reach the server first (tRPC batches
+  // calls, so it's found by name in the address)
+  const saved = waitForServer
+    ? voter.waitForResponse(
+        response => response.url().includes("award.vote") && response.ok(),
+      )
+    : undefined;
   await voter.getByRole("button", { name: /^(Cast|Update) Vote$/ }).click();
-  // "Your Vote" marks the vote once it's saved
   await expect(voter.getByText("(Submitted)").locator("..")).toContainText(
     nomination,
+    options,
   );
+  await saved;
 }
 
 /** A voter ranks nominations, best first, replacing any ranking they had */
@@ -247,6 +273,7 @@ export async function expectResults(
   screen: Page,
   category: string,
   results: [name: string, score: string | null][],
+  options?: { timeout?: number },
 ) {
   const list = screen.getByRole("list", { name: `${category} results` });
   await expect(list.getByRole("listitem")).toHaveText(
@@ -255,5 +282,6 @@ export async function expectResults(
       const shown = score ? `\\s*${score.replace(" ", "\\s*")}` : "";
       return new RegExp(`^${winner}${literal(name)}${shown}$`);
     }),
+    options,
   );
 }

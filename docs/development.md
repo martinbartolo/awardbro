@@ -28,6 +28,7 @@ Local development uses the Neon `dev` branch, never production. Don't keep produ
 | `pnpm format:write`                 | Prettier                                                                                                                       |
 | `pnpm db:migrate:dev --name <name>` | Create a migration (run against a throwaway branch, see below)                                                                 |
 | `pnpm db:studio`                    | Browse the `dev` database                                                                                                      |
+| `pnpm db:test:start` / `stop`       | Start or stop the local test database for the integration and end-to-end tests (see "Integration tests")                      |
 
 ## Workflow
 
@@ -46,17 +47,23 @@ Only mention an issue ID in a PR that actually works on that issue: Linear links
 
 ### Making a change
 
+The fast checks run all the time; the slow ones run once, on the finished code.
+
 1. **Branch** from `dev` with the branch name Linear generates (e.g. `martin9oh9/bar-5-…`) and move the issue to In Progress.
-2. **Build it**, with tests for anything that has logic. Run `pnpm check` and `pnpm test` as you go.
-3. **Prepare the PR.** When the change is more than docs or config:
+2. **Build it in logical steps, committing each one as it's done.** Write tests for anything that has logic. Before each commit, run `pnpm check` and `pnpm test` (seconds). Each commit builds and makes sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules"). Don't leave the split for the end.
+3. **Review the finished diff.** When the change is more than docs or config:
    1. Run **`/simplify`** and apply what's worth keeping.
-   2. Run an **uncapped code review** (`/code-review high --max-findings all`) on the final diff. Fix the real findings; for each one you skip, give the reason in the PR.
+   2. Run an **uncapped code review** (`/code-review high --max-findings all`). Fix the real findings; for each one you skip, give the reason in the PR.
    3. Run **`/security-review`** if the change touches auth, cookies, user input, or database queries.
-   4. **Split the work into logical commits**, each one building and making sense on its own (e.g. "add missing migration step", "catch up schema drift", "document migration rules").
-4. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
-5. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests, each run only when what it covers changed) and the Vercel preview. Both are required.
-6. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
-7. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
+
+   Commit the fixes as you make them, into the commit they belong to when it's clearer (`git commit --fixup`, then `git rebase --autosquash`).
+4. **Run the slow checks once, on the final code:** `pnpm build`, then `pnpm test:integration` when the API or the schema changed, then `pnpm test:e2e` when pages or components changed. Both suites run against a local Postgres (see "Integration tests") and take a minute or two.
+   - Don't change any files while they run: they read the code as they go.
+   - If a suite fails, fix the code and run that suite again. If it fails twice for a reason outside the code (the database, the network, a timeout), stop and find the cause rather than running it a third time.
+5. **Open a PR into `dev`** with `Fixes BAR-x`, a summary, how it was tested, and the review outcomes.
+6. **Wait for the checks:** CI (lint, types, format, unit tests, migration replay, integration tests and end-to-end tests, each run only when what it covers changed) and the Vercel preview. Both are required.
+7. **Check UI changes in a browser** on the Vercel preview, at phone size for voter screens.
+8. **Rebase-merge** into `dev`, so each commit lands as it is. The branch is deleted automatically.
 
 Commits and PRs never include AI attribution lines ("Generated with Claude Code", "Co-Authored-By: Claude", or similar).
 
@@ -110,7 +117,31 @@ Release when a useful set of changes is on `dev` and its preview has been checke
 
 `pnpm test:integration` calls the tRPC router through a server-side caller against a real Postgres database (`src/**/*.integration.test.ts`). It applies the migrations to that database, then empties every table before each test. CI runs it against its own Postgres service whenever the schema or the API changes (see "Repository settings").
 
-To protect real data, the tests only run against a database whose name ends in `_test`, given by `TEST_DATABASE_URL` in the shell (it isn't read from `.env.local`). `dev` and production are both called `neondb`, so they are refused. Locally, use any Postgres, or a throwaway Neon branch with its own empty database:
+To protect real data, the tests only run against a database whose name ends in `_test`, given by `TEST_DATABASE_URL` in the shell (it isn't read from `.env.local`). `dev` and production are both called `neondb`, so they are refused.
+
+**Locally, use a Postgres on your own machine**, as CI does: a full integration run takes about a minute, and the end-to-end tests under one. `pnpm db:test:start` starts a test database server only for this (`scripts/test-db.ts`): its data is in `~/.awardbro/test-postgres`, it listens on localhost port 5433 only, and nothing of it runs until you start it or after a restart. The first start creates it and its `awardbro_test` database.
+
+Once, install Postgres's programs (the server they come with isn't used, so it needn't run):
+
+```bash
+winget install PostgreSQL.PostgreSQL.16    # Windows (needs admin); or brew install postgresql@16 on a Mac
+# Windows: stop its service from starting with the computer (in an admin PowerShell)
+Stop-Service postgresql-x64-16; Set-Service postgresql-x64-16 -StartupType Disabled
+```
+
+Then, for each run:
+
+```bash
+pnpm db:test:start     # under a second; prints the TEST_DATABASE_URL below
+export TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:5433/awardbro_test"   # PowerShell: $env:TEST_DATABASE_URL = "…"
+pnpm test:integration
+pnpm test:e2e
+pnpm db:test:stop      # when you're done
+```
+
+The script finds the programs where the Windows installer, Homebrew or Debian and Ubuntu put them, or on the `PATH`, or in `PG_BIN` if set. It uses the Postgres version the data was created with; if that one is uninstalled, delete `~/.awardbro/test-postgres` and start again. Its password is a fixed test value, as in CI.
+
+A throwaway Neon branch also works, but avoid it for these suites: every query is a round trip to Frankfurt, so a full run takes 10 minutes or more, and a branch can drop connections partway through, which fails tests that have nothing wrong with them.
 
 ```bash
 neonctl branches create --name test-bar-123 --parent dev
@@ -118,8 +149,6 @@ neonctl databases create --branch test-bar-123 --name awardbro_test
 TEST_DATABASE_URL="$(neonctl connection-string test-bar-123 --database-name awardbro_test)" pnpm test:integration
 neonctl branches delete test-bar-123
 ```
-
-A full run takes about 20 seconds in CI. Against Neon from further away it takes a few minutes, since every call is a round trip to Frankfurt.
 
 The app's client uses Neon's serverless driver, which can't reach a plain Postgres server, so the tests swap in the standard `pg` driver (`src/test/integration/db.ts`). The router code and its queries are the same.
 
@@ -136,9 +165,27 @@ TEST_DATABASE_URL="…/awardbro_test" pnpm test:e2e
 pnpm exec playwright show-report   # after a failure: steps, screenshots and traces
 ```
 
-A run takes about 2 minutes here, most of it the build and the polling pages (every 5 s). In CI, a failed run uploads the report as the `playwright-report` artifact.
+A run takes under a minute against the local test database, most of it the build. In CI, a failed run uploads the report as the `playwright-report` artifact.
 
 Locate elements the way people find them (roles, labels and visible text, through the helpers in `e2e/show.ts`), not by class names, so the tests keep working through a redesign. If a test can't find something by its role or label, give the element one: that helps screen reader users too.
+
+## Load test
+
+`scripts/load-test.ts` runs a simulated live show against a deployment: a host on the run view, a big screen and 300 voters' phones. The voters join over 15 seconds, then vote in a burst of 10 seconds when the host opens each category, a normal one (some change their vote) and a ranking. The host then closes and reveals it. Each simulated page fetches what the real one does when its stream opens and on each event. The script reports:
+
+- each request's time and failures
+- how fast each host action reached every page
+- whether the big screen showed every vote, and how soon after the last one
+- with `LOAD_TEST_DATABASE_URL`, the database connections the show used, including the instances listening for events (their connections are named `awardbro-events`)
+
+Run it against a preview, never production: it creates a show (deleted at the end, even if the script fails) and makes hundreds of votes. It asks `vercel inspect` whether the URL is a preview and refuses anything else, so it needs the Vercel CLI logged in and the project linked. Previews share the `dev` database, so tell anyone using it first.
+
+```bash
+node scripts/load-test.ts https://awardbro-<id>-bartolo.vercel.app [--voters 300] [--join 15] [--burst 10]
+LOAD_TEST_DATABASE_URL="<the dev branch's direct URL>" node scripts/load-test.ts …
+```
+
+The results of the first run, before the first live show, are in BAR-20.
 
 ## Environments
 

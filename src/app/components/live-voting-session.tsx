@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -10,16 +10,17 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { useShowEvents } from "~/lib/hooks/useShowEvents";
 import { votingHasClosed } from "~/lib/stages";
 import { type RouterOutputs, useTRPC } from "~/trpc/react";
 
 import { type MyVotes } from "./ranking-interface";
 import { VotingInterface } from "./voting-interface";
 
-type Session = RouterOutputs["award"]["getSession"];
+type Show = RouterOutputs["award"]["getActiveCategory"];
 
 type LiveVotingSessionProps = {
-  initialSession: Session;
+  initialShow: Show;
   /** The voter's votes in the category that was active when the page was rendered */
   initialMyVotes?: {
     categoryId: string;
@@ -43,28 +44,27 @@ const containerVariants = {
 };
 
 export function LiveVotingSession({
-  initialSession,
+  initialShow,
   initialMyVotes,
   code,
 }: LiveVotingSessionProps) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  useShowEvents(code, { liveCounts: false, crowd: true });
   const {
-    data: session,
+    data: show,
     error: sessionError,
     isError: isSessionError,
   } = useQuery(
-    trpc.award.getSession.queryOptions(
-      { code, activeOnly: true },
+    trpc.award.getActiveCategory.queryOptions(
+      { code },
       {
-        refetchInterval: 5000,
-        initialData: initialSession,
+        initialData: initialShow,
         retry: 3,
       },
     ),
   );
 
-  const activeCategory = session.categories[0];
+  const activeCategory = show.category;
   // The host closes voting before the reveal, and revealing closes it too (the server refuses
   // votes then)
   const isClosed = !!activeCategory && votingHasClosed(activeCategory);
@@ -86,7 +86,6 @@ export function LiveVotingSession({
   const myVotesOptions = trpc.award.getMyVotes.queryOptions(
     { categoryId: activeCategory?.id ?? "" },
     {
-      refetchInterval: 5000,
       retry: 3,
       gcTime: 0,
       staleTime: 0,
@@ -104,18 +103,6 @@ export function LiveVotingSession({
     isError: isVoteError,
   } = useQuery(myVotesOptions);
   const hasVoted = !!myVotes?.length;
-  // Bound to this render's category, so a vote that completes after the host
-  // has moved on reloads the category it was cast in. A poll already in flight
-  // may have started before the vote was saved, so it's cancelled rather than
-  // reused. Undefined if it fails.
-  const refetchMyVotes = async () => {
-    await queryClient.cancelQueries({
-      queryKey: myVotesOptions.queryKey,
-      exact: true,
-    });
-    return queryClient.fetchQuery(myVotesOptions).catch(() => undefined);
-  };
-
   useEffect(() => {
     if (isSessionError) {
       toast.error("Failed to fetch session updates");
@@ -159,7 +146,7 @@ export function LiveVotingSession({
           exit="exit"
           variants={containerVariants}
         >
-          <h1 className="mb-12 text-6xl font-bold">{session.name}</h1>
+          <h1 className="mb-12 text-6xl font-bold">{show.name}</h1>
           <p className="text-2xl">Waiting for the next award.</p>
           <p className="text-muted-foreground mt-4">
             The host will present the next category soon.
@@ -175,7 +162,7 @@ export function LiveVotingSession({
           variants={containerVariants}
         >
           <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold">{session.name}</h1>
+            <h1 className="text-4xl font-bold">{show.name}</h1>
             <p className="text-muted-foreground mt-2">
               {isClosed
                 ? "Voting has closed"
@@ -237,7 +224,7 @@ export function LiveVotingSession({
                   categoryType={activeCategory.type}
                   rankingTop={activeCategory.rankingTop}
                   myVotes={myVotes}
-                  refetchMyVotes={refetchMyVotes}
+                  myVotesKey={myVotesOptions.queryKey}
                   closed={isClosed}
                 />
               </CardContent>

@@ -143,7 +143,57 @@ export const procedureNames = (type: "query" | "mutation") =>
 export const awardPaths = (names: string[]) =>
   names.map(name => `award.${name}`).sort();
 
-/** Each nomination's score, by name */
+/** Each nomination's score, by name (null when it's hidden) */
 export const scoresByName = (
-  nominations: { name: string; _count: { votes: number } }[],
-) => Object.fromEntries(nominations.map(n => [n.name, n._count.votes]));
+  nominations: { name: string; score: number | null }[],
+) => Object.fromEntries(nominations.map(n => [n.name, n.score]));
+
+/** Each nomination's place, by name (null without votes, or when it's hidden) */
+export const placesByName = (
+  nominations: { name: string; place: number | null }[],
+) => Object.fromEntries(nominations.map(n => [n.name, n.place]));
+
+/**
+ * Every route that changes a show (all but voting), called on the show's normal category or the
+ * show itself. Only the host may call them (manage-access.integration.test.ts), and each tells the
+ * show's pages (events.integration.test.ts).
+ */
+export const writeRoutes = {
+  addCategory: (api, s) =>
+    api.addCategory({
+      sessionId: s.show.id,
+      name: "Best Score",
+      type: "NORMAL",
+      sourceCategories: [],
+    }),
+  addNomination: (api, s) =>
+    api.addNomination({ categoryId: s.normal.id, name: "Poor Things" }),
+  // The aggregate is always last, so moving it up changes the show
+  moveCategory: (api, s) =>
+    api.moveCategory({ id: s.aggregate.id, direction: "up" }),
+  updateCategory: (api, s) =>
+    api.updateCategory({
+      id: s.normal.id,
+      name: "Best Picture",
+      description: "",
+    }),
+  updateNomination: (api, s) =>
+    api.updateNomination({
+      id: s.film("normal", "Dune").id,
+      name: "Dune: Part Two",
+    }),
+  setCategoryStage: (api, s) =>
+    api.setCategoryStage({ id: s.normal.id, stage: "open" }),
+  setRevealOptions: (api, s) =>
+    api.setRevealOptions({ id: s.normal.id, winnerOnly: true }),
+  resetCategoryVotes: (api, s) =>
+    api.resetCategoryVotes({ categoryId: s.normal.id }),
+  resetAllVotes: (api, s) => api.resetAllVotes({ sessionId: s.show.id }),
+  deleteNomination: (api, s) =>
+    api.deleteNomination({ id: s.film("normal", "Dune").id }),
+  deleteCategory: (api, s) => api.deleteCategory({ id: s.normal.id }),
+  deleteSession: (api, s) => api.deleteSession({ id: s.show.id }),
+} satisfies Record<
+  string,
+  (api: Visitor["api"], show: Show) => Promise<unknown>
+>;

@@ -14,7 +14,7 @@ A **host** creates an award show (a `Session`), adds categories and nominations 
 | `/vote/[code]`       | Voters     | Vote in the active category                                               |
 | `/present/[code]`    | Big screen | Live view of the active category and the reveal                           |
 
-Shows are found by their room code, such as `/vote/K7QF`. Links from before room codes use the show's slug; they, and a code in lowercase, redirect to the code URL (`showPageCode` in `src/server/shows.ts`). No code reads like another show's slug: the room code migrations and `generate_room_code()` make sure of it.
+Shows are found by their room code, such as `/vote/K7QF`. Links from before room codes use the show's slug; they, and a code in lowercase, redirect to the code URL (`showPage` in `src/server/shows.ts`). No code reads like another show's slug: the room code migrations and `generate_room_code()` make sure of it.
 
 There is no help page: each screen explains itself (the category types, the next step when running the show). `/help` redirects to the homepage for old links.
 
@@ -48,8 +48,9 @@ Notes:
 - A category can have the same nomination name twice with different descriptions (for example, one person nominated for two things, or several photos with the same caption), but not the same name (ignoring case) and description twice. An aggregate adds up every source nomination with exactly the same name, so those count together there.
 - An aggregate category holds a copy of each nomination name in its sources, with the description of the first one added (`reconcileAggregate` in `award.ts`). Every change to a source nomination brings the copies of the names it touches back in line: adding, renaming or deleting a nomination, and deleting a source category. A copy no source has any more is removed (aggregates take no votes, so none are lost). Creating an aggregate or changing its sources reconciles every name. A copy the host deleted from the aggregate stays deleted until a source nomination of that name changes.
 - Hosts can edit a category (name, description, a ranking's number of places, an aggregate's sources) and a nomination (name, description) in place on the manage page (`updateCategory`, `updateNomination`). The type can't change. A ranking's places can't change once anyone has voted, since that would change everyone's points. Votes stay with a renamed nomination. If another source nomination already has the new name, they now count together in the aggregate, and the host is told. An aggregate's own nominations can't be edited.
-- Scores are computed when they're read (`getSession`, `getCategory`), not stored.
-- Only hosts (anyone who can manage the show) get every score. Everyone else gets what the show reveals (`publicScores` in `scoring.ts`): no scores before a category is revealed, and after it only the winners' with `winnerOnly`, or only their order with `hideVoteCounts`. An aggregate reveals no more than its sources: nothing until all of them are revealed, and only the order if any of them hides its counts or shows only its winner. Each category (except an aggregate) also has `estimatedVoters`, the present page's live count, which everyone gets until the category is revealed (after it, only hosts: the total next to the winners' scores would give the others away). A show without a password (only older shows) can be managed by anyone, so anyone gets its scores.
+- Scores are computed when they're read (`getSession`, `getCategory`), not stored. A ranking category's points come from each nomination's number of ranked votes and the sum of their ranks, which the database adds up (`rankingTop − rank + 1` per vote is `count × (rankingTop + 1) − the sum of the ranks`), so the votes themselves aren't loaded. The vote page reads the show with `getActiveCategory`, which has only the category on the big screen and its nominations, without scores.
+- Each nomination comes with its `score` (votes, or points) and its `place` (1 for the highest score, then 2, and so on; ties share a place, and a nomination without votes has none), either of them null when it's hidden.
+- Only hosts (anyone who can manage the show) get every score. Everyone else gets what the show reveals (`visibleScores` in `scoring.ts`): nothing before a category is revealed, and after it only the winners with `winnerOnly`, or only the places with `hideVoteCounts`. The big screen always gets this view (`getSession` with `bigScreen`), even on a host's laptop. An aggregate reveals no more than its sources: nothing until all of them are revealed, and only the order if any of them hides its counts or shows only its winner. Each category (except an aggregate) also has `estimatedVoters`, the present page's live count, which everyone gets until the category is revealed (after it, only hosts: the total next to the winners' scores would give the others away). A show without a password (only older shows) can be managed by anyone, so anyone gets its scores.
 
 ## Running a show
 
@@ -68,7 +69,7 @@ The host runs the show from the run view (`run-show.tsx`), one category at a tim
 3. An aggregate takes no votes, so it goes straight to the reveal, once every category it adds up is revealed (it shows no more than they do).
 4. At the reveal, the host sets how it shows the results (`setRevealOptions`): `hideVoteCounts` (the order without numbers) and `winnerOnly` (only first place). They can change while the results show. The run view says when nobody has voted.
 5. The host can step back: reopen voting from closed, hide the results (back to closed), or take a category off the screen.
-6. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: changing a category's stage, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `withShowLocked` in `award.ts`). Add new actions to this list if they close voting, change results or delete votes. Adding or editing a nomination, creating, editing or moving a category take it too, so aggregate copies are changed by one action at a time (a nomination added while an aggregate of its category is being created is copied into it exactly once), and a ranking's places can't change while a first vote is being saved.
+6. Votes and host actions don't interleave. Saving a vote takes the show's advisory lock shared, plus a lock per device and category, so each device has at most one vote (or one ranking) per category. These host actions take the show's lock exclusively: changing a category's stage, resetting votes, and deleting a nomination, category or show. They wait for votes already being saved, and votes arriving meanwhile wait for them (`saveVote` and `hostWrite` in `award.ts`). Every host write runs through `hostWrite`, so the others take it too: adding or editing a nomination, creating, editing or moving a category, and setting reveal options. So aggregate copies are changed by one action at a time (a nomination added while an aggregate of its category is being created is copied into it exactly once), and a ranking's places can't change while a first vote is being saved.
 
 ## Joining a show
 
@@ -89,20 +90,39 @@ The present page shows a QR code that opens the vote page, the site's address an
 
 ## Live updates
 
-Clients currently **poll** with TanStack Query `refetchInterval`:
+After every write, the server tells the show's open pages what changed (`src/server/events.ts`). Pages use the event as a signal to fetch again: events carry no scores or votes, so the database stays the only source of truth.
 
-- **Present page:** the show every 5 s, and the active category's live count every 1 s (`live-voting.tsx`).
-- **Vote page:** the active category and the voter's own vote every 5 s.
-- **Run view:** the show every 5 s, for changes made on another device, and the current category's live count every 2 s while voting is open.
-- **Manage page:** no polling. It's server-rendered and refreshes after the host's own actions. Replacing polling with push updates is planned in Linear milestone "3. Real-time".
+| Event   | Sent by                                                                                                                           |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `show`  | Any host action: categories, nominations, running order, a category's stage or reveal options, resetting votes, deleting the show |
+| `votes` | A voter's vote or ranking, with its `categoryId`                                                                                  |
+
+How they travel, with no service besides the database:
+
+1. Every host write runs through `hostWrite` in `award.ts`, which takes the show's lock and sends the route's event (`notifyShow`, Postgres `NOTIFY`) in one statement. Votes do the same in `saveVote`. Postgres delivers a notification only when its transaction commits, so pages never hear of a write that was rolled back, and they hear of writes in the order they committed. `events.integration.test.ts` checks each mutation's event, and fails when a mutation isn't listed there.
+2. Each server instance with open pages holds one `LISTEN` connection (`event-hub.ts`). It connects when the first page subscribes and closes when the last one leaves. It uses `DATABASE_DIRECT_URL`, since Neon's pooler can't `LISTEN`. It throttles each category's `votes` events to one every 500 ms, folding the rest of a burst into one more at the end, so a burst of votes makes a few fetches rather than one per vote.
+3. Pages get the events as Server-Sent Events from `/api/shows/<code>/events` (`event-stream.ts`): `event: show` or `event: votes`, with the rest of the event as JSON data (`?votes=0` leaves out `votes` events). The response starts only once the instance is listening, so a page that fetches when the stream opens misses nothing. A stream ends after 220–280 s, at random, before Vercel's 300 s limit on Hobby, and `EventSource` connects again by itself 1–2 s later. If an instance loses its database connection (it checks every 30 s), it ends every stream, so their pages connect again. If it can't listen at all, the route sends an empty stream that tells `EventSource` to try again in 20–30 s, since an error status would make it give up. A page that stops reading its stream has it ended after 100 queued events. Anyone with the room code can listen, as anyone can load the show.
+
+Why this rather than a hosted service (Ably, Pusher, Supabase Realtime): see BAR-17 in Linear. Their free plans can't hold a large show (connection limits), or charge per voter.
+
+Pages listen with `useShowEvents` (`connectShowEvents` in `src/lib/show-events.ts`):
+
+- **When the stream opens or reopens, and on a `show` event,** a page fetches all its queries for the show again: the show (the vote page's `getActiveCategory`), live counts and the voter's own votes. That covers anything it missed while it wasn't listening.
+- **On a `votes` event,** pages that show live counts (the big screen and the run view, `liveCounts`) fetch that category's count again.
+- **Voters' phones** ask for no `votes` events (`?votes=0`). After a host action, each phone waits a random moment (up to 1 s, `crowd`) before fetching, so a room full of phones doesn't fetch at once.
+- **`EventSource` connects again by itself** when a stream ends. If it gives up (an error status, such as a deleted show), the page connects again after 10–20 s, up to 5 times in a row.
+- **While the stream isn't open** (and the page is visible), the page fetches the show every 30 s instead.
+- **The manage page** (`manage-show.tsx`) listens without `votes` events: its scores follow host actions, made on any device.
+
+The person who acts sees the result straight away, before the server answers (`optimistic` in `src/lib/optimistic.ts`, through `useShowChange` for host actions): a host's step or reveal option in the run view (`applyStage` in `stages.ts` does what the server will), every action on the manage page (`show-changes.ts`), and a voter's vote or ranking. On the manage page, a new nomination shows as "Adding..." until the server has saved it, and edit forms stay open until the server has saved the change, so a refused one keeps what the host typed. Adding a category is the exception: it shows once the server has created it, since an aggregate's nominations are copied on the server. If the server refuses, the page goes back and says why; a step another device overtook shows where the category really is. Either way the page fetches the changed query once the server has answered. While the action is on its way, live events don't fetch that query (it's named in the mutation's `meta.holds`), so they can't bring back the data from before it; they fetch everything else straight away.
 
 ## Environment variables
 
 Validated in `src/env.js`:
 
-| Variable              | Used for                                                                        |
-| --------------------- | ------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | Pooled Neon connection, used by the app                                         |
-| `DATABASE_DIRECT_URL` | Direct Neon connection, used by Prisma migrations (`prisma.config.ts`)          |
-| `AUTH_SECRET`         | Signs manage-access cookies. At least 32 characters, different per environment. |
-| `DATABASE_DRIVER`     | Optional. `pg` for plain Postgres (the end-to-end tests); else Neon's driver    |
+| Variable              | Used for                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Pooled Neon connection, used by the app                                                                       |
+| `DATABASE_DIRECT_URL` | Direct Neon connection: Prisma migrations (`prisma.config.ts`) and listening for live events (`event-hub.ts`) |
+| `AUTH_SECRET`         | Signs manage-access cookies. At least 32 characters, different per environment.                               |
+| `DATABASE_DRIVER`     | Optional. `pg` for plain Postgres (the end-to-end tests); else Neon's driver                                  |
