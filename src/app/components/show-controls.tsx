@@ -84,24 +84,23 @@ export function RunShowCard({
             {SCREEN_THEMES.map(({ theme, label, icon: ThemeIcon }) => {
               const checked = screenTheme === theme;
               return (
-                <button
+                <Button
                   key={theme}
-                  type="button"
+                  size="sm"
+                  variant={checked ? "secondary" : "ghost"}
                   role="radio"
                   aria-checked={checked}
                   onClick={() =>
                     !checked && setScreenTheme.mutate({ sessionId, theme })
                   }
                   className={cn(
-                    "focus-visible:ring-ring flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
-                    checked
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                    "rounded-full",
+                    !checked && "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <ThemeIcon className="size-4" />
+                  <ThemeIcon />
                   {label}
-                </button>
+                </Button>
               );
             })}
           </div>

@@ -94,7 +94,8 @@ export function PodiumReveal({
     played ? { risen: 0, tense: false, beat: false, crowned: false } : SETTLED,
   );
   const runnersUp = riseOrder(columns).filter(c => !c.winner);
-  const runnerUpCount = useRef(runnersUp.length);
+  // How many rise in the sequence, as it starts
+  const [runnerUpCount] = useState(runnersUp.length);
 
   useEffect(() => {
     if (!played) return;
@@ -103,7 +104,7 @@ export function PodiumReveal({
     const then = (change: Partial<Phase>) => {
       timers.push(setTimeout(() => setPhase(p => ({ ...p, ...change })), at));
     };
-    for (let risen = 1; risen <= runnerUpCount.current; risen++) {
+    for (let risen = 1; risen <= runnerUpCount; risen++) {
       then({ risen });
       at += PER_RUNNER_UP;
     }
@@ -116,7 +117,7 @@ export function PodiumReveal({
     at += BEAT_CLEAR;
     then(SETTLED);
     return () => timers.forEach(clearTimeout);
-  }, [played]);
+  }, [played, runnerUpCount]);
 
   // Confetti from the winner's column as it's crowned
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -167,9 +168,12 @@ export function PodiumReveal({
     );
   }
 
-  // Room above the columns: a single winner's name stands on its column (at most headline size
-  // with pictures, to leave the columns room), a tie's headline above all
-  const reserve = singleWinner ? (pictures ? 20 : 24) : 14;
+  // Room above the columns for what stands on them: a single winner's name (two lines at most),
+  // or the tie's one-line headline
+  const winnerName = singleWinner && winnerNameSize(winners[0]!.name, pictures);
+  const reserve = winnerName
+    ? 2 * winnerName.u * NAME_LEADING + NAME_GAP
+    : TIE_HEADLINE_U + NAME_GAP;
   // The shortest column: room for its label, ending clear of the bottom 5% of the screen, which
   // some TVs crop. With pictures, the photo is in it too (and the name keeps to one line).
   const floor = pictures ? 34 : 24;
@@ -201,33 +205,30 @@ export function PodiumReveal({
           }
         >
           {columns.map(column => {
-            const crowned = column.winner && phase.crowned;
-            const risen = column.winner
+            const { winner } = column;
+            const crowned = winner && phase.crowned;
+            const risen = winner
               ? phase.tense || phase.crowned
               : risenIds.has(column.id);
+            const shaking = winner && phase.tense && !phase.beat && !crowned;
+            const labelShown = winner ? phase.crowned : risen;
             // Before the crown the winner waits just under the leader
-            const height =
-              column.winner && !phase.crowned
-                ? tallestRunnerUp > 0
-                  ? Math.min(column.height, tallestRunnerUp * 0.97)
-                  : 0.6
-                : column.height;
-            const labelShown = column.winner ? phase.crowned : risen;
-            const nameAbove = column.winner && singleWinner;
+            const waitingHeight =
+              tallestRunnerUp > 0
+                ? Math.min(column.height, tallestRunnerUp * 0.97)
+                : 0.6;
+            const height = winner && !crowned ? waitingHeight : column.height;
+            const role = !winner
+              ? "runnerUp"
+              : singleWinner
+                ? "winner"
+                : "tied";
             const label =
               column.score !== null && getScoreLabel(category, column.score);
+
             // The host's photo at the top of the column: a winner's arrives with the crown
-            const photo = pictures && (!column.winner || crowned) && (
-              <div
-                className={cn(
-                  "mb-3 aspect-square",
-                  !column.winner
-                    ? "w-[min(78%,calc(var(--u)*13))]"
-                    : singleWinner
-                      ? "w-[min(80%,calc(var(--u)*20))]"
-                      : "w-[min(70%,calc(var(--u)*16))]",
-                )}
-              >
+            const photo = pictures && (!winner || crowned) && (
+              <div className={cn("mb-3 aspect-square", PHOTO_WIDTH[role])}>
                 <NominationDescription
                   description={column.description}
                   isImage
@@ -251,18 +252,18 @@ export function PodiumReveal({
                   flexGrow: crowned ? (singleWinner ? 1.7 : 1.3) : 1,
                 }}
               >
-                {column.winner && <span className="sr-only">Winner</span>}
+                {winner && <span className="sr-only">Winner</span>}
 
-                {nameAbove && (
+                {role === "winner" && winnerName && (
                   <p
                     className={cn(
                       "absolute inset-x-[-40%] text-center leading-[1.02] font-bold text-balance",
-                      nameSize(column.name, pictures),
+                      winnerName.className,
                       "ease-out-soft transition-[opacity,translate] duration-700 motion-reduce:transition-none",
                       crowned ? "opacity-100" : "translate-y-5 opacity-0",
                     )}
                     style={{
-                      bottom: `calc(${barHeight(height)} + var(--u) * 2)`,
+                      bottom: `calc(${barHeight(height)} + var(--u) * ${NAME_GAP})`,
                     }}
                   >
                     {column.name}
@@ -274,22 +275,17 @@ export function PodiumReveal({
                   className={cn(
                     "relative rounded-t-[calc(var(--u)*5)]",
                     "ease-out-soft transition-[height] duration-[1200ms] motion-reduce:transition-none",
-                    column.winner &&
-                      phase.tense &&
-                      !phase.beat &&
-                      !phase.crowned &&
+                    COLUMN_COLOURS[(colours.get(column.id) ?? 1) - 1],
+                    crowned
+                      ? "text-winner-foreground"
+                      : "text-column-foreground",
+                    shaking &&
                       "motion-safe:animate-[podium-tense_0.18s_linear_infinite]",
                   )}
-                  style={{
-                    height: risen ? barHeight(height) : 0,
-                    backgroundColor: `var(--column-${colours.get(column.id) ?? 1})`,
-                    color: crowned
-                      ? "var(--winner-foreground)"
-                      : "var(--column-foreground)",
-                  }}
+                  style={{ height: risen ? barHeight(height) : 0 }}
                 >
                   {/* The crown: the winner colour fades in over the column's own */}
-                  {column.winner && (
+                  {winner && (
                     <div
                       aria-hidden
                       className={cn(
@@ -303,21 +299,20 @@ export function PodiumReveal({
                     className={cn(
                       "absolute inset-x-0 top-6 flex items-center gap-1 px-3 text-center",
                       // A runner-up's score above its name (its name comes first in the list)
-                      column.winner ? "flex-col" : "flex-col-reverse",
+                      winner ? "flex-col" : "flex-col-reverse",
                       "transition-opacity duration-300 motion-reduce:transition-none",
                       labelShown ? "opacity-100 delay-300" : "opacity-0",
                     )}
                   >
                     {/* On top: first for a winner, last (reversed) for a runner-up */}
-                    {column.winner && photo}
-                    {!nameAbove && (
+                    {winner && photo}
+                    {role !== "winner" && (
                       <span
                         className={cn(
                           "leading-tight break-words",
-                          // Tied winners' names carry the crown, so they outrank the score, as
-                          // big as fits in full
-                          column.winner
-                            ? cn(
+                          role === "tied"
+                            ? // Tied winners' names carry the crown: they outrank the score
+                              cn(
                                 "mb-2 line-clamp-3 font-bold",
                                 tiedNameSize(column.name),
                               )
@@ -330,34 +325,22 @@ export function PodiumReveal({
                         {column.name}
                       </span>
                     )}
-                    {label &&
-                      (nameAbove ? (
-                        <span className="flex flex-col items-center leading-none">
-                          <span className="text-[calc(var(--u)*9.9)] font-bold tabular-nums">
-                            {column.score}
-                          </span>{" "}
-                          <span className="text-stage-small mt-1 font-medium opacity-80">
-                            {label}
-                          </span>
+                    {label && (
+                      <span className={cn("leading-none", SCORE[role].line)}>
+                        <span
+                          className={cn(
+                            "font-bold tabular-nums",
+                            SCORE[role].size,
+                          )}
+                        >
+                          {column.score}
+                        </span>{" "}
+                        <span className="text-stage-small font-medium opacity-80">
+                          {label}
                         </span>
-                      ) : (
-                        <span className="flex items-baseline gap-2 leading-none">
-                          <span
-                            className={cn(
-                              "font-bold tabular-nums",
-                              column.winner
-                                ? "text-stage-lead"
-                                : "text-stage-score",
-                            )}
-                          >
-                            {column.score}
-                          </span>{" "}
-                          <span className="text-stage-small font-medium opacity-80">
-                            {label}
-                          </span>
-                        </span>
-                      ))}
-                    {!column.winner && photo}
+                      </span>
+                    )}
+                    {!winner && photo}
                   </div>
                 </div>
               </li>
@@ -406,13 +389,56 @@ export function PodiumReveal({
   );
 }
 
-/** The winner's name as big as it can be without running past two lines */
-const nameSize = (name: string, pictures: boolean) =>
-  name.length <= 16 && !pictures
-    ? "text-stage-display"
-    : name.length <= 28
-      ? "text-stage-headline"
-      : "text-stage-title";
+/** Each column's colour (`--column-1` to `--column-7`), written out so Tailwind finds them */
+const COLUMN_COLOURS = [
+  "bg-column-1",
+  "bg-column-2",
+  "bg-column-3",
+  "bg-column-4",
+  "bg-column-5",
+  "bg-column-6",
+  "bg-column-7",
+];
+
+type Role = "winner" | "tied" | "runnerUp";
+
+/** How big each column's photo is: a single winner's the biggest */
+const PHOTO_WIDTH: Record<Role, string> = {
+  winner: "w-[min(80%,calc(var(--u)*20))]",
+  tied: "w-[min(70%,calc(var(--u)*16))]",
+  runnerUp: "w-[min(78%,calc(var(--u)*13))]",
+};
+
+/** The score and its unit: a single winner's large and stacked, the others on one line */
+const SCORE: Record<Role, { line: string; size: string }> = {
+  winner: {
+    line: "flex flex-col items-center gap-1",
+    size: "text-[calc(var(--u)*9.9)]",
+  },
+  tied: { line: "flex items-baseline gap-2", size: "text-stage-lead" },
+  runnerUp: { line: "flex items-baseline gap-2", size: "text-stage-score" },
+};
+
+/** Line height of the winner's name, and its gap to the column under it (in --u) */
+const NAME_LEADING = 1.02;
+const NAME_GAP = 2;
+/** "It's a tie!", one line at the display size (in --u, as in globals.css) */
+const TIE_HEADLINE_U = 10.4;
+
+/**
+ * A single winner's name as big as it can be without running past two lines (at most the headline
+ * size with pictures, to leave the columns room). `u` matches the size's token in globals.css: the
+ * room above the columns is worked out from it.
+ */
+const WINNER_NAME_SIZES = [
+  { maxLength: 16, className: "text-stage-display", u: 10.4 },
+  { maxLength: 28, className: "text-stage-headline", u: 8 },
+  { maxLength: Infinity, className: "text-stage-title", u: 6.4 },
+];
+const winnerNameSize = (name: string, pictures: boolean) =>
+  WINNER_NAME_SIZES.slice(pictures ? 1 : 0).find(
+    size => name.length <= size.maxLength,
+  )!;
 
 /** A tied winner's name, inside its column: smaller than a single winner's, never cut short */
 const tiedNameSize = (name: string) =>

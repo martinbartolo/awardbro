@@ -83,103 +83,107 @@ export function LivePresentation({
   const joinInCorner = scene !== "waiting" && scene !== "voting";
 
   return (
-    <main
-      data-theme={theme === "light" ? "light" : undefined}
-      className="big-screen bg-background text-foreground relative flex h-dvh flex-col overflow-hidden px-24 pt-16"
-    >
-      <header className="shrink-0">
-        <h1 className="text-stage-title max-w-[calc(var(--u)*150)] leading-[1.05] font-bold tracking-[-0.01em] text-balance">
-          {category?.name ?? session.name}
-        </h1>
-        {category?.description && (
-          <p className="text-muted-foreground text-stage-body mt-2 line-clamp-2 max-w-[calc(var(--u)*130)]">
-            {category.description}
-          </p>
-        )}
-        <div className="mt-5 flex min-h-[calc(var(--u)*6)] items-center gap-5">
-          {category ? (
-            <Progress
-              progress={session.progress}
-              countsTowards={category.aggregateOf.map(a => a.name)}
-            />
-          ) : (
-            <p className="text-muted-foreground text-stage-lead font-medium">
-              Waiting for the next award.
+    <>
+      <main
+        // On <html> too (useDocumentTheme), but only once the page runs: here, so the server's
+        // render shows the right theme from the first paint
+        data-theme={theme === "light" ? "light" : undefined}
+        className="big-screen bg-background text-foreground relative flex h-dvh flex-col overflow-hidden px-24 pt-16"
+      >
+        <header className="shrink-0">
+          <h1 className="text-stage-title max-w-[calc(var(--u)*150)] leading-[1.05] font-bold tracking-[-0.01em] text-balance">
+            {category?.name ?? session.name}
+          </h1>
+          {category?.description && (
+            <p className="text-muted-foreground text-stage-body mt-2 line-clamp-2 max-w-[calc(var(--u)*130)]">
+              {category.description}
             </p>
           )}
-          {joinInCorner && (
-            <div className="ml-auto">
-              <RoomCodeChip code={code} />
-            </div>
-          )}
-        </div>
-      </header>
-
-      <AnimatePresence mode="wait">
-        <motion.section
-          // A new scene for each category and stage: a quick fade, no movement
-          key={`${category?.id}-${scene}`}
-          aria-live="polite"
-          className={cn(
-            "min-h-0 flex-1",
-            scene === "revealed" ? "pt-10" : "pb-16",
-          )}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.35 }}
-        >
-          {scene === "waiting" && (
-            <div className="flex h-full items-center">
-              <JoinPanel code={code} />
-            </div>
-          )}
-
-          {scene === "voting" && category && (
-            <div className="flex h-full items-center justify-between gap-12">
-              <JoinPanel code={code} />
-              <LiveVoting
-                categoryId={category.id}
-                initialVoteCount={category.estimatedVoters ?? 0}
+          <div className="mt-5 flex min-h-[calc(var(--u)*6)] items-center gap-5">
+            {category ? (
+              <Progress
+                progress={session.progress}
+                countsTowards={category.aggregateOf.map(a => a.name)}
               />
-            </div>
-          )}
-
-          {scene === "closed" && category && (
-            <div className="flex h-full items-center gap-16">
-              <LiveVoting
-                categoryId={category.id}
-                initialVoteCount={category.estimatedVoters ?? 0}
-              />
-              <div>
-                <p className="text-stage-display leading-none font-bold">
-                  Voting has closed
-                </p>
-                <p className="text-muted-foreground text-stage-lead mt-5 font-medium">
-                  The winner is next.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {scene === "aggregate" && category && (
-            <AggregateInfo sourceCategories={category.sourceCategories} />
-          )}
-
-          {scene === "revealed" &&
-            category &&
-            (category.nominations.length === 0 ? (
-              <p className="text-muted-foreground text-stage-lead flex h-full items-center font-medium">
-                No nominations in this one.
-              </p>
             ) : (
-              <PodiumReveal category={category} animate={playReveal} />
-            ))}
-        </motion.section>
-      </AnimatePresence>
+              <p className="text-muted-foreground text-stage-lead font-medium">
+                Waiting for the next award.
+              </p>
+            )}
+            {joinInCorner && (
+              <div className="ml-auto">
+                <RoomCodeChip code={code} />
+              </div>
+            )}
+          </div>
+        </header>
 
+        <AnimatePresence mode="wait">
+          <motion.section
+            // A new scene for each category and stage: a quick fade, no movement
+            key={`${category?.id}-${scene}`}
+            aria-live="polite"
+            className={cn(
+              "min-h-0 flex-1",
+              scene === "revealed" ? "pt-10" : "pb-16",
+            )}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.35 }}
+          >
+            {scene === "waiting" && (
+              <div className="flex h-full items-center">
+                <JoinPanel code={code} />
+              </div>
+            )}
+
+            {scene === "voting" && category && (
+              <div className="flex h-full items-center justify-between gap-12">
+                <JoinPanel code={code} />
+                <LiveVoting
+                  categoryId={category.id}
+                  initialVoteCount={category.estimatedVoters ?? 0}
+                />
+              </div>
+            )}
+
+            {scene === "closed" && category && (
+              <div className="flex h-full items-center gap-16">
+                <LiveVoting
+                  categoryId={category.id}
+                  initialVoteCount={category.estimatedVoters ?? 0}
+                />
+                <div>
+                  <p className="text-stage-display leading-none font-bold">
+                    Voting has closed
+                  </p>
+                  <p className="text-muted-foreground text-stage-lead mt-5 font-medium">
+                    The winner is next.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {scene === "aggregate" && category && (
+              <AggregateInfo sourceCategories={category.sourceCategories} />
+            )}
+
+            {scene === "revealed" &&
+              category &&
+              (category.nominations.length === 0 ? (
+                <p className="text-muted-foreground text-stage-lead flex h-full items-center font-medium">
+                  No nominations in this one.
+                </p>
+              ) : (
+                <PodiumReveal category={category} animate={playReveal} />
+              ))}
+          </motion.section>
+        </AnimatePresence>
+      </main>
+      {/* Outside the stage, whose spacing scales with the screen: a control keeps its own size */}
       <FullscreenButton />
-    </main>
+    </>
   );
 }
 

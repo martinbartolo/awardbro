@@ -667,7 +667,7 @@ export const awardRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const [session, access, runningOrderIds] = await Promise.all([
+      const [session, access] = await Promise.all([
         ctx.db.session.findUnique({
           where: { code: input.code },
           // Never send the password hash to the client
@@ -690,19 +690,20 @@ export const awardRouter = createTRPCRouter({
             },
           },
         }),
-        // Only to check access; never sent to the client
+        // Only to check access (never sent to the client), and for the big screen, the running
+        // order, so it can say which award of the show is on it
         ctx.db.session.findUnique({
           where: { code: input.code },
-          select: { id: true, password: true },
-        }),
-        // The big screen says which award of the show is on it
-        input.bigScreen
-          ? ctx.db.category.findMany({
-              where: { session: { code: input.code } },
+          select: {
+            id: true,
+            password: true,
+            categories: {
               orderBy: runningOrder,
               select: { id: true },
-            })
-          : [],
+              take: input.bigScreen ? undefined : 0,
+            },
+          },
+        }),
       ]);
 
       if (!session || !access) {
@@ -713,7 +714,7 @@ export const awardRouter = createTRPCRouter({
       }
 
       const canManage = isHost(ctx, access);
-      const onScreen = runningOrderIds.findIndex(
+      const onScreen = access.categories.findIndex(
         ({ id }) => id === session.categories[0]?.id,
       );
       return {
@@ -722,7 +723,7 @@ export const awardRouter = createTRPCRouter({
         progress:
           onScreen === -1
             ? null
-            : { award: onScreen + 1, of: runningOrderIds.length },
+            : { award: onScreen + 1, of: access.categories.length },
         categories: await withScores(
           ctx.db,
           session.categories,
