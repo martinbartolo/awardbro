@@ -26,14 +26,14 @@ export default async function ManagePage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const { code } = await showPage("manage", (await params).code);
+  const { code, name } = await showPage("manage", (await params).code);
 
   const session = await api.award.getSession({
     code,
   });
 
   if (!(await hasManageAccess(code))) {
-    return <PasswordPage code={code} />;
+    return <PasswordPage code={code} name={name} />;
   }
 
   return (
