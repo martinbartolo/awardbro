@@ -18,7 +18,7 @@ export function AggregateInfo({
         {sourceCategories.map(category => (
           <li
             key={category.id}
-            className="bg-card text-card-foreground shadow-soft text-stage-body rounded-full px-7 py-3 font-semibold"
+            className="bg-card text-card-foreground text-stage-body rounded-full px-7 py-3 font-semibold"
           >
             {category.name}
           </li>

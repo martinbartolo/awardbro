@@ -51,6 +51,7 @@ const PAUSE_BEFORE = 500;
 const PER_RUNNER_UP = 900;
 const TENSION = 1600;
 const BEAT = 1600;
+const BEAT_CLEAR = 400;
 
 /**
  * A revealed category's results as a podium: each nomination a rounded column in its own colour,
@@ -110,6 +111,9 @@ export function PodiumReveal({
     at += TENSION;
     then({ beat: true });
     at += BEAT;
+    // The beat clears completely before the crown, so the name never lands on top of it
+    then({ beat: false });
+    at += BEAT_CLEAR;
     then(SETTLED);
     return () => timers.forEach(clearTimeout);
   }, [played]);
@@ -139,29 +143,45 @@ export function PodiumReveal({
   const tallestRunnerUp = Math.max(0, ...runnersUp.map(c => c.height));
   const singleWinner = winners.length === 1;
 
-  // Room above the columns for what stands on them: a single winner's name, or the headline for
-  // a tie, and the pictures in an image category
-  const reserve = (singleWinner ? 26 : 16) + (pictures ? 24 : 0);
+  if (winners.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-10 pb-12 text-center">
+        <p className="text-stage-display leading-none font-bold">
+          Nobody voted in this one.
+        </p>
+        <ol
+          role="list"
+          aria-label={`${category.name} results`}
+          className="flex flex-wrap justify-center gap-4"
+        >
+          {category.nominations.map(nomination => (
+            <li
+              key={nomination.id}
+              className="bg-card text-card-foreground text-stage-body rounded-full px-7 py-3 font-semibold"
+            >
+              {nomination.name}
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
 
-  const headline =
-    winners.length === 0
-      ? "Nobody voted in this one."
-      : winners.length > 1
-        ? "It's a tie!"
-        : null;
+  // Room above the columns: a single winner's name stands on its column, a tie's headline above all
+  const reserve = singleWinner ? 24 : 14;
 
   return (
     <>
       <div className="relative h-full">
-        {headline && (
+        {!singleWinner && (
           <p
             className={cn(
-              "text-stage-display absolute inset-x-0 top-0 text-center leading-none font-bold text-balance",
+              "text-stage-display absolute inset-x-0 top-0 text-center leading-none font-bold",
               "ease-out-soft transition-[opacity,translate] duration-700 motion-reduce:transition-none",
               phase.crowned ? "opacity-100" : "translate-y-5 opacity-0",
             )}
           >
-            {headline}
+            It&apos;s a tie!
           </p>
         )}
         <ol
@@ -217,34 +237,19 @@ export function PodiumReveal({
                       "ease-out-soft transition-[opacity,translate] duration-700 motion-reduce:transition-none",
                       crowned ? "opacity-100" : "translate-y-5 opacity-0",
                     )}
-                    style={{ bottom: barTop(height, pictures) }}
+                    style={{
+                      bottom: `calc(${barHeight(height)} + var(--u) * 2)`,
+                    }}
                   >
                     {column.name}
                   </p>
-                )}
-
-                {pictures && (
-                  <div
-                    className={cn(
-                      "absolute left-1/2 aspect-square w-[min(90%,calc(var(--u)*22))] -translate-x-1/2",
-                      "transition-opacity duration-500 motion-reduce:transition-none",
-                      risen ? "opacity-100" : "opacity-0",
-                    )}
-                    style={{ bottom: barTop(height, false) }}
-                  >
-                    <NominationDescription
-                      description={column.description}
-                      isImage
-                      imageClassName="size-full [&_img]:size-full [&_img]:rounded-[calc(var(--u)*2.5)] [&_img]:object-cover"
-                    />
-                  </div>
                 )}
 
                 <div
                   ref={column.id === winners[0]?.id ? winnerBar : undefined}
                   className={cn(
                     "relative rounded-t-[calc(var(--u)*5)]",
-                    "ease-out-soft transition-[height,background-color,color] duration-[1200ms] motion-reduce:transition-none",
+                    "ease-out-soft transition-[height] duration-[1200ms] motion-reduce:transition-none",
                     column.winner &&
                       phase.tense &&
                       !phase.beat &&
@@ -253,51 +258,93 @@ export function PodiumReveal({
                   )}
                   style={{
                     height: risen ? barHeight(height) : 0,
-                    backgroundColor: crowned
-                      ? "var(--winner)"
-                      : `var(--column-${colours.get(column.id) ?? 1})`,
+                    backgroundColor: `var(--column-${colours.get(column.id) ?? 1})`,
                     color: crowned
                       ? "var(--winner-foreground)"
                       : "var(--column-foreground)",
                   }}
                 >
+                  {/* The crown: the winner colour fades in over the column's own */}
+                  {column.winner && (
+                    <div
+                      aria-hidden
+                      className={cn(
+                        "bg-winner absolute inset-0 rounded-t-[inherit]",
+                        "transition-opacity duration-500 motion-reduce:transition-none",
+                        crowned ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  )}
                   <div
                     className={cn(
-                      "absolute inset-x-0 top-6 flex flex-col-reverse items-center gap-1 px-3 text-center",
+                      "absolute inset-x-0 top-6 flex items-center gap-1 px-3 text-center",
+                      // A runner-up's score above its name (its name comes first in the list)
+                      column.winner ? "flex-col" : "flex-col-reverse",
                       "transition-opacity duration-300 motion-reduce:transition-none",
-                      labelShown ? "opacity-100 delay-500" : "opacity-0",
+                      labelShown ? "opacity-100 delay-300" : "opacity-0",
                     )}
                   >
-                    {/* First in the list, but shown under the score (except a single winner's, above) */}
+                    {/* In an image category, the host's photo on the winner's column */}
+                    {crowned && pictures && (
+                      <div
+                        className={cn(
+                          "mb-3 aspect-square",
+                          singleWinner
+                            ? "w-[min(80%,calc(var(--u)*22))]"
+                            : "w-[min(70%,calc(var(--u)*18))]",
+                        )}
+                      >
+                        <NominationDescription
+                          description={column.description}
+                          isImage
+                          imageClassName="size-full [&_img]:size-full [&_img]:rounded-[calc(var(--u)*2.5)] [&_img]:object-cover"
+                        />
+                      </div>
+                    )}
                     {!nameAbove && (
                       <span
                         className={cn(
-                          "line-clamp-2 leading-tight font-semibold break-words",
+                          "leading-tight break-words",
+                          // Tied winners' names carry the crown, so they outrank the score, as
+                          // big as fits in full
                           column.winner
-                            ? "text-stage-lead"
-                            : "text-stage-small",
+                            ? cn(
+                                "mb-2 line-clamp-3 font-bold",
+                                tiedNameSize(column.name),
+                              )
+                            : "text-stage-small line-clamp-2 font-semibold",
                         )}
                       >
                         {column.name}
                       </span>
                     )}
-                    {label && (
-                      <span className="flex flex-col items-center leading-none">
-                        <span
-                          className={cn(
-                            "font-bold tabular-nums",
-                            crowned
-                              ? "text-[calc(var(--u)*9.9)]"
-                              : "text-stage-score",
-                          )}
-                        >
-                          {column.score}
-                        </span>{" "}
-                        <span className="text-stage-small mt-1 font-medium opacity-80">
-                          {label}
+                    {label &&
+                      (nameAbove ? (
+                        <span className="flex flex-col items-center leading-none">
+                          <span className="text-[calc(var(--u)*9.9)] font-bold tabular-nums">
+                            {column.score}
+                          </span>{" "}
+                          <span className="text-stage-small mt-1 font-medium opacity-80">
+                            {label}
+                          </span>
                         </span>
-                      </span>
-                    )}
+                      ) : (
+                        <span className="flex items-baseline gap-2 leading-none">
+                          <span
+                            className={cn(
+                              "font-bold tabular-nums",
+                              column.winner
+                                ? "text-stage-lead"
+                                : "text-stage-score",
+                            )}
+                          >
+                            {column.score}
+                          </span>{" "}
+                          <span className="text-stage-small font-medium opacity-80">
+                            {label}
+                          </span>
+                        </span>
+                      ))}
                   </div>
                 </div>
               </li>
@@ -305,7 +352,7 @@ export function PodiumReveal({
           })}
 
           {rest.length > 0 && (
-            <li className="bg-track text-muted-foreground order-last flex max-w-[calc(var(--u)*40)] min-w-0 flex-1 basis-0 flex-col self-end rounded-t-[calc(var(--u)*5)] px-5 pt-5 pb-4">
+            <li className="bg-track text-muted-foreground order-last flex max-w-[calc(var(--u)*40)] min-w-0 flex-1 basis-0 flex-col self-end rounded-t-[calc(var(--u)*5)] px-5 pt-5 pb-12">
               <p className="text-stage-small text-foreground font-semibold">
                 And the rest
               </p>
@@ -326,12 +373,12 @@ export function PodiumReveal({
         </ol>
       </div>
 
-      {/* The spoken beat before the crown */}
+      {/* The spoken beat before the crown: gone before the winner's name lands */}
       <div
         aria-hidden
         className={cn(
           "bg-background text-stage-beat pointer-events-none fixed inset-0 z-40 grid place-items-center px-24 text-center font-bold",
-          "transition-opacity duration-400",
+          "transition-opacity duration-300",
           phase.beat ? "opacity-100" : "opacity-0",
         )}
       >
@@ -354,10 +401,20 @@ const nameSize = (name: string) =>
       ? "text-stage-headline"
       : "text-stage-title";
 
-/** A column's height: its share of the room under what stands on it, never too short for its label */
-const barHeight = (share: number) =>
-  `max(calc((100% - var(--reserve)) * ${share}), calc(var(--u) * 17))`;
+/** A tied winner's name, inside its column: smaller than a single winner's, never cut short */
+const tiedNameSize = (name: string) =>
+  name.length <= 10
+    ? "text-stage-headline"
+    : name.length <= 22
+      ? "text-stage-title"
+      : "text-stage-lead";
 
-/** Where something standing on a column sits: just above its top, or above its picture */
-const barTop = (share: number, abovePicture: boolean) =>
-  `calc(${barHeight(share)} + var(--u) * ${abovePicture ? 26 : 2})`;
+/**
+ * The shortest a column gets: room for a runner-up's score and a two-line name, ending well clear
+ * of the bottom 5% of the screen, which some TVs crop
+ */
+const FLOOR = "var(--u) * 24";
+
+/** A column's height: the floor, plus its share of the room above it under what stands on it */
+const barHeight = (share: number) =>
+  `calc(${FLOOR} + (100% - var(--reserve) - ${FLOOR}) * ${share})`;
