@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 import { MoonIcon, SunIcon } from "@phosphor-icons/react";
 
@@ -21,7 +21,9 @@ export function ThemeToggle() {
   // What's on <html>: set before the first paint by DEVICE_THEME_SCRIPT, so no flash
   const theme = useActiveTheme();
 
-  useEffect(() => {
+  // Before the first paint: arriving from the homepage form (client navigation) runs no inline
+  // script, so this is what keeps a light phone from flashing dark
+  useLayoutEffect(() => {
     applyDeviceTheme();
     const stop = watchDeviceTheme(applyDeviceTheme);
     return () => {

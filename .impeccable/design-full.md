@@ -368,7 +368,7 @@ On a phone, a vote going in fires a smaller burst: 120 pieces from the vote-in b
 
 ### Live count
 
-A circle in the action colour (never gold: The Gold Is Earned Rule), the same size as the QR tile (41u), with the count at count size and "votes in" under it, lifted with the Lift shadow. It hops (`count-bump`, 1.06 times, spring ease, 0.5s) with each new vote.
+A circle in the action colour (never gold: The Gold Is Earned Rule), the same size as the QR tile (41u), with the count at count size and "votes in" under it, lifted with the Lift shadow. It hops (to 1.06 and back, spring ease, 0.5s, played on the element so its live status isn't replaced) with each new vote; not with reduced motion.
 
 ### Join panel and room code chip
 

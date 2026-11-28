@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 
-import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
 
 type LiveVotingProps = {
@@ -53,15 +53,32 @@ export function LiveVoting({ categoryId, initialVoteCount }: LiveVotingProps) {
     );
   }, [isError, failureCount]);
 
+  // A little hop with each new vote. Played on the element, so the status inside it stays put
+  // and screen readers announce the new count.
+  const circle = useRef<HTMLDivElement>(null);
+  const shownVotes = useRef(totalVotes);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    if (totalVotes <= shownVotes.current) {
+      shownVotes.current = totalVotes;
+      return;
+    }
+    shownVotes.current = totalVotes;
+    if (reduceMotion) return;
+    circle.current?.animate(
+      [
+        { transform: "scale(1)" },
+        { transform: "scale(1.06)", offset: 0.4 },
+        { transform: "scale(1)" },
+      ],
+      { duration: 500, easing: "cubic-bezier(0.2, 1.6, 0.4, 1)" },
+    );
+  }, [totalVotes, reduceMotion]);
+
   return (
     <div
-      // A hop with each new vote: remounted by its count
-      key={totalVotes}
-      className={cn(
-        "bg-primary text-primary-foreground shadow-lift grid size-82 shrink-0 place-content-center rounded-full text-center",
-        totalVotes > initialVoteCount &&
-          "motion-safe:animate-[count-bump_0.5s_var(--ease-spring)]",
-      )}
+      ref={circle}
+      className="bg-primary text-primary-foreground shadow-lift grid size-82 shrink-0 place-content-center rounded-full text-center"
     >
       <p
         className="text-stage-count leading-none font-bold tabular-nums"

@@ -22,6 +22,7 @@ import {
   tileClass,
   TileText,
   useVoteConfetti,
+  VoteOutcome,
   VoteStages,
   YourVote,
 } from "./vote-parts";
@@ -51,12 +52,19 @@ export function VotingInterface({
   closed: boolean;
 } & MyVotesProps) {
   if (categoryType === "RANKING") {
+    // A ranking without its number of places can't be voted in (the server refuses it)
+    if (!rankingTop) {
+      return (
+        <VoteOutcome title="This ranking isn't ready">
+          The host needs to say how many places to rank. Watch the big screen.
+        </VoteOutcome>
+      );
+    }
     return (
       <RankingInterface
         nominations={nominations}
         categoryId={categoryId}
-        // A ranking without its number of places can't be voted in (the server refuses it)
-        rankingTop={rankingTop ?? 0}
+        rankingTop={rankingTop}
         myVotes={myVotes}
         myVotesKey={myVotesKey}
         closed={closed}
@@ -110,7 +118,8 @@ function PickOne({
         queryKey: myVotesKey,
         change: (_before, { nominationId }) => [{ nominationId, rank: null }],
         onError: (error, { nominationId }) => {
-          setDraft({ id: nominationId });
+          // Unless they've started picking again meanwhile: that pick stays
+          setDraft(current => current ?? { id: nominationId });
           toast.error(error.message || "Your vote didn't go in. Try again.");
         },
       }),
@@ -120,13 +129,16 @@ function PickOne({
   // Only a pick different from the vote already in can be sent
   const choice = nominations.find(n => n.id === draft?.id);
   const isNew = !!choice && choice.id !== savedId;
+  // One vote on its way at a time, so the last one sent is the one that counts
+  const sending = vote.isPending;
   const send = () => {
-    if (!choice || !isNew) return;
+    if (!choice || !isNew || sending) return;
     setDraft(null);
     burst();
     vote.mutate({ nominationId: choice.id });
   };
   const label = () => {
+    if (sending) return "Saving your last vote...";
     if (!choice) return changing ? "Pick a different one" : "Pick a nomination";
     return isNew ? `Vote for ${choice.name}` : "That's your vote already";
   };
@@ -225,7 +237,7 @@ function PickOne({
           })}
         </div>
         <PinnedAction
-          disabled={!isNew}
+          disabled={!isNew || sending}
           onClick={send}
           below={
             changing && (

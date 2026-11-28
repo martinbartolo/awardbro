@@ -83,11 +83,13 @@ export function LivePresentation({
     () => new Set(scene === "revealed" && category ? [category.id] : []),
   );
   const [playing, setPlaying] = useState<string | null>(null);
+  // Set once per render: a category revealed straight after another (an aggregate) plays too
   if (scene === "revealed" && category && !revealsShown.has(category.id)) {
     setRevealsShown(new Set(revealsShown).add(category.id));
     setPlaying(category.id);
+  } else if (playing !== null && category?.id !== playing) {
+    setPlaying(null);
   }
-  if (playing !== null && category?.id !== playing) setPlaying(null);
   const playReveal =
     scene === "revealed" && playing === category?.id && !reduceMotion;
 

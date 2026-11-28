@@ -1,7 +1,7 @@
 import { type Metadata } from "next";
 
 import { LiveVotingSession } from "~/app/components/live-voting-session";
-import { DEVICE_THEME_SCRIPT } from "~/lib/device-theme";
+import { DEVICE_THEME_SCRIPT } from "~/lib/device-theme-script";
 import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
 

@@ -631,8 +631,8 @@
         "purpose": "The leader's shiver just under second place, for 1.6s before the beat. Not with reduced motion."
       },
       {
-        "name": "count-bump",
-        "value": "@keyframes count-bump { 40% { transform: scale(1.06) } } 0.5s var(--ease-spring)",
+        "name": "count-hop",
+        "value": "scale 1 to 1.06 (at 40%) to 1, 0.5s cubic-bezier(0.2, 1.6, 0.4, 1), Web Animations on the count circle",
         "purpose": "The live count's hop with each new vote. Not with reduced motion."
       },
       {
