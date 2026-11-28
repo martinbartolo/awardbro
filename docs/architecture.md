@@ -82,6 +82,12 @@ The present page (`live-presentation.tsx`) shows the category on the screen with
 - It keeps the screen awake (Screen Wake Lock, asked for again when the tab is shown), goes fullscreen with one click or the F key, and hides the button and cursor while the mouse rests.
 - It follows the host's theme for it (`screenTheme`), live: the page puts `data-theme="light"` on `<html>` for Paper, so toasts and dialogs follow too.
 
+## The vote page
+
+The voter's phone (`live-voting-session.tsx`) shows the category on the big screen with the nominations as tiles, and a vote button pinned at the bottom that names the pick ("Vote for The Worm"): a normal category is a radio group, an image category the same two photos to a row, and a ranking takes taps in order (each tile shows its place; a tap takes it out again) until "Submit my top 3". Once the vote is in, the page says "Your vote is in" with a small burst of confetti (none with reduced motion), and "Change my vote" goes back to the tiles. When voting closes, it shows what the voter's vote was. A new category replaces the page's state, so a vote never shows against the next one.
+
+It follows the phone's light or dark setting, or the theme the voter picks with the toggle in its header, remembered on the device (`src/lib/device-theme.ts`). A small inline script sets it before the first paint, so a light phone never flashes dark; it's fixed text, with nothing from a visitor in it.
+
 ## Joining a show
 
 The present page shows a QR code that opens the vote page, the site's address and the room code: large while waiting and during voting, and small at the top right once voting has closed, during a reveal, or while an aggregate category (which takes no votes) is on the screen. The QR code is generated in the browser, without a third-party service. Voters type the code on the homepage (`RoomCodeForm`): it looks the code up (ignoring case and spaces, or from a pasted vote link) with `findShow` and opens the vote page. `/join`, where the form used to be, redirects there. Hosts get back to their show with "Manage your show" on the homepage, the same form opening `/manage/<code>`; creating a show opens it straight away. The manage page puts the room code, the big screen (with its theme, Night or Paper) and Run the Show in one card at the top, and resetting votes and deleting the show in a danger zone at the bottom. A room code doesn't restrict who can vote.
