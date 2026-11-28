@@ -31,11 +31,7 @@ export function useShowCode() {
  * server's message). For host pages, under a `ShowCodeProvider`.
  */
 export function useShowChange() {
-  const code = useShowCode();
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  const onManageError = useManageErrorHandler();
-
+  const sessionChange = useSessionChange();
   return <TVariables,>(
     change: (
       categories: ShowCategory[],
@@ -43,14 +39,30 @@ export function useShowChange() {
     ) => ShowCategory[],
     fallback?: string,
   ) =>
+    sessionChange<TVariables>(
+      (session, variables) => ({
+        ...session,
+        categories: change(session.categories, variables),
+      }),
+      fallback,
+    );
+}
+
+/** Like `useShowChange`, for an action that changes the show itself rather than its categories */
+export function useSessionChange() {
+  const code = useShowCode();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const onManageError = useManageErrorHandler();
+
+  return <TVariables,>(
+    change: (session: Session, variables: TVariables) => Session,
+    fallback?: string,
+  ) =>
     optimistic<TVariables, Session, ManageError>({
       queryClient,
       queryKey: trpc.award.getSession.queryKey({ code }),
-      change: (before, variables) =>
-        before && {
-          ...before,
-          categories: change(before.categories, variables),
-        },
+      change: (before, variables) => before && change(before, variables),
       onError: onManageError(fallback),
     });
 }

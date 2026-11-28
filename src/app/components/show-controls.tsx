@@ -4,6 +4,9 @@ import {
   ArrowCounterClockwiseIcon,
   ArrowRightIcon,
   ArrowSquareOutIcon,
+  type Icon,
+  MoonIcon,
+  SunIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
@@ -14,13 +17,44 @@ import { toast } from "sonner";
 import { ConfirmButton } from "~/app/components/confirm-button";
 import { Button } from "~/components/ui/button";
 import { useManageErrorHandler } from "~/lib/hooks/useManageErrorHandler";
-import { useShowChange } from "~/lib/hooks/useShowChange";
+import { useSessionChange, useShowChange } from "~/lib/hooks/useShowChange";
 import { showPaths } from "~/lib/join";
 import { withoutVotes } from "~/lib/show-changes";
-import { useTRPC } from "~/trpc/react";
+import { cn } from "~/lib/utils";
+import { type RouterOutputs, useTRPC } from "~/trpc/react";
+
+type ScreenTheme = RouterOutputs["award"]["getSession"]["screenTheme"];
+
+const SCREEN_THEMES: { theme: ScreenTheme; label: string; icon: Icon }[] = [
+  { theme: "NIGHT", label: "Night", icon: MoonIcon },
+  { theme: "PAPER", label: "Paper", icon: SunIcon },
+];
 
 /** What the host needs to get the show going: the room code voters enter, and the big screen */
-export function RunShowCard({ code }: { code: string }) {
+export function RunShowCard({
+  code,
+  sessionId,
+  screenTheme,
+}: {
+  code: string;
+  sessionId: string;
+  screenTheme: ScreenTheme;
+}) {
+  const trpc = useTRPC();
+  // The big screen follows straight away, on any device it's open on
+  const sessionChange = useSessionChange();
+  const setScreenTheme = useMutation(
+    trpc.award.setScreenTheme.mutationOptions(
+      sessionChange(
+        (session, { theme }: { theme: ScreenTheme }) => ({
+          ...session,
+          screenTheme: theme,
+        }),
+        "Failed to change the big screen's theme",
+      ),
+    ),
+  );
+
   return (
     <section
       aria-labelledby="run-show"
@@ -37,19 +71,55 @@ export function RunShowCard({ code }: { code: string }) {
         </p>
       </div>
       {/* The big screen in a new tab; the run view here, or on the host's phone */}
-      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-        <Button asChild size="lg" variant="outline">
-          <Link href={showPaths.present(code)} target="_blank">
-            Open Big Screen
-            <ArrowSquareOutIcon />
-          </Link>
-        </Button>
-        <Button asChild size="lg" className="group">
-          <Link href={showPaths.run(code)}>
-            Run the Show
-            <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-1" />
-          </Link>
-        </Button>
+      <div className="flex shrink-0 flex-col gap-3">
+        <div
+          role="radiogroup"
+          aria-labelledby="screen-theme"
+          className="flex items-center gap-3 sm:justify-end"
+        >
+          <span id="screen-theme" className="text-muted-foreground text-sm">
+            Big screen
+          </span>
+          <div className="bg-background flex rounded-full p-1">
+            {SCREEN_THEMES.map(({ theme, label, icon: ThemeIcon }) => {
+              const checked = screenTheme === theme;
+              return (
+                <button
+                  key={theme}
+                  type="button"
+                  role="radio"
+                  aria-checked={checked}
+                  onClick={() =>
+                    !checked && setScreenTheme.mutate({ sessionId, theme })
+                  }
+                  className={cn(
+                    "focus-visible:ring-ring flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                    checked
+                      ? "bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <ThemeIcon className="size-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild size="lg" variant="outline">
+            <Link href={showPaths.present(code)} target="_blank">
+              Open Big Screen
+              <ArrowSquareOutIcon />
+            </Link>
+          </Button>
+          <Button asChild size="lg" className="group">
+            <Link href={showPaths.run(code)}>
+              Run the Show
+              <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-1" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </section>
   );
