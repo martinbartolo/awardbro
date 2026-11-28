@@ -8,6 +8,7 @@ import { columnColours, podium, riseOrder } from "~/lib/podium";
 import { getScoreLabel, type LabelledCategory } from "~/lib/scoring";
 import { cn } from "~/lib/utils";
 
+import { FittedText } from "./fitted-text";
 import { NominationDescription } from "./nomination-description";
 
 type Nomination = {
@@ -310,23 +311,19 @@ export function PodiumReveal({
                     {/* On top: first for a winner, last (reversed) for a runner-up */}
                     {winner && photo}
                     {role !== "winner" && (
-                      <span
-                        className={cn(
-                          "leading-tight break-words",
-                          role === "tied"
-                            ? // Tied winners' names carry the crown: they outrank the score
-                              cn(
-                                "mb-2 line-clamp-3 font-bold",
-                                tiedNameSize(column.name),
-                              )
-                            : cn(
-                                "text-stage-small font-semibold",
-                                pictures ? "line-clamp-1" : "line-clamp-2",
-                              ),
-                        )}
-                      >
-                        {column.name}
-                      </span>
+                      <div className="w-full">
+                        <FittedText
+                          text={column.name}
+                          // Tied winners' names carry the crown: they outrank the score
+                          lines={role === "tied" ? 3 : pictures ? 1 : 2}
+                          className={cn(
+                            "leading-tight break-words",
+                            role === "tied"
+                              ? cn("mb-2 font-bold", tiedNameSize(column.name))
+                              : "text-stage-small font-semibold",
+                          )}
+                        />
+                      </div>
                     )}
                     {label && (
                       <span className={cn("leading-none", SCORE[role].line)}>
@@ -358,7 +355,9 @@ export function PodiumReveal({
               <ul className="text-stage-small mt-2 space-y-1">
                 {rest.map(nomination => (
                   <li key={nomination.id} className="flex gap-3">
-                    <span className="min-w-0 truncate">{nomination.name}</span>
+                    <span className="min-w-0 flex-1">
+                      <FittedText text={nomination.name} lines={1} />
+                    </span>
                     {nomination.score !== null && (
                       <span className="ml-auto tabular-nums">
                         {nomination.score}
