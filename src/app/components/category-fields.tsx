@@ -86,7 +86,10 @@ export function CategoryTypeBadge({
   );
 }
 
-/** Where a category is in the show, next to its name on the manage page, once it has started */
+/**
+ * Where a category is in the show, next to its name on the manage page: once it has started, or
+ * while an aggregate waits for its awards
+ */
 export function CategoryStageBadge({
   category,
 }: {

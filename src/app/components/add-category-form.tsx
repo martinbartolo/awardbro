@@ -44,7 +44,7 @@ export function AddCategory({
     return (
       <Button
         variant="quiet"
-        className="hover:border-input rounded-tile h-12 w-full border-dashed"
+        className="hover:border-input rounded-inner h-12 w-full border-dashed"
         onClick={() => setState("open")}
         // eslint-disable-next-line jsx-a11y/no-autofocus -- only when the host closes the form
         autoFocus={state === "returned"}

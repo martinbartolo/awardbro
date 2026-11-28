@@ -1,5 +1,12 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/** Knows the design's own radius and shadow names, so they replace the defaults they override */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: { radius: ["panel", "inner"], shadow: ["soft", "lift"] },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

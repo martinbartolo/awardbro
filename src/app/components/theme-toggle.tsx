@@ -13,14 +13,10 @@ import {
 import { clearDocumentTheme, useActiveTheme } from "~/lib/theme";
 
 /**
- * Switches a page on the visitor's own device between light and dark, remembered on the device.
- * Until they pick one, the page follows the device's setting. Mount it once per page: it keeps
- * `<html>` in step while the page is open, and takes the theme off when the page closes.
+ * Keeps `<html>` on the device's theme while a device page is open (see DeviceTheme), and takes
+ * it off when the page closes
  */
-export function ThemeToggle() {
-  // What's on <html>: set before the first paint by DEVICE_THEME_SCRIPT, so no flash
-  const theme = useActiveTheme();
-
+export function FollowDeviceTheme() {
   // Before the first paint: arriving from the homepage form (client navigation) runs no inline
   // script, so this is what keeps a light phone from flashing dark
   useLayoutEffect(() => {
@@ -31,6 +27,16 @@ export function ThemeToggle() {
       clearDocumentTheme();
     };
   }, []);
+  return null;
+}
+
+/**
+ * Switches a page on the visitor's own device between light and dark, remembered on the device.
+ * Until they pick one, the page follows the device's setting (DeviceTheme keeps it in step).
+ */
+export function ThemeToggle() {
+  // What's on <html>: set before the first paint by DEVICE_THEME_SCRIPT, so no flash
+  const theme = useActiveTheme();
 
   const next = theme === "light" ? "dark" : "light";
   return (

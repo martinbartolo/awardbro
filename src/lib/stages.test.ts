@@ -176,3 +176,33 @@ describe("stageLabel", () => {
     ).toBe("Voting");
   });
 });
+
+describe("aggregates", () => {
+  const flags = { isActive: false, votingClosed: false, revealed: false };
+
+  it("calls an aggregate's hidden results by their name, not voting", () => {
+    const hidden = {
+      ...flags,
+      isActive: true,
+      votingClosed: true,
+      type: "AGGREGATE",
+      sourceCategories: [{ revealed: true }],
+    };
+    expect(stageLabel(hidden)).toBe("Results hidden");
+  });
+
+  it("updates an aggregate's copy of a source as the source is revealed", () => {
+    const categories = [
+      {
+        ...flags,
+        id: "a",
+        isActive: true,
+        votingClosed: true,
+        sourceCategories: [],
+      },
+      { ...flags, id: "sum", sourceCategories: [{ id: "a", revealed: false }] },
+    ];
+    const [, sum] = applyStage(categories, "a", "revealed");
+    expect(sum?.sourceCategories).toEqual([{ id: "a", revealed: true }]);
+  });
+});

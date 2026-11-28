@@ -1,6 +1,6 @@
 import { type Metadata } from "next";
 
-import { DeviceThemeScript } from "~/app/components/device-theme-script";
+import { DeviceTheme } from "~/app/components/device-theme";
 import { LiveVotingSession } from "~/app/components/live-voting-session";
 import { showPage } from "~/server/shows";
 import { api } from "~/trpc/server";
@@ -75,7 +75,7 @@ export default async function VotePage({
 
   return (
     <>
-      <DeviceThemeScript />
+      <DeviceTheme />
       <LiveVotingSession
         initialShow={show}
         initialMyVotes={initialMyVotes}

@@ -109,7 +109,7 @@ export function RunShow({
 
       <div className="mt-5 grid gap-5 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6">
         {categories.length === 0 ? (
-          <QuietPanel title="No awards yet">
+          <QuietPanel title="No awards yet" className="lg:col-span-2">
             Add the show&apos;s categories on the setup page.
           </QuietPanel>
         ) : current ? (
@@ -164,7 +164,7 @@ export function RunShow({
                       onClick={() => setSelectedId(category.id)}
                       aria-current={isCurrent ? "step" : undefined}
                       className={cn(
-                        "focus-visible:ring-ring rounded-tile flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                        "focus-visible:ring-ring rounded-inner flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none",
                         isCurrent ? "bg-card shadow-soft" : "hover:bg-card/60",
                       )}
                     >
@@ -242,8 +242,14 @@ function CurrentCategory({
       .map(source => source.name),
     onScreen: categories.find(c => c.isActive && c.id !== category.id)?.name,
   });
-  // A category that's done shows as revealed in the stepper
-  const shownStage = stage === "done" ? "revealed" : stage;
+  // A category that's done shows as revealed in the stepper, and an aggregate's hidden results
+  // (it has no voting to close) as not revealed yet
+  const shownStage =
+    stage === "done"
+      ? "revealed"
+      : isAggregate && stage === "closed"
+        ? "ready"
+        : stage;
   const stages = isAggregate ? AGGREGATE_STAGES : VOTING_STAGES;
   const stepIndex = stages.indexOf(shownStage);
 
@@ -282,7 +288,7 @@ function CurrentCategory({
             key={step}
             aria-current={index === stepIndex ? "step" : undefined}
             className={cn(
-              "rounded-tile px-3 py-2.5 text-center text-sm font-semibold",
+              "rounded-inner px-3 py-2.5 text-center text-sm font-semibold",
               index === stepIndex
                 ? "bg-primary/15 text-primary ring-primary/50 ring-2 ring-inset"
                 : index < stepIndex
@@ -296,11 +302,12 @@ function CurrentCategory({
       </ol>
 
       {isVoting && (
-        <div className="bg-muted rounded-tile mt-5 flex flex-wrap items-baseline gap-x-3 px-6 py-5">
-          <span
-            className="text-6xl leading-none font-bold tabular-nums"
-            aria-live="polite"
-          >
+        <div
+          className="bg-muted rounded-inner mt-5 flex flex-wrap items-baseline gap-x-3 px-6 py-5"
+          aria-live="polite"
+          aria-atomic
+        >
+          <span className="text-6xl leading-none font-bold tabular-nums">
             {voters}
           </span>
           <span className="text-muted-foreground text-lg">
@@ -312,7 +319,9 @@ function CurrentCategory({
       <p className="text-muted-foreground mt-5 max-w-prose text-lg leading-snug">
         {isAggregate && stage === "ready"
           ? "This adds up earlier awards, so there's no voting: reveal it once they're all revealed."
-          : HINTS[stage]}
+          : isAggregate && stage === "closed"
+            ? "The results are hidden. Reveal them again when you're ready."
+            : HINTS[stage]}
       </p>
       {notes.map(note => (
         <p key={note} className="text-foreground mt-2 max-w-prose">
@@ -415,7 +424,7 @@ function RevealOption({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="bg-muted rounded-tile flex items-start gap-3 px-4 py-3">
+    <div className="bg-muted rounded-inner flex items-start gap-3 px-4 py-3">
       <Checkbox
         id={id}
         checked={checked}
@@ -439,13 +448,20 @@ function RevealOption({
 /** A card with the shape set, for the run view's start and end: no awards yet, or the show done */
 function QuietPanel({
   title,
+  className,
   children,
 }: {
   title: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-card rounded-panel flex flex-col items-center px-6 py-16 text-center">
+    <section
+      className={cn(
+        "bg-card rounded-panel flex flex-col items-center px-6 py-16 text-center",
+        className,
+      )}
+    >
       <ShapeMarks className="mb-5" />
       <h2 className="text-3xl font-bold">{title}</h2>
       <p className="text-muted-foreground mt-2">{children}</p>

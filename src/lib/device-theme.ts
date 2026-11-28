@@ -5,7 +5,7 @@ import {
 import { setDocumentTheme, type Theme } from "~/lib/theme";
 
 /**
- * The theme of pages on the visitor's own device (the vote page): the device's light or dark
+ * The theme of pages on the visitor's own device (the vote page and the host views): the device's light or dark
  * setting, unless they've picked one, which is remembered on the device. The big screen doesn't
  * use this: the host sets its theme per show.
  */
