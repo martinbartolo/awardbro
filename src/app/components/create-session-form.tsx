@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { WarningCircleIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
-import { CircleExclamationPoint } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -110,7 +110,7 @@ export function CreateSessionForm() {
             />
 
             <div className="bg-muted flex items-start gap-2 rounded-md p-3">
-              <CircleExclamationPoint className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+              <WarningCircleIcon className="text-muted-foreground mt-0.5 size-5 shrink-0" />
               <p className="text-muted-foreground text-sm">
                 The room code is on the big screen, so the password is what
                 keeps your show to you. You&apos;ll need it to manage the show

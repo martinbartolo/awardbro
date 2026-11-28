@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Maximize2, Minimize2 } from "lucide-react";
+import { ArrowsInIcon, ArrowsOutIcon } from "@phosphor-icons/react";
 
 import { Button } from "~/components/ui/button";
 
@@ -38,8 +38,9 @@ export function FullscreenButton() {
       size="icon"
       className="fixed top-4 right-4 z-50"
       tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
     >
-      {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+      {isFullscreen ? <ArrowsInIcon /> : <ArrowsOutIcon />}
     </Button>
   );
 }

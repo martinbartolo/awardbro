@@ -3,8 +3,8 @@
 import { useId, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { type Control, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -49,7 +49,7 @@ export function AddCategory({
         // eslint-disable-next-line jsx-a11y/no-autofocus -- only when the host closes the form
         autoFocus={state === "returned"}
       >
-        <Plus className="size-4" />
+        <PlusIcon />
         Add category
       </Button>
     );

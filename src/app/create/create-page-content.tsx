@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import Link from "next/link";
 
@@ -24,7 +24,7 @@ export function CreatePageContent() {
       >
         <Button variant="ghost" asChild className="mb-6">
           <Link href="/">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeftIcon />
             Back to Home
           </Link>
         </Button>

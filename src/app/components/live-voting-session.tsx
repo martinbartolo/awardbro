@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { CheckCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { CircleExclamationPoint } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
@@ -125,7 +125,7 @@ export function LiveVotingSession({
         variants={containerVariants}
       >
         <Alert variant="destructive">
-          <CircleExclamationPoint className="h-4 w-4" />
+          <WarningCircleIcon className="size-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {sessionError.message || "Failed to load voting session"}
@@ -171,13 +171,14 @@ export function LiveVotingSession({
                   : "Cast your vote"}
             </p>
             {hasVoted && !isClosed && (
-              <p className="text-success mt-2">
+              <p className="text-success mt-2 inline-flex items-center gap-1.5">
+                <CheckCircleIcon weight="duotone" className="size-5 shrink-0" />
                 You have already voted in this category
               </p>
             )}
             {voteError && (
               <Alert variant="destructive" className="mt-4">
-                <CircleExclamationPoint className="h-4 w-4" />
+                <WarningCircleIcon className="size-4" />
                 <AlertTitle>Warning</AlertTitle>
                 <AlertDescription>
                   {voteError.message ||

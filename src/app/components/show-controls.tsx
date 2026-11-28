@@ -1,7 +1,12 @@
 "use client";
 
+import {
+  ArrowCounterClockwiseIcon,
+  ArrowRightIcon,
+  ArrowSquareOutIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, ExternalLink, RotateCcw, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -36,13 +41,13 @@ export function RunShowCard({ code }: { code: string }) {
         <Button asChild size="lg" variant="outline">
           <Link href={showPaths.present(code)} target="_blank">
             Open Big Screen
-            <ExternalLink className="size-4" />
+            <ArrowSquareOutIcon />
           </Link>
         </Button>
         <Button asChild size="lg" className="group">
           <Link href={showPaths.run(code)}>
             Run the Show
-            <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
+            <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </Button>
       </div>
@@ -101,7 +106,7 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
           onConfirm={() => resetAllVotes.mutate({ sessionId })}
         >
           <Button variant="outline">
-            <RotateCcw className="size-4" />
+            <ArrowCounterClockwiseIcon />
             Reset All Votes
           </Button>
         </ConfirmButton>
@@ -113,7 +118,7 @@ export function DangerZone({ sessionId }: { sessionId: string }) {
           onConfirm={() => deleteSession.mutate({ id: sessionId })}
         >
           <Button variant="destructive">
-            <Trash className="size-4" />
+            <TrashIcon />
             Delete Award Show
           </Button>
         </ConfirmButton>

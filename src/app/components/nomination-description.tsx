@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { ImageOff } from "lucide-react";
+import { ImageBrokenIcon } from "@phosphor-icons/react";
 
 import { isImageUrl, parseImageLink } from "~/lib/images";
 import { cn } from "~/lib/utils";
@@ -86,7 +86,7 @@ function Picture({
             : "mt-2 h-24 w-36 flex-col gap-1 p-2 text-xs",
         )}
       >
-        <ImageOff className="size-5 shrink-0" />
+        <ImageBrokenIcon className="size-5 shrink-0" />
         {!thumbnail && <span>Picture unavailable</span>}
       </div>
     );
