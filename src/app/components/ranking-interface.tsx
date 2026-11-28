@@ -17,6 +17,7 @@ import { NominationDescription } from "./nomination-description";
 import {
   PinnedAction,
   QuietButton,
+  Tick,
   tileClass,
   useVoteConfetti,
   VoteOutcome,
@@ -232,16 +233,15 @@ export function RankingInterface({
                       />
                     )}
                   </span>
-                  <span
-                    className={cn(
-                      "grid h-9 w-13 shrink-0 place-items-center rounded-full text-base font-bold",
-                      place
-                        ? "bg-primary-foreground text-primary"
-                        : "border-input border-[3px]",
-                    )}
-                  >
-                    {place ? getOrdinal(place) : ""}
-                  </span>
+                  {place ? (
+                    // One width for every place, so the badges line up
+                    <span className="bg-primary-foreground text-primary grid h-9 w-13 shrink-0 place-items-center rounded-full text-base font-bold">
+                      {getOrdinal(place)}
+                    </span>
+                  ) : (
+                    // Not placed yet: the same ring as a single pick's tiles
+                    <Tick checked={false} />
+                  )}
                 </button>
               );
             })}
