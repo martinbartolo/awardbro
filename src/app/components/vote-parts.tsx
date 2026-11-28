@@ -90,8 +90,10 @@ export function PinnedAction({
       <div ref={end} aria-hidden className="h-px" />
       <div
         className={cn(
-          "bg-background sticky bottom-0 -mx-5 mt-auto px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] transition-shadow duration-300",
-          covering && "shadow-[0_-14px_28px_-10px_var(--shadow-color)]",
+          "bg-background sticky bottom-0 -mx-5 mt-auto border-t-2 border-transparent px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] transition-[box-shadow,border-color] duration-300",
+          // A shadow alone is lost on the Night ground: an edge in the line colour shows in both
+          covering &&
+            "border-secondary shadow-[0_-14px_28px_-10px_var(--shadow-color)]",
         )}
       >
         <Button

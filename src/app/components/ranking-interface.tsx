@@ -138,7 +138,7 @@ export function RankingInterface({
           key={nomination.id}
           className="bg-card text-card-foreground shadow-soft flex items-center gap-3 rounded-[16px] px-3 py-2.5"
         >
-          <span className="bg-primary text-primary-foreground grid h-8 min-w-8 shrink-0 place-items-center rounded-full px-2 text-sm font-bold">
+          <span className="bg-primary text-primary-foreground grid h-8 w-12 shrink-0 place-items-center rounded-full text-sm font-bold">
             {getOrdinal(i + 1)}
           </span>
           <span className="min-w-0 font-semibold break-words">
@@ -234,7 +234,7 @@ export function RankingInterface({
                   </span>
                   <span
                     className={cn(
-                      "grid h-9 min-w-9 shrink-0 place-items-center rounded-full px-2 text-base font-bold",
+                      "grid h-9 w-13 shrink-0 place-items-center rounded-full text-base font-bold",
                       place
                         ? "bg-primary-foreground text-primary"
                         : "border-input border-[3px]",
