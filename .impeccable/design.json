@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-28T19:30:00+00:00",
+  "generatedAt": "2026-11-28T22:30:00+00:00",
   "title": "Design System: AwardBro",
   "extensions": {
     "colorMeta": {
@@ -601,12 +601,12 @@
       {
         "name": "shadow-soft",
         "value": "0 6px 20px var(--shadow-color)",
-        "purpose": "Tiles, cards, the room code chip."
+        "purpose": "Tiles, cards, the room code chip; in the host views the room-code card, the category cards, the Run the Show pill and the running order's current row."
       },
       {
         "name": "shadow-lift",
         "value": "0 18px 44px var(--shadow-color)",
-        "purpose": "The QR code, the live count, the main button, the phone's vote-in badge."
+        "purpose": "The QR code, the live count, the main button (the run view's next-step pill), the phone's vote-in badge."
       },
       {
         "name": "shadow-bar-lift",
@@ -671,15 +671,15 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one next step on a screen: vote, open or close voting, reveal.",
+      "description": "The one next step on a screen: vote, open or close voting, reveal. In the host views the Button sizes `pillLg` (56px, the run view's next step, Lift) and `pill` (48px, Run the Show, Soft); one solid pill per host screen (The One Pill Rule).",
       "html": "<button class=\"ds-btn-primary\">Close voting</button>",
-      "css": ".ds-btn-primary{height:56px;padding:0 32px;border:0;border-radius:9999px;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);font:600 1.125rem Fredoka,ui-rounded,system-ui,sans-serif;box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4));cursor:pointer;transition:transform .15s,filter .2s}.ds-btn-primary:hover{filter:brightness(1.06)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+      "css": ".ds-btn-primary{height:56px;padding:0 32px;border:0;border-radius:9999px;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);font:700 1.125rem Fredoka,ui-rounded,system-ui,sans-serif;box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4));cursor:pointer;transition:transform .15s,filter .2s}.ds-btn-primary:hover{filter:brightness(1.06)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
     },
     {
       "name": "Quiet Button",
       "kind": "button",
       "refersTo": "button-quiet",
-      "description": "Secondary steps such as taking an award off the big screen.",
+      "description": "The `quiet` Button variant, a bordered ghost: secondary steps such as taking an award off the big screen, Open Big Screen, the dashed Add category, the danger zone's buttons.",
       "html": "<button class=\"ds-btn-quiet\">Take off the big screen</button>",
       "css": ".ds-btn-quiet{height:48px;padding:0 24px;border:2px solid var(--border,#33316a);border-radius:9999px;background:transparent;color:var(--muted-foreground,#bab8e6);font:600 1rem Fredoka,ui-rounded,system-ui,sans-serif;cursor:pointer;transition:background .2s,color .2s}.ds-btn-quiet:hover{background:var(--accent,#33316a);color:var(--foreground,#fff)}.ds-btn-quiet:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
     },
@@ -690,6 +690,43 @@
       "description": "A surface on the stage for forms and grouped content.",
       "html": "<div class=\"ds-card\"><strong>Best Dance Move</strong><p>Voting is open.</p></div>",
       "css": ".ds-card{padding:24px;border-radius:24px;background:var(--card,#2e2c66);color:var(--card-foreground,#fff);box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));font-family:Fredoka,ui-rounded,system-ui,sans-serif}.ds-card p{margin:6px 0 0;color:var(--muted-foreground,#bab8e6)}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet everywhere, never the action colour: header links, icon actions; a delete icon turns destructive on hover.",
+      "html": "<div class=\"ds-ghosts\"><button class=\"ds-ghost\">&larr; Setup</button><button class=\"ds-ghost ds-ghost-icon ds-ghost-del\" aria-label=\"Delete nomination\"><svg viewBox=\"0 0 256 256\" width=\"16\" height=\"16\" aria-hidden=\"true\"><path d=\"M200 56 56 200M200 200 56 56\" stroke=\"currentColor\" stroke-width=\"24\" stroke-linecap=\"round\"/></svg></button></div>",
+      "css": ".ds-ghosts{display:flex;gap:4px;align-items:center}.ds-ghost{height:36px;padding:0 12px;border:0;border-radius:9999px;background:transparent;color:var(--muted-foreground,#bab8e6);font:600 .875rem Fredoka,ui-rounded,system-ui,sans-serif;cursor:pointer;transition:background .2s,color .2s}.ds-ghost:hover{background:var(--accent,#4a4892);color:var(--accent-foreground,#fff)}.ds-ghost-icon{width:32px;height:32px;padding:0;display:grid;place-items:center}.ds-ghost-del:hover{color:var(--destructive,#ff6b8a)}.ds-ghost:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+    },
+    {
+      "name": "Quiet Danger Button",
+      "kind": "button",
+      "description": "The danger zone's Reset and Delete: the `quiet` variant whose border and text turn destructive on hover; the confirm dialog keeps the solid red.",
+      "html": "<div class=\"ds-danger\"><button class=\"ds-danger-btn\">Reset All Votes</button><button class=\"ds-danger-btn\">Delete Award Show</button></div>",
+      "css": ".ds-danger{display:flex;gap:8px;padding:24px;border:2px solid color-mix(in srgb,var(--destructive,#ff6b8a) 40%,transparent);border-radius:24px}.ds-danger-btn{height:40px;padding:0 16px;border:2px solid var(--border,#33316a);border-radius:9999px;background:transparent;color:var(--muted-foreground,#bab8e6);font:600 .875rem Fredoka,ui-rounded,system-ui,sans-serif;cursor:pointer;transition:border-color .2s,color .2s,background .2s}.ds-danger-btn:hover{border-color:var(--destructive,#ff6b8a);color:var(--destructive,#ff6b8a);background:var(--accent,#4a4892)}.ds-danger-btn:focus-visible{outline:3px solid var(--ring,#ff7a5c);outline-offset:3px}"
+    },
+    {
+      "name": "Category Type Badge",
+      "kind": "chip",
+      "description": "A neutral pill (muted fill, foreground text) naming the category's type; only its Duotone icon takes a mark colour (Image mark-2, Ranking mark-3, Aggregate mark-1).",
+      "html": "<span class=\"ds-type\"><svg viewBox=\"0 0 256 256\" width=\"14\" height=\"14\" aria-hidden=\"true\"><circle cx=\"52\" cy=\"128\" r=\"28\" fill=\"currentColor\" opacity=\".2\"/><path d=\"M104 64h112M104 128h112M104 192h112\" stroke=\"currentColor\" stroke-width=\"20\" stroke-linecap=\"round\"/></svg>Ranking (Top 3)</span>",
+      "css": ".ds-type{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;background:var(--muted,#1f1e4a);color:var(--foreground,#fff);font:600 .75rem Fredoka,ui-rounded,system-ui,sans-serif}.ds-type svg{color:var(--mark-3,#2ec4a6)}"
+    },
+    {
+      "name": "Stage Stepper",
+      "kind": "nav",
+      "description": "The run view's stages for the award on its card: done steps in the muted fill, the current one a 15% action-colour tint with an inset ring (never a fill), steps to come quieter.",
+      "html": "<ol class=\"ds-steps\"><li class=\"done\">Not started</li><li aria-current=\"step\">Voting</li><li>Voting closed</li><li>Revealed</li></ol>",
+      "css": ".ds-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:520px;margin:0;padding:0;list-style:none;font:600 .875rem Fredoka,ui-rounded,system-ui,sans-serif}.ds-steps li{padding:10px 12px;border-radius:14px;text-align:center;background:color-mix(in srgb,var(--muted,#1f1e4a) 60%,transparent);color:var(--muted-foreground,#bab8e6)}.ds-steps li.done{background:var(--muted,#1f1e4a);color:var(--foreground,#fff)}.ds-steps li[aria-current]{background:color-mix(in srgb,var(--primary,#ff7a5c) 15%,transparent);color:var(--primary,#ff7a5c);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--primary,#ff7a5c) 50%,transparent)}"
+    },
+    {
+      "name": "Running Order",
+      "kind": "nav",
+      "refersTo": "running-order",
+      "description": "The run view's muted aside (panel corners, 24px): each award in a 14px host-tile row with its mark-coloured shape marker and stage; the current row lifted onto the card colour with the Soft shadow, its stage in the action colour; an aggregate waiting on its sources says \"Waits for its awards\".",
+      "html": "<aside class=\"ds-order\"><h3>Running order</h3><ol><li><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"var(--mark-1,#ff7a5c)\"/></svg><span>Best Desk Snack</span><em>Done</em></li><li aria-current=\"step\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\"><path d=\"M12 2 23 22H1Z\" fill=\"var(--mark-2,#7c8cff)\"/></svg><span>Best Dance Move</span><em>Voting</em></li><li><svg viewBox=\"0 0 44 18\" width=\"14\" height=\"14\"><path d=\"M3 9q6-8 12 0t12 0t12 0\" fill=\"none\" stroke=\"var(--mark-3,#2ec4a6)\" stroke-width=\"6\" stroke-linecap=\"round\"/></svg><span>Champion of Champions</span><em>Waits for its awards</em></li></ol></aside>",
+      "css": ".ds-order{width:340px;padding:16px;border-radius:24px;background:var(--muted,#1f1e4a);color:var(--foreground,#fff);font-family:Fredoka,ui-rounded,system-ui,sans-serif}.ds-order h3{margin:0;padding:4px 8px 8px;color:var(--muted-foreground,#bab8e6);font-size:.875rem;font-weight:600}.ds-order ol{display:grid;gap:4px;margin:0;padding:0;list-style:none}.ds-order li{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;font-weight:500;cursor:pointer;transition:background .2s}.ds-order li:hover{background:color-mix(in srgb,var(--card,#2e2c66) 60%,transparent)}.ds-order li span{flex:1}.ds-order em{font-style:normal;font-size:.75rem;color:var(--muted-foreground,#bab8e6)}.ds-order li[aria-current]{background:var(--card,#2e2c66);box-shadow:0 6px 20px var(--shadow-color,rgb(0 0 0/.4));font-weight:600}.ds-order li[aria-current] em{color:var(--primary,#ff7a5c);font-weight:600}"
     },
     {
       "name": "Input",
@@ -718,8 +755,8 @@
     {
       "name": "Vote Outcome",
       "kind": "custom",
-      "description": "\"Your vote is in\": a 128px action-colour badge with a Bold check, the vote named, and a quiet way to change it. Quiet screens carry the shape marks instead.",
-      "html": "<div class=\"ds-out\" role=\"status\"><div class=\"ds-out-badge\"><svg viewBox=\"0 0 256 256\" width=\"64\" height=\"64\" aria-hidden=\"true\"><polyline points=\"40 144 96 200 224 72\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"24\"/></svg></div><h2>Your vote is in</h2><p>You voted for <strong>The Worm</strong>. Watch the big screen for the results.</p><button class=\"ds-out-quiet\">Change my vote</button><div class=\"ds-marks\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" width=\"28\" height=\"28\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"var(--shape-1,#ff7a5c)\"/></svg><svg viewBox=\"0 0 26 24\" width=\"32\" height=\"32\" style=\"margin-bottom:8px\"><path d=\"M13 1 25 23H1Z\" fill=\"var(--shape-3,#ffc93c)\"/></svg><svg viewBox=\"0 0 44 18\" width=\"48\" height=\"20\"><path d=\"M3 9q6-8 12 0t12 0t12 0\" fill=\"none\" stroke=\"var(--shape-2,#2ec4a6)\" stroke-width=\"5\" stroke-linecap=\"round\"/></svg></div></div>",
+      "description": "\"Your vote is in\": a 128px action-colour badge with a Bold check, the vote named, and a quiet way to change it. Quiet screens carry the shape marks instead, in the mark colours (mark-1 to mark-3), never the winner colour.",
+      "html": "<div class=\"ds-out\" role=\"status\"><div class=\"ds-out-badge\"><svg viewBox=\"0 0 256 256\" width=\"64\" height=\"64\" aria-hidden=\"true\"><polyline points=\"40 144 96 200 224 72\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"24\"/></svg></div><h2>Your vote is in</h2><p>You voted for <strong>The Worm</strong>. Watch the big screen for the results.</p><button class=\"ds-out-quiet\">Change my vote</button><div class=\"ds-marks\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" width=\"28\" height=\"28\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"var(--mark-1,#ff7a5c)\"/></svg><svg viewBox=\"0 0 26 24\" width=\"32\" height=\"32\" style=\"margin-bottom:8px\"><path d=\"M13 1 25 23H1Z\" fill=\"var(--mark-2,#7c8cff)\"/></svg><svg viewBox=\"0 0 44 18\" width=\"48\" height=\"20\"><path d=\"M3 9q6-8 12 0t12 0t12 0\" fill=\"none\" stroke=\"var(--mark-3,#2ec4a6)\" stroke-width=\"5\" stroke-linecap=\"round\"/></svg></div></div>",
       "css": ".ds-out{display:flex;flex-direction:column;align-items:center;width:340px;text-align:center;font-family:Fredoka,ui-rounded,system-ui,sans-serif;color:var(--foreground,#fff)}.ds-out-badge{display:grid;place-items:center;width:128px;height:128px;margin-bottom:28px;border-radius:50%;background:var(--primary,#ff7a5c);color:var(--primary-foreground,#16153a);box-shadow:0 18px 44px var(--shadow-color,rgb(0 0 0/.4))}.ds-out h2{margin:0;font-size:1.875rem;font-weight:700;line-height:1.25}.ds-out p{max-width:20rem;margin:12px 0 0;color:var(--muted-foreground,#bab8e6);font-size:1.125rem;line-height:1.375}.ds-out strong{color:var(--foreground,#fff)}.ds-out-quiet{margin-top:24px;padding:8px;border:0;background:none;color:var(--primary,#ff7a5c);font:600 1.125rem Fredoka,ui-rounded,system-ui,sans-serif;text-decoration:underline;text-underline-offset:4px;cursor:pointer}.ds-out-quiet:focus-visible{outline:2px solid var(--ring,#ff7a5c);border-radius:6px}.ds-marks{display:flex;align-items:flex-end;gap:12px;margin-top:40px}@keyframes ds-bob{50%{transform:translateY(-6px)}}@media (prefers-reduced-motion:no-preference){.ds-marks svg{animation:ds-bob 2.6s ease-in-out infinite}.ds-marks svg:nth-child(2){animation-delay:-.9s}.ds-marks svg:nth-child(3){animation-delay:-1.7s}}"
     },
     {
@@ -754,7 +791,7 @@
   ],
   "narrative": {
     "northStar": "The Podium Night",
-    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. On the vote page that override is the theme toggle in the header, remembered on the device (`localStorage`); until the voter picks one, the page follows `prefers-color-scheme` live, and an inline script sets the theme before the first paint so a light phone never flashes dark. It is the device's theme, separate from the big screen's per-show one. A page puts its theme on `<html>` (`data-theme=\"light\"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.",
+    "overview": "An awards night run from a laptop, voted on from phones and revealed on whatever screen the room has. The fun lives in how the results arrive, in the timing and the words, and in a light touch everywhere else: rounded, friendly and clear from across the room, polished the way Nintendo, NYT Games or a Kahoot round is. It is built to be fun on the ninth award of the night, not just the first, so nothing is a gimmick that wears thin: no costume theme, no novelty textures, no mascot.\n\nOne system at three volumes. The big screen is loudest: display type, the podium race and confetti. The voter's phone is medium: big tap targets and one moment of delight when a vote is in. Host views are quiet: the same colours and type, with nothing playful in the controls. The show screens carry no AwardBro branding; they belong to the people in the room.\n\nThere are two themes from one set of roles. **Night** (dark) is the default, because most shows happen in the evening in a dim room. **Paper** (light) is the same system on warm paper for daytime rooms and bright projectors. The big screen's theme is set by the host per show (Night by default, Paper on the manage page's Night/Paper switch), and the screen follows it live; phones and host views follow the device setting, with an override. On the vote page, the run view and the manage page (and their password form) that override is the theme toggle in the header, remembered on the device (`localStorage`); until the person picks one, the page follows `prefers-color-scheme` live, and an inline script (`<DeviceThemeScript />`, rendered by the vote page and by the manage layout for every host view) sets the theme before the first paint so a light device never flashes dark. It is the device's theme, separate from the big screen's per-show one. A page puts its theme on `<html>` (`data-theme=\"light\"` for Paper, nothing for Night), so dialogs, tooltips and toasts, which render outside the page, follow it too.",
     "keyCharacteristics": [
       "Rounded everything: Fredoka type, pill buttons, rounded-top podium columns.",
       "Solid, saturated colour that survives a washed-out projector; no glows or gradients.",
@@ -765,12 +802,17 @@
     "rules": [
       {
         "name": "The Gold Is Earned Rule",
-        "body": "The winner colour belongs to the winner alone: never a button, never a runner-up's column. Nothing else on the reveal is gold (or Podium Coral on Paper), so the moment it appears, the room knows.",
+        "body": "The winner colour belongs to the winner alone: never a button, never a runner-up's column. Nothing else on the reveal is gold (or Podium Coral on Paper), so the moment it appears, the room knows. Off the reveal it doesn't appear at all: no shape mark, badge or host control takes the theme's winner colour (confetti, which falls only at a win, is the one exception).",
         "section": "colors"
       },
       {
         "name": "The Seeded Colour Rule",
         "body": "Column colours look random but aren't: they are shuffled with the award as the seed, so the big screen, the host's laptop and every reload show the same colours. Up to seven nominations never repeat a colour; beyond seven, colours repeat but never side by side.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Pill Rule",
+        "body": "A host screen has one solid action-colour shape: its main pill (the run view's next step, the manage page's Run the Show). Everything else is muted until hovered; where a state needs the action colour, such as the stepper's current step, it is a 15% tint with an inset ring, not a fill.",
         "section": "colors"
       },
       {
@@ -814,13 +856,15 @@
       "**Do** write copy that says what happens next (\"Watch the big screen for the results.\").",
       "**Do** respect `prefers-reduced-motion`: show the end state at once.",
       "**Do** check every text pair against both themes; body text stays at 4.5:1 or more.",
-      "**Do** size everything on the big screen in stage units, and keep what must be read clear of the outer 5%."
+      "**Do** size everything on the big screen in stage units, and keep what must be read clear of the outer 5%.",
+      "**Do** give each host screen one solid action-colour pill; tint, don't fill, any other state that needs the action colour."
     ],
     "donts": [
       "**Don't** put AwardBro branding on the big screen or the vote page.",
       "**Don't** use hard offset shadows, gradients or glows.",
       "**Don't** add themed decoration (envelopes, stamps, tickets, textures): it gets old by the third award.",
-      "**Don't** put a small uppercase label above a heading."
+      "**Don't** put a small uppercase label above a heading.",
+      "**Don't** show a destructive action solid red at rest: it turns red on hover, and only its confirm dialog's button is solid."
     ]
   }
 }
